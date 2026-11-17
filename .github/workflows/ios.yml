@@ -143,6 +143,14 @@ jobs:
       - name: Check out iOS branch
         uses: actions/checkout@v4
 
+      - name: Select Xcode 26 (App Store needs the iOS 26 SDK)
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | grep -v -i beta | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+
       - name: Fetch game HTML from main (GitHub Pages) branch
         uses: actions/checkout@v4
         with:
