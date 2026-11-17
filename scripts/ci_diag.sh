@@ -15,7 +15,7 @@ xcrun simctl install "$UDID" "$APP"
 xcrun simctl launch --console --terminate-running-process "$UDID" com.wordgame.worddefense > "$OUT/console.log" 2>&1 &
 LP=$!
 seen=""
-for i in $(seq 1 1500); do
+for i in $(seq 1 3500); do
   sleep 0.3
   while read -r name; do
     case " $seen " in *" $name "*) continue;; esac
