@@ -19303,7 +19303,7 @@ html body #wdl-ov .modal.bpq2:not(#_p):not(#_x) > .x{top:calc(94*var(--u))!impor
   background:none!important;
   border:0!important;
   box-shadow:none!important;
-  overflow:hidden!important;
+  overflow:visible!important;
   color:transparent!important;
   order:0!important;
   pointer-events:none!important;
@@ -19334,7 +19334,8 @@ html body #wdl-ov .modal.bpq2:not(#_p):not(#_x) > .x{top:calc(94*var(--u))!impor
   align-items:center!important;
   justify-content:center!important;
   filter:none!important;
-  overflow:hidden!important
+  overflow:visible!important;
+  padding:calc(2*var(--u)) calc(3*var(--u))!important
 }
 /* 상품명: 흰 글씨 + 우드브라운 두꺼운 외곽선, ~1.35배, 한 줄, 긴 이름은 줄여 맞춤 */
 #wdl .sgrid .sc:not(.k-gem) .sc-name .pl-t,
@@ -19354,15 +19355,17 @@ html body #wdl-ov .modal.bpq2:not(#_p):not(#_x) > .x{top:calc(94*var(--u))!impor
 #wdl .sc.k-gems .sc-name .pl-t,
 #wdl .sc.k-gems .sc-name .pl-t.ol{
   color:#fff!important;
-  -webkit-text-stroke:calc(2.8*var(--u)) #5a3315!important;
+  -webkit-text-stroke:calc(3.2*var(--u)) #3b1f0b!important;
   text-shadow:
-    calc(-0.4*var(--u)) 0 0 #5a3315,
-    calc(0.4*var(--u)) 0 0 #5a3315,
-    0 calc(-0.4*var(--u)) 0 #5a3315,
-    0 calc(0.4*var(--u)) 0 #5a3315!important;
+    calc(-0.5*var(--u)) 0 0 #3b1f0b,
+    calc(0.5*var(--u)) 0 0 #3b1f0b,
+    0 calc(-0.5*var(--u)) 0 #3b1f0b,
+    0 calc(0.5*var(--u)) 0 #3b1f0b!important;
   paint-order:stroke fill!important;
   font-size:calc(17.55*var(--u))!important;
-  line-height:1!important;
+  line-height:1.25!important;
+  padding:0.08em 0.12em!important;
+  overflow:visible!important;
   white-space:nowrap!important;
   font-weight:400!important;
   filter:none!important
@@ -19474,8 +19477,8 @@ html body #wdl-ov .modal.bpq2:not(#_p):not(#_x) > .x{top:calc(94*var(--u))!impor
 #wdl .sc.k-relic .sc-art > .sc-q,
 #wdl .sc.k-gems .sc-art > .sc-q{
   position:absolute!important;
-  right:calc(5*var(--u))!important;
-  bottom:calc(1*var(--u))!important;
+  right:calc(4*var(--u))!important;
+  bottom:calc(-5*var(--u))!important;
   left:auto!important;
   top:auto!important;
   z-index:3!important
