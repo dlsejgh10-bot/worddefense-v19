@@ -4160,11 +4160,10 @@ function qClaim(s, id, el) {
 }
 
 /* ---------- 친구매칭 (방 코드) ----------
-   실제 서버가 없어서 BroadcastChannel 로만 동작한다 = 같은 기기·같은 브라우저의 다른 탭/창끼리만 연결된다.
-   인터넷을 통한 매칭은 아직 불가 (Colyseus 연결 시 이 부분을 교체). 게임 안의 파트너는 지금도 기존 로컬 AI. */
+   11/18: 인터넷 매칭 = WDCoop (Firebase Realtime Database). 문서 끝 <script id="wd-coop-net"> 참고. */
 let FM = { host: null, join: null, mem: null };
 function myCode() { if (!/^[0-9]{4}$/.test(S.friendCode || '')) { let c = ''; for (let i = 0; i < 4; i++) c += Math.floor(rand() * 10); S.friendCode = c; save(true); } return S.friendCode; }
-function fmClose() { for (const k of ['host', 'join']) { try { if (FM[k]) FM[k].close(); } catch (e) {} FM[k] = null; } FM.mem = null; FM.starting = false; clearTimeout(FM.t); }
+function fmClose() { for (const k of ['host', 'join']) { try { if (FM[k]) FM[k].close(); } catch (e) {} FM[k] = null; } FM.mem = null; FM.starting = false; clearTimeout(FM.t); try { window.WDCoop && window.WDCoop.cancel(); } catch (e) {} }
 const fmBC = code => { try { return typeof BroadcastChannel === 'function' ? new BroadcastChannel('wd_room_' + code) : null; } catch (e) { return null; } };
 function fmHTML() {
   const code = myCode();
@@ -4177,7 +4176,7 @@ function fmHTML() {
     <div class="fm2-me"><div class="fmcode">${[...code].map((c, i) => `<i style="animation-delay:${i * 70}ms">${c}</i>`).join('')}</div>
     <div class="fmcopy"><button class="btn cream" data-act="fmcopy">코드 복사</button></div></div>
     <div class="fmwait" id="wdl-fmwait"><span>친구를 기다리는 중</span><span class="pl-dots"><i></i><i></i><i></i></span></div>
-    <div class="fmnote">지금은 같은 기기의 다른 창끼리만 연결돼요. 인터넷 매칭은 서버 연결 후 열려요.</div></div>`;
+</div>`;
 }
 /* 11/14 같이하기: 팀 합산 유물 값 (파트너에게 보냄) */
 const fmRl = () => { try { const W = window.WDRelic; return W ? { slow: +W.get('slow') || 0, gate: W.get('gate') | 0, armorShred: +W.get('armorShred') || 0 } : null; } catch (e) { return null; } };
@@ -4186,17 +4185,16 @@ function fmOpen() {
   const code = myCode(), m = modal(`<div id="wdl-fmbox">${fmHTML()}</div>`, { cls: 'fmm', onclose: fmClose });
   const inp = $('#wdl-fmin', m); inp.addEventListener('input', () => { const p = inp.selectionStart; inp.value = inp.value.replace(/[^0-9]/g, '').slice(0, 4); try { inp.setSelectionRange(p, p); } catch (e) {} });
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ACT.fmjoin($('#wdl-fmjb', m)); } });
-  const ch = fmBC(code); FM.host = ch;
-  if (ch) ch.onmessage = e => {
-    const d = e.data || {}; if (d.t !== 'join') return;
+  const onJoin = d => {   /* 11/18 인터넷 친구방 (WDCoop): 친구가 들어오면 바로 시작 */
     if (FM.starting) return; FM.starting = true;
-    try { ch.postMessage({ t: 'ok', nick: S.nick || '모험가', rl: fmRl() }); } catch (x) {}
-    FM.mem = d.nick || '친구'; window.WD_PARTNER_RL = d.rl || null;
+    FM.mem = (d && d.n) || '친구'; window.WD_PARTNER_RL = (d && d.rl) || null;
     const w = $('#wdl-fmwait'); if (!w) { FM.starting = false; return; }
     w.innerHTML = `<span class="fmok" style="margin:0;width:100%">${ic('check')}<b>${esc(FM.mem)}님이 들어왔어요! 바로 시작해요</b></span>`;
     sfx('chime'); vib([20, 30, 40]); const [x, y] = center(w); FX.burst(x, y, ['#fff', '#7fe0a0', '#ffd36a'], 24, 260);
-    setTimeout(() => { try { ch.postMessage({ t: 'start' }); } catch (x) {} FM.starting = false; if (m.isConnected) closeModal(m); window.__wdFMrun = 1; window.__wdFMroom = code; NQ.nick = FM.mem || ''; NQ.dc = false; startGame($('#wdl-play')); }, 900);
+    setTimeout(() => { FM.starting = false; if (m.isConnected) closeModal(m); window.__wdFMrun = 1; window.__wdFMroom = 'net'; NQ.nick = FM.mem || ''; NQ.dc = false; startGame($('#wdl-play')); }, 900);
   };
+  const host = () => { if (!window.WDCoop || !m.isConnected) return; window.WDCoop.friendHost(myCode(), onJoin, () => { if (!m.isConnected) return; S.friendCode = ''; const c2 = myCode(); const fc = $('.fm2-me .fmcode', m); if (fc) fc.innerHTML = [...c2].map((c, i) => `<i style="animation-delay:${i * 70}ms">${c}</i>`).join(''); host(); }); };
+  host();
 }
 const fmMsg = (t, ok) => { const e = $('#wdl-fmmsg'); if (e) { e.textContent = t; e.style.color = ok ? '#1f6e3b' : ''; } };
 
@@ -4341,18 +4339,16 @@ Object.assign(ACT, {
     const bad = s => { fmMsg(s); const p = $('.fmjoin', m); p.classList.remove('shk'); p.offsetWidth; p.classList.add('shk'); sfx('fail'); vib([20, 30, 20]); };
     if (!/^[0-9]{4}$/.test(code)) return bad('숫자 4자리를 입력해 주세요');
     if (code === myCode()) return bad('내 코드예요. 친구의 코드를 입력해 주세요');
-    const ch = fmBC(code); if (!ch) return bad('이 브라우저에서는 사용할 수 없어요');
-    try { if (FM.join) FM.join.close(); } catch (e) {} FM.join = ch; clearTimeout(FM.t); t.disabled = true; fmMsg('방을 찾는 중…', true); let got = false;
-    ch.onmessage = e => {
-      const d = e.data || {};
-      if (d.t === 'ok' && !got) {
-        got = true; window.WD_PARTNER_RL = d.rl || null; clearTimeout(FM.t); const b = $('#wdl-fmbox', m); if (!b) return;
-        b.innerHTML = `<div class="fmh"><h3 class="ol">친구매칭</h3></div><div class="fmb"><div class="fmok">${ic('check')}<b>${esc(d.nick || '친구')}님의 방에 들어왔어요!</b></div><div class="fmcode">${[...code].map(c => `<i>${c}</i>`).join('')}</div><div class="fmwait"><span>곧 게임이 시작돼요</span><span class="pl-dots"><i></i><i></i><i></i></span></div></div>`;
-        sfx('chime'); vib([20, 30, 40]);
-      } else if (d.t === 'start' && got) { closeModal(m); window.__wdFMrun = 1; window.__wdFMroom = code; NQ.dc = false; startGame($('#wdl-play')); }
-    };
-    try { ch.postMessage({ t: 'join', nick: S.nick || '모험가', rl: fmRl() }); } catch (e) {}
-    FM.t = setTimeout(() => { if (got) return; try { ch.close(); } catch (e) {} FM.join = null; t.disabled = false; bad('방을 찾지 못했어요. 코드를 다시 확인해 주세요'); }, 2200);
+    if (!window.WDCoop) return bad('이 브라우저에서는 사용할 수 없어요');
+    clearTimeout(FM.t); t.disabled = true; fmMsg('방을 찾는 중…', true);
+    window.WDCoop.friendJoin(code).then(r => {   /* 11/18 인터넷 친구방 참가 */
+      if (!m.isConnected) return;
+      if (!r || !r.ok) { t.disabled = false; return bad(r && r.err === 'net' ? '연결이 불안정해요. 다시 시도해 주세요' : '방을 찾지 못했어요. 코드를 다시 확인해 주세요'); }
+      const d = r.pj || {}; window.WD_PARTNER_RL = d.rl || null; const b = $('#wdl-fmbox', m); if (!b) return;
+      b.innerHTML = `<div class="fmh"><h3 class="ol">친구매칭</h3></div><div class="fmb"><div class="fmok">${ic('check')}<b>${esc(d.n || '친구')}님의 방에 들어왔어요!</b></div><div class="fmcode">${[...code].map(c => `<i>${c}</i>`).join('')}</div><div class="fmwait"><span>곧 게임이 시작돼요</span><span class="pl-dots"><i></i><i></i><i></i></span></div></div>`;
+      sfx('chime'); vib([20, 30, 40]);
+      setTimeout(() => { if (m.isConnected) closeModal(m); window.__wdFMrun = 1; window.__wdFMroom = 'net'; NQ.nick = d.n || ''; NQ.dc = false; startGame($('#wdl-play')); }, 600);
+    });
   },
 });
 /* ===== 상점 / 열쇠 동작 + 게임 연결(WDKeys) ===== */
@@ -4828,10 +4824,11 @@ function playUI() {
 }
 function playBegin(btn) {
   playT0 = performance.now(); clearInterval(playSearch);
-  playSearch = setInterval(() => { if (LOBBY.open === false) { playStop(); return; } if (performance.now() - playT0 >= ((window.WDOM && window.WDOM.due()) ? 1500 : PLAY_WAIT)) { if (busy) return; playStop(); const pb = $('#wdl-play'); startGame(pb && pb.isConnected ? pb : null); return; } playUI(); }, 100);   /* 11/17c 다른 탭·화면으로 가도 찾기 계속 (취소 버튼으로만 멈춤), 찾으면 어느 화면에서든 바로 게임 */
+  playSearch = setInterval(() => { if (LOBBY.open === false) { playStop(); return; } const NC = window.WDCoop; if (NC && NC.go()) { if (busy) return; playStop(1); window.__wdFMrun = 1; window.__wdFMroom = 'net'; window.WD_PARTNER_RL = (NC.pj() || {}).rl || null; const pb = $('#wdl-play'); startGame(pb && pb.isConnected ? pb : null); return; } const pel = performance.now() - playT0; if (pel >= ((window.WDOM && window.WDOM.due()) ? 1500 : PLAY_WAIT) && !(NC && NC.busy() && pel < PLAY_WAIT + 8000)) { if (busy) return; playStop(); const pb = $('#wdl-play'); startGame(pb && pb.isConnected ? pb : null); return; } playUI(); }, 100);   /* 11/18 인터넷 랜덤 매칭 (WDCoop): 짝을 찾으면 같이, 10초 지나면 기존 AI 파트너 */
+  try { if (window.WDCoop && !(window.WDOM && window.WDOM.due())) window.WDCoop.search(); } catch (e) {}   /* 11/17c 다른 탭·화면으로 가도 찾기 계속 (취소 버튼으로만 멈춤), 찾으면 어느 화면에서든 바로 게임 */
   playUI(); sfx('chime'); vib(15);
 }
-function playStop() { clearInterval(playSearch); playSearch = 0; playUI(); }
+function playStop(keep) { clearInterval(playSearch); playSearch = 0; playUI(); if (!keep) { try { window.WDCoop && window.WDCoop.cancel(); } catch (e) {} } }
 let runDiff = 'normal';
 async function startGame(btn, wb) {
   if (busy) return; if (!wb && !window.__wdIntro && !enSpend()) { enPopup(); return; } busy = true; window.WD_WB_RUN = wb || null; try { if (window.WBBGM) window.WBBGM.stop(); } catch (e) {} runDiff = DIFF; window.WD_VIP = !!S.vip || URL_VIP; try { if (window.WDOM) window.WDOM.pre(wb, DIFF); } catch (e) {} window.WD_DIFFICULTY = DIFF; // 어려움 규칙 미정: 플래그만 전달
@@ -4875,10 +4872,10 @@ ACT.exit2 = t => { nqLeave(); closeModal(t.closest('.mback')); exitToLobby(); };
 function nqPause(on) { try { if (G && !G.wb && !G.over) G.wbPause = !!on; } catch (e) {} }
 function nqLeave() { try { if (G && !G.over) { G._wdlRec = true; G.over = { win: false, quit: true }; G.wbPause = false; } } catch (e) {}
   try { S.stats.runs = (S.stats.runs | 0) + 1; S.stats.quit = (S.stats.quit | 0) + 1; save(true); } catch (e) {}
-  try { if (NQ.ch) NQ.ch.postMessage({ t: 'left', nick: S.nick || '모험가' }); } catch (e) {} nqRoomStop(); window.__wdFMrun = 0; }
+  try { if (NQ.ch) NQ.ch.postMessage({ t: 'left', nick: S.nick || '모험가' }); } catch (e) {} try { window.WDCoop && window.WDCoop.leave(); } catch (e) {} nqRoomStop(); window.__wdFMrun = 0; }
 const NQ = { ch: null, last: 0, nick: '', dc: false, hb: 0, end: false };
 function nqNotice(text) { try { if (G && G.toasts) { G.toasts.push({ text, col: '#b03a2e', t: 3.5 }); if (G.toasts.length > 3) G.toasts.shift(); } else toast(text, 3000); } catch (e) {} }
-function nqRoomStart() { nqRoomStop(); const c = window.__wdFMroom; if (!c || typeof BroadcastChannel !== 'function') return; try { NQ.ch = new BroadcastChannel('wd_room_' + c + '_g'); } catch (e) { NQ.ch = null; return; }
+function nqRoomStart() { nqRoomStop(); const c = window.__wdFMroom; if (!c) return; if (c === 'net') { NQ.ch = window.WDCoop ? window.WDCoop.channel() : null; if (!NQ.ch) return; } else { if (typeof BroadcastChannel !== 'function') return; try { NQ.ch = new BroadcastChannel('wd_room_' + c + '_g'); } catch (e) { NQ.ch = null; return; } }   /* 11/18 'net' = 인터넷 같이하기 (WDCoop, Realtime Database) */
   NQ.last = Date.now(); NQ.dc = false; NQ.end = false;
   NQ.ch.onmessage = e => { const d = e.data || {}; if (d.nick) NQ.nick = d.nick; if (d.t === 'hb') NQ.last = Date.now(); else if (d.t === 'left') nqPeerLeft(d.nick); else if (d.t === 'end') { NQ.end = true; } };
   NQ.hb = setInterval(() => { try { NQ.ch && NQ.ch.postMessage({ t: 'hb', nick: S.nick || '모험가' }); } catch (e) {} if (!NQ.dc && !NQ.end && Date.now() - NQ.last > 60000) nqPeerLeft(NQ.nick); }, 2000); }
@@ -4907,6 +4904,7 @@ function recordRun(g) {
   qAdd('runs', 1); qAdd('wave', wave, true); qAdd('kills', g.kills | 0);
   pendingRun = { wave, gold, stone, gem, rec: wave > prevBest && wave > 0, win: !!(g.over && g.over.win), boss: !!(g.over && g.over.reason === 'boss'), claimed: false };
   S.pendRun = { gold, stone, gem }; save(true);   // 앱이 꺼져도 다음 실행 때 1배로 지급 (fixState)
+  try { if (window.WDCoop && g.netGid) window.WDCoop.runEnd(pendingRun, g); } catch (e) {}   /* 11/18 같이하기(인터넷) 판: 서버 기록이 받아들여질 때 지급 (보류·한 번만) */
 }
 const RD_DAILY = 3;   // 결과 화면 광고 룰렛 1.5~5배 하루 횟수 (한국 자정 초기화)
 const RD_ROLLS = [1.5, 1.5, 1.5, 1.5, 2, 2, 2, 2, 2.5, 3, 4, 5];
@@ -4915,6 +4913,7 @@ const rdNorm = () => { const r = S.rd = (S.rd && typeof S.rd === 'object') ? S.r
 const rdLeft = () => Math.max(0, RD_DAILY - rdNorm().n);
 function applyClaim(mult) {
   const P = pendingRun; if (!P || P.claimed) return; P.claimed = true;
+  if (P.gid && window.WDCoop) { window.WDCoop.claim(P, mult); delete S.pendRun; save(true); renderTop(); return; }
   S.gold += P.gold * mult; S.enhStone += P.stone; S.gems += P.gem * mult;  /* 강화석은 룰렛/광고 배수 없음 */ delete S.pendRun; save(true); renderTop();
 }
 const WD_AD_PLACEMENTS = { relic_free_rewarded: 'relic_free_rewarded' };  // AdMob 보상형(리워드 비디오). 단가 높은 rewarded. 유닛 ID 없을 땐 이 placement 이름 유지
@@ -22756,4 +22755,446 @@ window.WDFly = function (list) {
 })();
 </script>
 
+<script id="wd-coop-net">
+/* 11/18 같이하기 인터넷 매칭 + 협동 동기화 (Firebase Realtime Database REST/스트리밍, 별도 서버 없음)
+   매칭: mq/{uid} 대기열 (작은 uid 쪽이 큰 uid 를 잡음, 잡기는 규칙상 1번만) · 친구 = codes/{4자리} → rooms/{rid}
+   게임: 두 기기가 같은 일정으로 몬스터를 직접 만들고, 방장(권한 쪽)은 처치 키·웨이브·보스 체력·결과만 보냄 (아래 '게임 중 동기화').
+   서로의 유닛 배치는 상대 판(위쪽)에 그대로 보임. 13초 조용 / 나가기 / 앱 전환 → 남은 쪽이 그 상태 그대로 이어서 진행 (짝은 기존 AI).
+   웨이브(w)·승리(o)는 보안 규칙이 검사 (한 번에 +1, 2.5초 간격, 승리는 70웨이브만) → 손님 보상은 검사된 값으로만. */
+(function () {
+  'use strict';
+  const DB = (window.WD_RTDB || 'https://word-defense-adbf8-default-rtdb.firebaseio.com').replace(/\/$/, '');
+  /* 단어 = 사전 번호로 보냄 (짧게). 같은 사전끼리만 매칭되도록 버전에 사전 지문 포함 */
+  const WL = (() => { try { return Object.keys(DICT).sort(); } catch (e) { return []; } })(), WI = new Map(WL.map((w, i) => [w, i]));
+  const PV = 'c1' + (() => { let h = 7; for (const w of WL) for (let i = 0; i < w.length; i++) h = (h * 31 + w.charCodeAt(i)) | 0; return (h >>> 0).toString(36); })(), SV = { '.sv': 'timestamp' };
+  const now = () => Date.now();
+  const LOG = window.__wdCoopLog = [];
+  const log = (...a) => { try { LOG.push(Math.round(performance.now()) + ' ' + a.join(' ')); if (LOG.length > 200) LOG.shift(); } catch (e) {} };
+  const LS = () => (window.WDLobby && window.WDLobby.state) || {};
+  async function tok() { const n = window.WDNet; if (!n || !n._ || !n._.token) throw new Error('nonet'); const a = await n._.token(); if (!a || !a.id || !a.uid) throw new Error('noauth'); return a; }
+  async function rq(method, path, body, q, keep) {
+    const a = await tok();
+    /* 쓰기는 POST + x-http-method-override (text/plain) → 브라우저 사전 확인(OPTIONS) 요청이 안 생김 = 받는 양 절반 */
+    const r = await fetch(`${DB}/${path}.json?auth=${encodeURIComponent(a.id)}${method === 'GET' ? '' : '&print=silent&x-http-method-override=' + method}${q || ''}`, { method: method === 'GET' ? 'GET' : 'POST', body: body === undefined ? (method === 'GET' ? undefined : '') : JSON.stringify(body), keepalive: !!keep, cache: 'no-store' });
+    if (!r.ok) { const e = new Error('rtdb ' + r.status); e.status = r.status; throw e; }
+    return method === 'GET' ? r.json() : null;
+  }
+  /* 스트리밍: path 의 직속 자식 값이 바뀔 때마다 onField(key, value) */
+  function stream(path, onField, onRoot, onBytes) {
+    let es = null, closed = false;
+    const open = async () => {
+      if (closed) return; let a; try { a = await tok(); } catch (e) { setTimeout(open, 2000); return; } if (closed) return;
+      try { es = new EventSource(`${DB}/${path}.json?auth=${encodeURIComponent(a.id)}`); } catch (e) { setTimeout(open, 3000); return; }
+      const h = kind => ev => { if (onBytes) try { onBytes(new TextEncoder().encode(ev.data).length + kind.length + 17); } catch (e) {} let d; try { d = JSON.parse(ev.data); } catch (e) { return; } if (!d) return;
+        const ks = String(d.path || '/').split('/').filter(Boolean);
+        try {
+          if (!ks.length) { if (kind === 'put') { if (onRoot) onRoot(d.data); if (d.data && typeof d.data === 'object') for (const k in d.data) onField(k, d.data[k]); } else if (d.data) for (const k in d.data) onField(k, d.data[k]); }
+          else if (ks.length === 1) onField(ks[0], d.data);
+          else onField(ks[0], undefined, ks.slice(1), d.data);
+        } catch (e) { log('field err', e && e.message); } };
+      es.addEventListener('put', h('put')); es.addEventListener('patch', h('patch'));
+      const re = () => { try { es && es.close(); } catch (e) {} es = null; if (!closed) setTimeout(open, 800); };
+      es.addEventListener('auth_revoked', re); es.addEventListener('cancel', re);
+      es.onerror = () => { if (es && es.readyState === 2) re(); };
+    };
+    open();
+    return { close() { closed = true; try { es && es.close(); } catch (e) {} es = null; } };
+  }
+  const rid8 = () => Math.random().toString(36).slice(2, 10);
+
+  /* ======================= 매칭 ======================= */
+  const M = { st: 'idle', kind: null, rid: null, role: null, me: null, pu: null, pj: null, ready: false, hostGo: false, es: [], tm: [], gen: 0, code: null, onJoin: null };
+  const clrT = () => { M.tm.forEach(t => { clearTimeout(t); clearInterval(t); }); M.tm = []; };
+  const clrS = () => { M.es.forEach(s => s.close()); M.es = []; };
+  function myJ() {
+    const S = LS(); let rl = null;
+    try { const W = window.WDRelic; rl = W ? { slow: +W.get('slow') || 0, gate: W.get('gate') | 0, armorShred: +W.get('armorShred') || 0 } : null; } catch (e) {}
+    let lv = 1; try { lv = (window.WDLobby && window.WDLobby.pfS && window.WDLobby.pfS().lv) || S.lv || 1; } catch (e) {}
+    return JSON.stringify({ n: String(S.nick || '모험가').slice(0, 16), a: S.avatar | 0, f: S.frame | 0, lv: lv | 0, vip: !!(S.vip || window.WD_VIP), rl, v: PV });
+  }
+  function reset(keepRoom) {
+    clrT(); clrS(); const old = M;
+    if (!keepRoom) {
+      if (old.me && (old.st === 'search' || old.st === 'hand')) rq('DELETE', `mq/${old.me}`).catch(() => {});
+      if (old.rid && old.role === 'host' && old.st !== 'play') rq('PATCH', '', { [`rooms/${old.rid}`]: null, [`rx/${old.rid}`]: null }).catch(() => {});
+      if (old.code && old.st !== 'play') rq('DELETE', `codes/${old.code}`).catch(() => {});
+    }
+    Object.assign(M, { st: 'idle', kind: null, rid: null, role: null, pu: null, pj: null, ready: false, hostGo: false, code: null, onJoin: null }); M.gen++;
+  }
+  /* 2시간 넘은 방 정리 (아무나, 5개까지) */
+  async function sweep() {
+    try { const old = await rq('GET', 'rx', undefined, `&orderBy=%22%24value%22&endAt=${now() - 7200000}&limitToFirst=5`);
+      if (old) for (const r in old) rq('PATCH', '', { [`rooms/${r}`]: null, [`rx/${r}`]: null }).catch(() => {}); } catch (e) {}
+  }
+  /* 상대 p 노드를 듣고, 내 j 를 쓴다 (매칭 확정 후 공통) */
+  function handshake(g) {
+    M.st = 'hand'; log('hand', M.role, M.rid);
+    M.es.push(stream(`rooms/${M.rid}/p/${M.pu}`, (k, v) => {
+      if (g !== M.gen) return;
+      if (k === 'j' && v && !M.pj) { try { M.pj = JSON.parse(v); } catch (e) { M.pj = {}; } log('pj', M.pj.n); if (M.pj.v !== PV) { log('version mismatch'); fail(g); return; }
+        if (M.role === 'host' && !M.hostGo) { M.hostGo = true; rq('PATCH', `rooms/${M.rid}/p/${M.me}`, { go: SV }).then(() => { if (g === M.gen) { M.ready = true; if (M.onJoin) M.onJoin(M.pj); } }).catch(e => { log('go fail', e.message); fail(g); }); } }
+      if (k === 'go' && v && M.role === 'guest') M.hostGo = true;
+      if (k === 'x' && v) fail(g);
+      if (M.role === 'guest' && M.pj && M.hostGo && !M.ready) { M.ready = true; if (M.onJoin) M.onJoin(M.pj); }
+    }));
+    rq('PATCH', `rooms/${M.rid}/p/${M.me}`, { j: myJ(), hb: SV }).catch(e => { log('j fail', e.message); fail(g); });
+    M.tm.push(setTimeout(() => { if (g === M.gen && !M.ready) { log('hand timeout'); fail(g); } }, 8000));
+  }
+  function fail(g) {
+    if (g !== M.gen) return; const kind = M.kind, cb = M.onFail; log('fail', kind);
+    reset(); if (kind === 'q' && Q.want) setTimeout(() => { if (Q.want && M.st === 'idle') search(); }, 300); else if (cb) cb();
+  }
+  /* --- 랜덤 매칭 --- */
+  const Q = { want: false };
+  async function search() {
+    Q.want = true; if (M.st !== 'idle') return; Q.cool = 0; reset(true); const g = M.gen; M.st = 'search'; M.kind = 'q';
+    let a; try { a = await tok(); } catch (e) { log('auth fail', e.message); M.st = 'idle'; return; } if (g !== M.gen) return; M.me = a.uid;
+    try { const c = await rq('GET', `qc/${M.me}`); if (c && c.n >= 3 && c.t > now() - 3600000 && c.l > now() - 600000) { log('cooldown'); M.st = 'idle'; Q.cool = Math.ceil((c.l + 600000 - now()) / 60000); try { window.WDLobby._pf.toast(`최근 나간 판이 많아 ${Q.cool}분 동안은 매칭 없이 시작해요`); } catch (e) {} return; } } catch (e) {}   /* 1시간에 3번 나가면 10분 매칭 쉬기 (규칙도 같은 검사) */
+    if (g !== M.gen) return;
+    try { await rq('PUT', `mq/${M.me}`, { t: SV, v: PV }); } catch (e) { log('mq put fail', e.message); M.st = 'idle'; return; } if (g !== M.gen) return;
+    sweep();
+    M.es.push(stream(`mq/${M.me}/m`, (k, v) => {}, d => { if (g !== M.gen || M.st !== 'search' || !d || !d.by || !d.r) return;
+      log('claimed by', d.by); M.role = 'guest'; M.pu = d.by; M.rid = d.r; rq('DELETE', `mq/${M.me}`).catch(() => {});
+      rq('PUT', `rooms/${M.rid}/m/g`, M.me).catch(() => {}); handshake(g); }));
+    const scan = async () => {
+      if (g !== M.gen || M.st !== 'search' || M.scanning) return; M.scanning = true;
+      try {
+        const all = await rq('GET', 'mq', undefined, '&orderBy=%22t%22&limitToLast=10') || {}; if (g !== M.gen || M.st !== 'search') return;
+        const mine = all[M.me]; const sNow = mine && mine.t ? Math.max(mine.t, now() - (M.skew || 0)) : now();
+        const cand = Object.keys(all).filter(u => u > M.me && all[u] && all[u].v === PV && !all[u].m && all[u].t > sNow - 9000).sort((x, y) => all[x].t - all[y].t);
+        for (const u of cand) {
+          if (g !== M.gen || M.st !== 'search') return;
+          const rid = 'q' + rid8() + now().toString(36);
+          try { await rq('PUT', `rooms/${rid}/m`, { h: M.me, g: u, t: SV, k: 'q' }); rq('PUT', `rx/${rid}`, SV).catch(() => {}); } catch (e) { continue; }
+          try { await rq('PUT', `mq/${u}/m`, { by: M.me, r: rid }); }
+          catch (e) { rq('PATCH', '', { [`rooms/${rid}`]: null, [`rx/${rid}`]: null }).catch(() => {}); continue; }
+          if (g !== M.gen || M.st !== 'search') { rq('PATCH', '', { [`rooms/${rid}`]: null, [`rx/${rid}`]: null }).catch(() => {}); return; }
+          log('claimed', u); M.role = 'host'; M.pu = u; M.rid = rid; rq('DELETE', `mq/${M.me}`).catch(() => {}); handshake(g); return;
+        }
+      } catch (e) { log('scan err', e.message); } finally { M.scanning = false; }
+    };
+    scan(); M.tm.push(setInterval(scan, 2500));
+    M.tm.push(setInterval(() => { if (g === M.gen && M.st === 'search') rq('PATCH', `mq/${M.me}`, { t: SV }).catch(() => {}); }, 3000));
+  }
+  function cancel() { Q.want = false; if (M.st === 'play' || (M.st === 'hand' && M.ready)) return; reset(); }
+  /* --- 친구 방 (4자리 코드) --- */
+  async function friendHost(code, onJoin, onTaken) {
+    Q.want = false; reset(); const g = M.gen; M.st = 'fhost'; M.kind = 'f'; M.onJoin = onJoin;
+    let a; try { a = await tok(); } catch (e) { M.st = 'idle'; return false; } if (g !== M.gen) return false; M.me = a.uid; M.role = 'host';
+    const rid = 'f' + code + rid8(); M.rid = rid;
+    try { await rq('PUT', `rooms/${rid}/m`, { h: M.me, t: SV, k: 'f' }); rq('PUT', `rx/${rid}`, SV).catch(() => {}); } catch (e) { M.st = 'idle'; return false; }
+    try { await rq('PUT', `codes/${code}`, { u: M.me, r: rid, t: SV }); M.code = code; } catch (e) { log('code taken', code); rq('PATCH', '', { [`rooms/${rid}`]: null, [`rx/${rid}`]: null }).catch(() => {}); M.st = 'idle'; if (onTaken) onTaken(); return false; }
+    if (g !== M.gen) return false;
+    M.es.push(stream(`rooms/${rid}/m`, (k, v) => { if (g !== M.gen || M.st !== 'fhost') return; if (k === 'g' && v) { M.pu = v; log('friend in', v); handshake(g); } }));
+    M.tm.push(setInterval(() => { if (g === M.gen && M.st === 'fhost') rq('PATCH', `codes/${code}`, { t: SV }).catch(() => {}); }, 30000));
+    sweep(); return true;
+  }
+  async function friendJoin(code) {
+    Q.want = false; reset(); const g = M.gen; M.st = 'fjoin'; M.kind = 'f';
+    let a; try { a = await tok(); } catch (e) { reset(); return { err: 'net' }; } M.me = a.uid;
+    let c; try { c = await rq('GET', `codes/${code}`); } catch (e) { reset(); return { err: 'net' }; }
+    if (g !== M.gen) return { err: 'cancel' };
+    if (!c || !c.r || !c.u || c.u === M.me) { reset(); return { err: 'nf' }; }
+    try { await rq('PUT', `rooms/${c.r}/m/g`, M.me); } catch (e) { reset(); return { err: e.status ? 'full' : 'net' }; }
+    M.role = 'guest'; M.rid = c.r; M.pu = c.u;
+    return await new Promise(res => { M.onJoin = pj => res({ ok: true, pj }); M.onFail = () => res({ err: 'nf' }); handshake(g); });
+  }
+
+  /* ======================= 게임 중 동기화 (데이터 최소) =======================
+     두 기기 모두 같은 웨이브 일정으로 몬스터를 직접 만든다 (몬스터 키 = 웨이브·포탈·순번, 양쪽 같음).
+     방장만: 웨이브 시작(w, 규칙 검사)·결과(o) = 바로, 처치된 몬스터 키·보스/정예 체력 = 패킷에.
+     둘 다: 내 유닛 변경분(소환 결과 그대로: 추가/삭제/이동/능력치) = 바로, 배속, 이모티콘.
+     한 번 쓸 때마다 응답 헤더 약 300바이트도 다운로드로 잡혀서 쓰기는 '내 입력 = 0.3~0.5초 모아서, 그 밖의 급한 일 = 최소 1초 간격, 평소 = 7초에 1번' 만.
+     끊김: 13초 조용하면 남은 쪽이 바로 방장 역할(웨이브·패배 판정, 짝 자리 = 기존 AI)로 이어감 → 60초 안에 돌아오면 다시 붙음,
+     60초 지나면 기존 NQ 흐름(nqPeerLeft: '○○ 님이 연결이 끊겼습니다.') 그대로. 앱을 60초 넘게 떠난 사람 = 나간 사람 (그 판 보상 0, 나감 횟수 +1) */
+  const NET = window.__wdNET = { on: false };
+  const PER = 7000, DROP = 13000, MINGAP = 1000;
+  const b36 = n => Math.max(0, Math.round(n)).toString(36), u36 = s => parseInt(s, 36) || 0;
+  const enc = new TextEncoder(), bl = s => enc.encode(s).length;
+  function resetNet() { const sv = NET.saved; Object.assign(NET, { away: 0, awayT: 0, opAt: 0, on: false, host: false, auth: false, rid: null, me: null, pu: null, pj: null, lastRx: 0, es: null, iv: 0, q: {}, inflight: false, lastTx: 0, s: 0, rs: 0, tw: new Map(), ops: [], needFull: false, sendFull: false, wSent: 0, wAt: 0, hostW: 1, alive: new Set(), kills: [], pend: new Set(), evQ: [], oSent: false, gone: false, drop: false, hidAt: 0, left: false, reported: false, zSent: 0, spS: 0, bigKill: false, oSeen: 0, wBase: 0, ch: null, bigAt: 0, saved: sv || null, t0: 0, txFail: 0, stats: { txB: 0, txN: 0, rxB: 0, rxN: 0, hdrB: 0 } }); }
+  resetNet();
+  const deliver = d => { try { if (NET.ch && NET.ch.onmessage) NET.ch.onmessage({ data: Object.assign({ nick: (NET.pj && NET.pj.n) || '' }, d) }); } catch (e) { log('deliver err', e && e.message); } };
+  function flushQ(force) {
+    if (NET.inflight || !NET.rid || document.hidden) return; const t = now();
+    const urgent = NET.sendFull || NET.needFull || NET.kills.length && NET.bigKill || NET.evQ.length || Object.keys(NET.q).length;
+    const inp = NET.ops.length && t - NET.opAt >= 300 && t - NET.lastTx >= 400;   /* 내 입력(소환·합치기·이동) = 0.3~0.5초 모아서 1번 */
+    if (!(force || inp || (urgent && t - NET.lastTx >= MINGAP))) return;
+    NET.opAt = 0;
+    const pk = { s: ++NET.s };
+    if (NET.auth) pk.h = 1;
+    if (NET.ops.length) { pk.t = NET.ops; NET.ops = []; }
+    if (NET.sendFull) { NET.sendFull = false; pk.T = 1; pk.t = fullOps(); if (NET.auth) pk.A = [...NET.alive].map(b36).join(','); }
+    if (NET.needFull) { NET.needFull = false; pk.f = 1; }
+    if (NET.kills.length) { pk.K = NET.kills.map(b36).join(','); NET.kills = []; NET.bigKill = false; }
+    if (NET.evQ.length) { pk.e = NET.evQ.slice(-2); NET.evQ = []; }
+    const P = NET.q; Object.assign(pk, P.pk || {});
+    const body = { k: JSON.stringify(pk) }; for (const k of ['w', 'wt', 'o', 'x']) if (P[k] != null) body[k] = P[k];
+    NET.q = {}; NET.inflight = true; NET.lastTx = t;
+    const sb = JSON.stringify(body); NET.stats.txB += bl(sb); NET.stats.txN++; NET.stats.hdrB += 300;   /* 204 응답 헤더 ≈ 280B + TLS */
+    rq('PATCH', `rooms/${NET.rid}/p/${NET.me}`, body).then(() => { NET.txFail = 0; }, e => { log('tx fail', e.status || e.message, Object.keys(body).join(','), body.w || '', body.k.length); if (body.w) NET.wSent = Math.max(NET.wBase || 0, NET.wSent - 1); if (body.o) NET.oSent = false; NET.txFail++; })
+      .finally(() => { NET.inflight = false; });
+  }
+  function begin() {
+    const pj = M.pj || {}; resetNet();
+    Object.assign(NET, { on: true, host: M.role === 'host', auth: M.role === 'host', rid: M.rid, me: M.me, pu: M.pu, pj, lastRx: now(), t0: now() });
+    clrT(); clrS(); M.st = 'play'; M.ready = false;
+    log('begin', NET.host ? 'host' : 'guest', NET.rid);
+    try { const P = PROFILE.partner; if (!NET.saved) NET.saved = { nick: P.nick, avatar: P.avatar, fi: P.fi, lv: P.lv }; P.nick = String(pj.n || '친구').slice(0, 16); P.avatar = pj.a | 0; P.fi = pj.f | 0; if (pj.lv) P.lv = pj.lv | 0; } catch (e) {}
+    NET.es = stream(`rooms/${NET.rid}/p/${NET.pu}`, onField, null, n => { NET.stats.rxB += n; NET.stats.rxN++; });
+    clearInterval(NET.iv); NET.iv = setInterval(tick, 125);
+    window.WD_EMOTE = Object.assign(window.WD_EMOTE || {}, { onSend: k => { if (NET.on) { NET.evQ.push(k); flushQ(); } } });
+    rq('PUT', `runs/${NET.me}/${NET.rid}`, { st: SV }).catch(e => log('run st fail', e.status || e.message));   /* 서버 기록 시작 (보상 검사용 경과 시간) */
+  }
+  function spdInit() {
+    try { const me = !!window.WD_VIP, pv = !!(NET.pj && NET.pj.vip); const host = NET.host ? (me ? 'me' : pv ? 'partner' : null) : (pv ? 'partner' : me ? 'me' : null);
+      G.spd = { me, pv, host, net: 1 }; if (host === 'partner' || !host) G.speed = 1; } catch (e) {}
+  }
+  function restoreProfile() { try { if (NET.saved) Object.assign(PROFILE.partner, NET.saved); NET.saved = null; } catch (e) {} }
+  function stopNet(sendLeft) {
+    if (!NET.rid) return; log('stop', sendLeft ? 'left' : '', JSON.stringify(NET.stats), Math.round((now() - NET.t0) / 1000) + 's');
+    window.__wdCoopLast = { stats: Object.assign({}, NET.stats), sec: (now() - NET.t0) / 1000, host: NET.host, wave: (() => { try { return G.wave; } catch (e) { return 0; } })() };
+    if (sendLeft) rq('PATCH', `rooms/${NET.rid}/p/${NET.me}`, { x: SV }, '', true).catch(() => {});
+    clearInterval(NET.iv); NET.iv = 0; try { NET.es && NET.es.close(); } catch (e) {} NET.es = null;
+    const rid = NET.rid; NET.on = false; NET.rid = null; NET.auth = true;
+    setTimeout(() => rq('DELETE', `rooms/${rid}`).catch(() => {}).then(() => rq('DELETE', `rx/${rid}`).catch(() => {})), sendLeft ? 2000 : 8000);   /* 방 정리 (방장·손님 누구든) */
+    if (window.WD_EMOTE) window.WD_EMOTE.onSend = null; M.st = 'idle'; M.gen++;
+  }
+  /* 짝이 나간 것을 서버에 기록 (짝 uid 의 나감 횟수, 같은 방은 1번만 — 규칙 검사) */
+  async function reportQuit() {
+    if (!NET.rid || !NET.pu || NET.reported) return; NET.reported = true; const rid = NET.rid, pu = NET.pu;   /* stopNet 이 NET.rid 를 비우므로 먼저 잡아 둠 */
+    try { const c = await rq('GET', `qc/${pu}`); const fresh = !c || !(c.t > now() - 3600000);
+      await rq('PATCH', '', { [`qt/${pu}/${rid}`]: SV, [`qc/${pu}`]: { n: fresh ? 1 : (c.n | 0) + 1, t: fresh ? SV : c.t, l: SV, r: rid } }); log('quit reported'); }
+    catch (e) { log('quit report fail', e.status || e.message); }
+  }
+  /* 13초 조용 → 내가 방장 역할 (멈춤 없음). 손님이었으면 웨이브 잡고 있던 것 풂, 짝 자리는 기존 AI */
+  function softDrop() { if (NET.drop) return; NET.drop = true; NET.auth = true; NET.away = 0; NET.wBase = NET.wSent = Math.max(NET.wSent, (NET.hostW | 0) - 1, 0); log('soft drop -> auth'); try { if (G && G.spd && G.spd.net && G.spd.host === 'partner') G.spd.host = window.WD_VIP ? 'me' : null; } catch (e) {} }
+  function rejoin(theyAuth) {
+    if (!NET.drop) return; NET.drop = false; log('rejoin', theyAuth ? 'they auth' : '');
+    /* 둘 다 방장 역할이면 원래 방장이 이어감 */
+    if (theyAuth && (!NET.host || NET.hidAt)) { NET.auth = false; }
+    else { NET.auth = true; }
+    NET.needFull = true; NET.sendFull = true;   /* 양쪽 전체 맞춤 (끊긴 동안 AI 가 놓은 것 정리) */
+  }
+  /* --- 몬스터 키 (양쪽 같음, 원래 방장 기준 포탈) --- */
+  function keyOf(q) {
+    const hp = NET.host ? q.portal : (q.portal === 'top' ? 'bot' : 'top');
+    const c = G._nkc || (G._nkc = {}), ck = q.wave + hp + (q.boss ? 'b' : q.elite ? 'e' : 'n');
+    const i = c[ck] = (c[ck] | 0) + 1;
+    return (q.wave | 0) * 1000 + (hp === 'top' ? 500 : 0) + (q.boss ? 450 + i : q.elite ? 400 + i : i);
+  }
+  /* --- 받기 --- */
+  function onField(k, v) {
+    if (!NET.on || v == null) return;
+    if (k === 'x') { if (NET.oSeen || (G && G.over)) return; return deliver({ t: 'left' }); }   /* 기존 NQ: nqPeerLeft */
+    if (k === 'w') { NET.hostW = v | 0; return; }
+    if (k === 'o') { NET.oSeen = 1; if (!NET.auth) hostOver(v | 0); deliver({ t: 'end' }); return; }
+    if (k !== 'k') return;
+    let P; try { P = JSON.parse(v); } catch (e) { return; }
+    const was = NET.lastRx; NET.lastRx = now(); deliver({ t: 'hb' });
+    if (NET.away && now() - NET.awayT > 1500) {   /* 돌아온 뒤 처음 받은 새 패킷 (숨김 전 묵은 것 제외) */
+      NET.away = 0; if (P.h) { NET.needFull = true; log('back as guest'); } else { NET.auth = true; NET.sendFull = true; log('back as auth'); }
+    } else if (NET.away) { /* 묵은 패킷: 역할 판단 안 함 */ }
+    else if (NET.drop) rejoin(!!P.h); else if (P.h && NET.auth && !NET.host && was) { NET.auth = false; NET.needFull = true; }
+    if (NET.rs && P.s !== NET.rs + 1 && !P.T) { NET.needFull = true; log('gap', NET.rs, P.s); }
+    NET.rs = P.s;
+    if (P.t) applyOps(P.t, !!P.T);
+    if (P.f) NET.sendFull = true;
+    if (P.z) deliver({ t: 'end' });
+    if (P.sp) { try { if (G && G.spd && G.spd.host === 'partner') { G.speed = P.sp > 1 ? 2 : 1; document.querySelectorAll('.x2b').forEach(b => b.classList.toggle('on', G.speed > 1)); } } catch (e) {} }
+    if (P.e) for (const k2 of P.e) { try { window.WD_EMOTE.receive(k2); } catch (e) {} }
+    if (!NET.auth && P.h) {
+      if (P.K) for (const s of P.K.split(',')) killKey(u36(s));
+      if (P.A) { const A = new Set(P.A.split(',').map(u36)); for (const m of G.mobs) if (!m.dead && m.nk != null && !A.has(m.nk) && m.spawnT > 3 && m.wave < NET.hostW) netKill(m); }
+      if (P.B) for (const [ks, hp, d] of P.B) fixBig(u36(ks), hp, d);
+    }
+  }
+  function netKill(m) { if (m.dead) return; try { m.hp = 0; killMob(m, 'net'); } catch (e) { m.dead = true; } }
+  function killKey(k) { if (!G) return; const m = G.mobs.find(x => !x.dead && x.nk === k); if (m) netKill(m); else NET.pend.add(k); }
+  const SMOOTH = 0.2;
+  function fixBig(k, hpm, d) {   /* 보스·정예: 체력(천분율)·위치 보정, 위치는 200ms 동안 부드럽게 */
+    const m = G && G.mobs.find(x => !x.dead && x.nk === k); if (!m) return;
+    const hp = m.maxHp * hpm / 1000; if (hp < m.hp || hp - m.hp > m.maxHp * 0.04) m.hp = Math.max(1, hp);
+    if (d != null) { const e = d - m.d; if (Math.abs(e) > 200) m.d = d; else { m._ce = e; m._ct = SMOOTH; } }
+  }
+  /* --- 유닛: 변경분만 --- */
+  const q10 = v => Math.round((v || 1) * 10);
+  function towerRow(T) { return { w: T.word, r: T.r, c: T.c, el: T.el | 0, dm: q10(T.dmgMult), as: q10(T.aspd) }; }
+  function diffTowers() {
+    const cur = new Map(); for (const T of G.towers) if (T.side === 'me') cur.set(T.id, towerRow(T));
+    const ops = [];
+    for (const [id] of NET.tw) if (!cur.has(id)) ops.push(['-', b36(id)]);
+    for (const [id, n] of cur) { const o = NET.tw.get(id);
+      if (!o || o.w !== n.w) ops.push(['+', b36(id), wEnc(n.w), n.r, n.c, n.el, n.dm, n.as]);
+      else { if (o.r !== n.r || o.c !== n.c) ops.push(['m', b36(id), n.r, n.c]); if (o.el !== n.el || o.dm !== n.dm || o.as !== n.as) ops.push(['s', b36(id), n.el, n.dm, n.as]); } }
+    NET.tw = cur; return ops;
+  }
+  function fullOps() { const o = []; for (const [id, n] of NET.tw) o.push(['+', b36(id), wEnc(n.w), n.r, n.c, n.el, n.dm, n.as]); return o; }
+  const wEnc = w => WI.has(w) ? b36(WI.get(w)) : '~' + w, wDec = x => typeof x !== 'string' ? null : x[0] === '~' ? x.slice(1) : WL[u36(x)];   /* 사전 번호 (없으면 글자 그대로) */
+  function applyOps(ops, full) {
+    if (!G || G.over || G.wb) return; const g = G.grid.partner;
+    const byId = new Map(); for (const T of G.towers) if (T.side === 'partner' && T.nid != null) byId.set(T.nid, T);
+    for (const T of G.towers.slice()) if (T.side === 'partner' && T.nid == null) removeTower(T);   /* 끊긴 동안 AI 가 놓은 것 정리 */
+    if (full) { const keep = new Set(ops.filter(o => o[0] === '+').map(o => u36(o[1]))); for (const [id, T] of byId) if (!keep.has(id)) { removeTower(T); byId.delete(id); } }
+    const mv = (T, r, c) => { if (!(r >= 0 && r < ROWS && c >= 0 && c < COLS)) return; if (g[T.r] && g[T.r][T.c] === T) g[T.r][T.c] = null; const x = g[r][c]; if (x && x !== T) removeTower(x); g[r][c] = T; walkTo(T, r, c); };
+    for (const o of ops) {
+      const id = u36(o[1]); let T = byId.get(id);
+      if (o[0] === '-') { if (T) { removeTower(T); byId.delete(id); } continue; }
+      if (o[0] === '+') {
+        o[2] = wDec(o[2]);
+        if (!DICT[o[2]] || !(o[3] >= 0 && o[3] < ROWS && o[4] >= 0 && o[4] < COLS)) continue;   /* 방장 검사: 사전에 있는 단어 + 칸 범위 */
+        if (T && T.word === o[2]) { if (T.r !== o[3] || T.c !== o[4]) mv(T, o[3], o[4]); }
+        else { if (T) { removeTower(T); byId.delete(id); } const x = g[o[3]][o[4]]; if (x) removeTower(x); G.noFan11 = 1; try { T = placeTower('partner', o[2], { r: o[3], c: o[4] }); } finally { G.noFan11 = 0; } if (!T) continue; T.nid = id; byId.set(id, T); window.__wdSumT = performance.now(); }
+        T.el = Math.max(0, Math.min(9, o[5] | 0)); T.nk = [Math.min(o[6] / 10, 60), Math.min(o[7] / 10, 10)]; continue;
+      }
+      if (!T) { NET.needFull = true; continue; }
+      if (o[0] === 'm') mv(T, o[2], o[3]);
+      else if (o[0] === 's') { T.el = Math.max(0, Math.min(9, o[2] | 0)); T.nk = [Math.min(o[3] / 10, 60), Math.min(o[4] / 10, 10)]; }
+    }
+  }
+  function hostOver(v) {
+    if (!G || G.over) return; const win = v === 1 && G.wave >= CFG.MAX_WAVE;   /* 승리는 70웨이브 (규칙 검사 값) 일 때만 */
+    G.over = win ? { win: true } : v === 3 ? { win: false, reason: 'boss' } : { win: false }; G.boxOpen = false; G.drag = null;
+    try { SFX.play(win ? 'win' : 'lose'); } catch (e) {}
+    log('host over', v);
+  }
+  /* --- 주기 작업 --- */
+  function tick() {
+    if (!NET.on) return; let g = null; try { g = G; } catch (e) {}
+    if (!g || g.wb || document.hidden) return;
+    const t = now();
+    if (NET.hidAt) {   /* 앱에서 돌아옴: 60초 넘게 떠났으면 나간 것 (그 판 보상 0), 아니면 다시 붙기 */
+      const away = t - NET.hidAt; NET.hidAt = 0; log('back after', Math.round(away / 1000) + 's');
+      if (away > 60000) { g.netLeft = 1; NET.left = true; deliver({ t: 'left' }); return; }   /* 내가 나간 것: 짝을 나감으로 기록하지 않음 */
+      NET.lastRx = Math.max(NET.lastRx, t - DROP + 4000); NET.needFull = true; NET.sendFull = true;   /* 떠난 동안 짝 화면의 AI 가 내 자리를 바꿨을 수 있음 → 내 전체 보냄 */
+      if (NET.auth || NET.drop) { NET.auth = false; NET.drop = false; NET.away = 1; NET.awayT = t; }   /* 돌아온 쪽은 일단 손님: 짝이 그동안 이어받았으면 그대로 두고, 아니면 다음 패킷 보고 다시 방장 */
+    }
+    if (g.wbPause) g.wbPause = false;   /* 같이하기 중엔 멈춤 없음 */
+    if (!NET.drop && (t - NET.lastRx > DROP || NET.txFail >= 3)) softDrop();
+    if (t - NET.lastRx > 60000 || NET.txFail >= 8) { if (NET.txFail >= 3) NET.left = true; /* 내 쪽 서버/네트워크 문제면 짝 탓 안 함 */ deliver({ t: 'left', why: NET.txFail >= 8 ? 'server' : 'timeout' }); return; }   /* 기존 NQ 60초와 같은 길 */
+    { const ops = diffTowers(); if (ops.length) { if (!NET.ops.length) NET.opAt = t; NET.ops.push(...ops); } }
+    if (g.spd && g.spd.host === 'me' && g.speed !== NET.spS) { NET.spS = g.speed; (NET.q.pk = NET.q.pk || {}).sp = g.speed > 1 ? 2 : 1; }
+    if (g.over && !NET.zSent) { NET.zSent = 1; (NET.q.pk = NET.q.pk || {}).z = 1; }
+    if (NET.auth) {
+      const al = new Set(); const big = [];
+      for (const m of g.mobs) if (!m.dead && m.nk != null) { al.add(m.nk); if (m.boss || m.elite) big.push([b36(m.nk), Math.round(m.hp / m.maxHp * 1000), Math.round(m.d)]); }
+      for (const k of NET.alive) if (!al.has(k)) { NET.kills.push(k); if (k % 1000 >= 400 && k % 500 >= 400) NET.bigKill = true; } NET.alive = al;
+      if (big.length && t - NET.bigAt >= 2000) { NET.bigAt = t; (NET.q.pk = NET.q.pk || {}).B = big.slice(0, 6); }   /* 보스 체력: 2초마다 바로 */
+      if (NET.wSent < g.wave && t - NET.wAt > 2600) { NET.wSent++; NET.wAt = t; NET.q.w = NET.wSent; NET.q.wt = SV; }   /* 웨이브 시작 = 바로 */
+      if (g.over && !NET.oSent && !g.netLeft && NET.wSent >= (g.over.win ? CFG.MAX_WAVE : 0)) { NET.oSent = true; NET.q.o = g.over.win ? 1 : g.over.reason === 'boss' ? 3 : 2; }   /* 결과 = 방장만, 바로 */
+    } else if (!g.over && NET.hostW > g.wave) { for (let w = g.wave + 1; w <= NET.hostW; w++) startWave(w); }   /* 손님: 규칙 검사된 방장 웨이브만 */
+    flushQ(t - NET.lastTx >= PER);
+    if (g.over && NET.oSent && t - NET.lastTx > 2500 && !NET.q.o) { deliver({ t: 'end' }); }
+  }
+  document.addEventListener('visibilitychange', () => { if (!NET.on) return; if (document.hidden) { NET.hidAt = now(); log('hidden'); } });
+  window.addEventListener('pagehide', () => { if (NET.on) { try { if (!(G && G.over)) G.netLeft = 1; } catch (e) {} stopNet(true); } else if (M.st !== 'idle') reset(); });
+
+  /* --- 기존 NQ (같이하기 연결 표시·나가기·끊김 알림) 에 붙는 통로: BroadcastChannel 대신 이것 --- */
+  function channel() {
+    if (!NET.on) return null;
+    const ch = { onmessage: null,
+      postMessage(d) { if (!d || !NET.on) return; if (d.t === 'left') { try { if (G && !G.over) G.netLeft = 1; } catch (e) {} stopNet(true); } },   /* hb·end 는 패킷이 대신 */
+      close() { if (NET.ch !== ch) return; NET.ch = null; if (NET.on) { const over = (() => { try { return !!G.over; } catch (e) { return true; } })();
+        if (!over && (NET.hidAt || document.hidden)) { NET.left = true; try { G.netLeft = 1; } catch (e) {} }   /* 내가 앱을 떠나 있던 중 60초가 지남 = 나간 사람은 나 (보상 0, 짝 탓 안 함) */
+        if (!over && !NET.left) reportQuit(); stopNet(!over); } } };
+    NET.ch = ch; return ch;
+  }
+
+  /* ======================= 보상: 서버 기록 + 한 번만 받기 =======================
+     runs/{uid}/{방id}: 시작 시각(st, 서버) → 끝나면 웨이브·보상 1번 기록 (규칙: 상한, 경과 시간 대비 웨이브, 나간 사람은 0)
+     → c(배수) 1번 기록에 성공해야 지급. 서버가 안 받으면(한도·네트워크) 기기에 보류(S.pendNet) → 나중에 자동 지급. 같은 판 두 번 지급 불가 */
+  const RS = () => { const S = LS(); if (!S.pendNet || typeof S.pendNet !== 'object') S.pendNet = {}; return S.pendNet; };
+  const saveS = () => { try { window.WDLobby._att.save(true); } catch (e) {} };
+  function runEnd(P, g) {   /* recordRun 에서: 이번 판이 같이하기(인터넷) 판이면 보상을 서버 기록 대기로 */
+    try {
+      const gid = g && g.netGid; if (!gid) return P;
+      if (g.netLeft || (g.over && g.over.quit)) { P.gold = 0; P.gem = 0; P.stone = 0; P.left = 1; }
+      const sec = Math.round((now() - (g.netT0 || now())) / 1000);
+      P.gid = gid; RS()[gid] = { gid, uid: g.netUid, w: P.wave | 0, win: !!P.win, g: P.gold | 0, m: P.gem | 0, s: P.stone | 0, l: !!P.left, sec, mult: 0, at: now() };
+      delete LS().pendRun; saveS(); setTimeout(pump, 500);
+    } catch (e) { log('runEnd err', e && e.message); }
+    return P;
+  }
+  function claim(P, mult) {   /* 결과 화면에서 받기 (배수 = 룰렛/광고) */
+    const e = RS()[P.gid]; if (!e) return; e.mult = Math.max(1, Math.min(5, +mult || 1)); saveS(); pump(true);
+  }
+  let pumping = false;
+  async function pump(now_) {
+    if (pumping) return; pumping = true;
+    try {
+      let a; try { a = await tok(); } catch (e) { return; }
+      const L = RS();
+      for (const gid of Object.keys(L)) {
+        const e = L[gid]; if (!e) continue;
+        if (e.uid && e.uid !== a.uid) continue;   /* 다른 계정 판 */
+        if (!e.mult && now() - e.at < 10 * 60000) continue;   /* 결과 화면에서 고르는 중 (10분 지나면 1배) */
+        const path = `runs/${a.uid}/${gid}`;
+        let cur = null; try { cur = await rq('GET', path); } catch (x) { if (!x.status) break; }   /* 네트워크/한도 → 다음에 */
+        if (cur && cur.c) { delete L[gid]; saveS(); log('already claimed', gid); continue; }
+        if (e.l && !e.g && !e.m && !e.s) { delete L[gid]; saveS(); log('left run, no reward', gid); continue; }   /* 결크 판 = 받을 것 없음 */
+        try {
+          if (!cur || cur.w == null) await rq('PATCH', path, { w: e.w, win: e.win && e.w >= CFG.MAX_WAVE, g: e.g, m: e.m, s: e.s, l: e.l, t: SV });
+          try { await rq('PATCH', path, { c: e.mult || 1 }); }
+          catch (x) { if (x.status !== 401 || NET.rid === gid) throw x;   /* 한도 때문에 못 지운 방이 남아 있으면 지우고 1번 더 */
+            await rq('PATCH', '', { [`rooms/${gid}`]: null, [`rx/${gid}`]: null }).catch(() => {}); await rq('PATCH', path, { c: e.mult || 1 }); }
+        } catch (x) {
+          if (!x.status || x.status >= 500 || x.status === 402 || x.status === 429) break;   /* 서버 쉼 → 보류 유지 */
+          if ((e.tries = (e.tries | 0) + 1) < 3) { saveS(); log('run retry later', gid, x.status); continue; }   /* 짝 판이 아직 안 끝났을 수 있음 → 60초 뒤 다시 */
+          log('run rejected', gid, x.status); try { window.WDNet && window.WDNet.log('coop_run_reject', JSON.stringify({ gid, w: e.w, g: e.g, m: e.m, s: e.s, sec: e.sec })); } catch (y) {}
+          delete L[gid]; saveS(); continue;   /* 규칙 거부 = 수상한 기록 → 지급 안 함 */
+        }
+        const S = LS(), k = e.mult || 1; S.gold = (S.gold || 0) + e.g * k; S.gems = (S.gems || 0) + e.m * k; S.enhStone = (S.enhStone || 0) + e.s;
+        (S.netGot = S.netGot || {})[gid] = now(); delete L[gid]; saveS(); try { window.WDLobby._pf.renderTop(); } catch (x) {}
+        log('claimed', gid, e.g * k, e.m * k);
+        if (!now_ || e.late) { try { if (e.g || e.m) window.WDLobby._pf.toast(`지난 같이하기 보상을 받았어요 (골드 +${(e.g * k).toLocaleString('ko-KR')})`); } catch (x) {} }
+      }
+      for (const gid of Object.keys(L)) if (L[gid]) L[gid].late = 1;
+    } finally { pumping = false; }
+  }
+  setInterval(() => { try { if (Object.keys(RS()).length) pump(); } catch (e) {} }, 60000);
+  window.addEventListener('online', () => setTimeout(pump, 1000));
+  setTimeout(() => { try { if (Object.keys(RS()).length) pump(); } catch (e) {} }, 8000);
+
+  /* ======================= 엔진 연결 ======================= */
+  const wrap = (name, f) => { try { const o = eval(name); if (typeof o !== 'function') return; const n = f(o); eval(name + ' = n'); } catch (e) { log('wrap fail', name, e && e.message); } };
+  wrap('newGame', o => function () {
+    if (M.st === 'hand' && M.ready && !window.__wdIntro) { begin(); }
+    else if (NET.on) stopNet(true);
+    const r = o.apply(this, arguments);
+    if (NET.on) { spdInit(); G.partnerQ.length = 0; G.netGid = NET.rid; G.netUid = NET.me; G.netT0 = now(); }
+    return r;
+  });
+  wrap('spawnMob', o => function (q) {
+    if (!G || G.wb || !(NET.on || G.netGid)) return o.apply(this, arguments);
+    const k = keyOf(q); if (NET.on && !NET.auth && NET.pend.has(k)) { NET.pend.delete(k); return; }   /* 방장이 이미 잡은 몬스터 */
+    const n0 = G.mobs.length; const r = o.apply(this, arguments); if (G.mobs.length > n0) G.mobs[G.mobs.length - 1].nk = k; return r;
+  });
+  wrap('update', o => function (dt) {
+    if (!NET.on || !G || G.wb || NET.auth) return o.apply(this, arguments);
+    /* 손님: 웨이브 넘김·패배 판정은 방장 몫 */
+    if (NET.hostW <= G.wave) G.waveT = Math.max(G.waveT, 0.05 + dt);
+    for (const m of G.mobs) if (m._ct > 0 && m._ce) { const k = Math.min(1, dt / m._ct), s = m._ce * k; m.d += s; m._ce -= s; m._ct -= dt; }
+    const la = CFG.LOSE_ALIVE; CFG.LOSE_ALIVE = 1e9;
+    try { return o.apply(this, arguments); } finally { CFG.LOSE_ALIVE = la; }
+  });
+  const gNet = () => NET.on && !NET.drop && G && !G.wb;
+  for (const n of ['earlySkipReady', 'finalClearReady', 'finalBossesDown']) wrap(n, o => function () { if (NET.on && G && !G.wb && !NET.auth) return false; return o.apply(this, arguments); });
+  for (const n of ['partnerPlace', 'partnerMerge', 'partnerArrange', 'partnerTryFuse', 'partnerTryMerge', 'spdBot']) wrap(n, o => function () { if (gNet()) return false; return o.apply(this, arguments); });
+  wrap('useItem', o => function (side) { if (side === 'partner' && gNet()) return false; return o.apply(this, arguments); });
+  wrap('updateSupport', o => function () { const r = o.apply(this, arguments); if (gNet()) for (const T of G.towers) if (T.side === 'partner' && T.nk) { T.dmgMult = T.nk[0]; T.aspd = T.nk[1]; } return r; });
+  /* 로비로 나갈 때 */
+  setInterval(() => { try { const L = window.WDLobby; if (!L || !L.open) return; if (NET.on) { let over = false; try { over = !!(G && G.over); } catch (e) {} stopNet(!over); } if (NET.saved) restoreProfile(); } catch (e) {} }, 700);
+
+  window.WDCoop = {
+    search, cancel, friendHost, friendJoin, channel, runEnd, claim, pump,
+    busy: () => M.st === 'hand' && !M.ready,
+    go: () => M.st === 'hand' && M.ready,
+    cool: () => Q.cool || 0,
+    pj: () => M.pj, role: () => M.role,
+    live: () => NET.on, leave: () => { if (NET.on) { try { if (G && !G.over) G.netLeft = 1; } catch (e) {} stopNet(true); } else if (M.st !== 'idle' && M.st !== 'play') reset(); },
+    state: () => ({ m: M.st, role: M.role, rid: M.rid || NET.rid, net: NET.on, host: NET.host, auth: NET.auth, drop: NET.drop, gone: !NET.on && !!NET.t0, stats: NET.stats, hostW: NET.hostW, rs: NET.rs, t0: NET.t0, last: window.__wdCoopLast || null }),
+    _: { M, NET, rq, tok, DB }, log: LOG,
+  };
+})();
+
+</script>
 </html>
