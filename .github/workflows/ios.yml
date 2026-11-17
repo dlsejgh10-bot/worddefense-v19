@@ -158,14 +158,48 @@ jobs:
             exit 1
           fi
 
+      - name: Install distribution certificate and App Store profile
+        env:
+          IOS_DIST_P12_B64: ${{ secrets.IOS_DIST_P12_B64 }}
+          IOS_DIST_P12_PASSWORD: ${{ secrets.IOS_DIST_P12_PASSWORD }}
+          IOS_PROFILE_B64: ${{ secrets.IOS_PROFILE_B64 }}
+        run: |
+          set -euo pipefail
+          KC="$RUNNER_TEMP/ci.keychain-db"; KP="$(openssl rand -hex 12)"
+          security create-keychain -p "$KP" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KP" "$KC"
+          printf '%s' "$IOS_DIST_P12_B64" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security import "$RUNNER_TEMP/dist.p12" -P "$IOS_DIST_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KP" "$KC" > /dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/dist.p12"
+          printf '%s' "$IOS_PROFILE_B64" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+          UUID=$(security cms -D -i "$RUNNER_TEMP/app.mobileprovision" | plutil -extract UUID raw -)
+          for d in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$d"; cp "$RUNNER_TEMP/app.mobileprovision" "$d/$UUID.mobileprovision"
+          done
+          echo "WD_PROFILE_UUID=$UUID" >> "$GITHUB_ENV"
+          security find-identity -v -p codesigning "$KC" | grep -c "Apple Distribution"
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Sync HTML and generate the Xcode project
+      - name: Sync HTML and generate the Xcode project (manual App Store signing on the app target only)
+        env:
+          ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
         run: |
           set -euo pipefail
           export WORD_DEFENSE_HTML="$GITHUB_WORKSPACE/_gamehtml/index.html"
           ./scripts/sync_html.sh
+          python3 - <<'PY'
+          import os
+          p = 'project.yml'; s = open(p).read()
+          a = "          SWIFT_COMPILATION_MODE: wholemodule\n"
+          assert s.count(a) == 1
+          add = a + "          CODE_SIGN_STYLE: Manual\n          DEVELOPMENT_TEAM: %s\n          CODE_SIGN_IDENTITY: \"Apple Distribution\"\n          PROVISIONING_PROFILE_SPECIFIER: %s\n" % (os.environ['ASC_TEAM_ID'], os.environ['WD_PROFILE_UUID'])
+          open(p, 'w').write(s.replace(a, add))
+          PY
           xcodegen generate
 
       - name: Write AuthKey .p8
@@ -179,14 +213,9 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           chmod 600 "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
-      - name: Archive with automatic signing
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+      - name: Archive (manual App Store signing)
         run: |
           set -euo pipefail
-          KEY="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           xcodebuild \
             -project WordDefense.xcodeproj \
             -scheme WordDefense \
@@ -194,12 +223,6 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath dist/WordDefense.xcarchive \
             -derivedDataPath build/DerivedData \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$ASC_TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
             archive
 
       - name: Export and upload to App Store Connect
@@ -210,20 +233,21 @@ jobs:
         run: |
           set -euo pipefail
           KEY="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
-          # teamID is filled at export time from the secret (not committed).
           EXPORT="$RUNNER_TEMP/ExportOptions.plist"
           /usr/libexec/PlistBuddy -c "Clear dict" "$EXPORT" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :method string app-store-connect" "$EXPORT"
           /usr/libexec/PlistBuddy -c "Add :destination string upload" "$EXPORT"
-          /usr/libexec/PlistBuddy -c "Add :signingStyle string automatic" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :signingStyle string manual" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :signingCertificate string Apple Distribution" "$EXPORT"
           /usr/libexec/PlistBuddy -c "Add :teamID string $ASC_TEAM_ID" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :provisioningProfiles:com.wordgame.worddefense string $WD_PROFILE_UUID" "$EXPORT"
           /usr/libexec/PlistBuddy -c "Add :uploadSymbols bool true" "$EXPORT"
-          /usr/libexec/PlistBuddy -c "Add :manageAppVersionAndBuildNumber bool true" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :manageAppVersionAndBuildNumber bool false" "$EXPORT"
           xcodebuild -exportArchive \
             -archivePath dist/WordDefense.xcarchive \
             -exportPath dist/export \
             -exportOptionsPlist "$EXPORT" \
-            -allowProvisioningUpdates \
             -authenticationKeyPath "$KEY" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
