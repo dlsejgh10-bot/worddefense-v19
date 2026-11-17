@@ -55,3 +55,19 @@ README 아래 «Apple 심사» 절과 에이전트 보고를 참고하세요. �
 
 - **ITSAppUsesNonExemptEncryption**  
   HTTPS만 쓰므로 `false`로 두었습니다. 별도의 암호 기능을 넣으면 수출 규정 질문을 다시 봐야 합니다.
+
+## GitHub Actions 워크플로를 켜려면
+
+`dlsejgh10-bot` GitHub 토큰에 `workflow` 스코프가 없어서 `.github/workflows/ios.yml`을 이 브랜치에 푸시하지 못했습니다. 워크플로 원본은 `docs/github-workflows/ios.yml`에 있습니다.
+
+토큰에 `workflow` 권한을 추가한 뒤:
+
+```bash
+mkdir -p .github/workflows
+cp docs/github-workflows/ios.yml .github/workflows/ios.yml
+git add .github/workflows/ios.yml
+git commit -m "Add iOS GitHub Actions workflow"
+git push origin ios
+```
+
+또는 GitHub 웹에서 `ios` 브랜치에 `.github/workflows/ios.yml`로 같은 파일을 추가해도 됩니다. 파일이 올라가면 unsigned 시뮬레이터·기기 빌드가 자동으로 돕니다. App Store 업로드 잡은 수동 실행에서만 켜집니다.
