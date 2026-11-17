@@ -34,13 +34,13 @@
   const agg = rs => ({ worstFrame: Math.max(...rs.map(r => r.max)), meanWorst: Math.round(rs.reduce((a, r) => a + r.max, 0) / rs.length), jank34: rs.reduce((a, r) => a + r.j33, 0), jank50: rs.reduce((a, r) => a + r.j50, 0), fps: +(rs.reduce((a, r) => a + r.cnt, 0) / rs.reduce((a, r) => a + r.sum, 0) * 1000).toFixed(1) });
   log({ tabs1: agg(res.filter(r => !r.round)), tabs2: agg(res.filter(r => r.round)), per: res.map(r => r.n + r.round + ':' + r.max).join(' ') });
   /* same taps with single changes switched on, to see what the cost is on a real WKWebView */
-  const VAR = [['base', ''], ['noViewAnim', '#wdl .view.enter,#wdl .view.leave{animation:none!important}'], ['leaveNone', '#wdl .view.leave{display:none!important}'], ['viewFast', '#wdl .view.enter{animation-duration:.26s!important}#wdl .view.leave{display:none!important}'],
-    ['translateOnly', '@keyframes view-in{from{transform:translateX(calc(var(--dir,1)*calc(46*var(--u))))}to{transform:none}} #wdl .view.leave{display:none!important}'], ['opacityOnly', '@keyframes view-in{from{opacity:0}to{opacity:1}} #wdl .view.leave{display:none!important}'],
-    ['noViewAnimNoSt', '#wdl .view.enter,#wdl .view.leave,#wdl .st{animation:none!important}'], ['base2', ''], ['blob', '', () => { for (const I of [window.__WD_IMG, window.__V19A]) for (const k in I) if (typeof I[k] === 'string' && I[k].startsWith('data:')) I[k] = __wdBlobOf(I[k]); return null; }], ['blob+noViewAnim', '#wdl .view.enter,#wdl .view.leave{animation:none!important}'], ['blob+translateOnly', '@keyframes view-in{from{transform:translateX(calc(var(--dir,1)*calc(46*var(--u))))}to{transform:none}} #wdl .view.leave{display:none!important}'], ['blob+base', '']];
+  const VAR = [['base', ''], ['noViewAnim', '#wdl .view.enter,#wdl .view.leave{animation:none!important}'], ['leaveNone', '#wdl .view.leave{display:none!important}'], ['opacityOnly', '@keyframes view-in{from{opacity:0}to{opacity:1}} #wdl .view.leave{display:none!important}'],
+    ['translateOnly', '@keyframes view-in{from{transform:translateX(calc(var(--dir,1)*calc(46*var(--u))))}to{transform:none}} #wdl .view.leave{display:none!important}'],
+    ['blob', '', () => { for (const I of [window.__WD_IMG, window.__V19A]) for (const k in I) if (typeof I[k] === 'string' && I[k].startsWith('data:')) I[k] = __wdBlobOf(I[k]); return null; }], ['blob+noViewAnim', '#wdl .view.enter,#wdl .view.leave{animation:none!important}'], ['blob+base', '']];
   for (const [vn, css, jsf] of VAR) {
     const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); const undo = jsf ? jsf() : null; await sl(300);
     const rr = [];
-    for (const n of seq.concat(seq)) { const t0 = performance.now(); tap(tabEl(n)); await sl(1700); const fr = window.__fd.filter(a => a[0] > t0 && a[0] < t0 + 1500).map(a => a[1]); rr.push({ n, round: 0, max: Math.round(Math.max(...fr)), j33: fr.filter(d => d > 34).length, j50: fr.filter(d => d > 50).length, sum: fr.reduce((a, b) => a + b, 0), cnt: fr.length }); }
+    for (const n of seq) { const t0 = performance.now(); tap(tabEl(n)); await sl(1700); const fr = window.__fd.filter(a => a[0] > t0 && a[0] < t0 + 1500).map(a => a[1]); rr.push({ n, round: 0, max: Math.round(Math.max(...fr)), j33: fr.filter(d => d > 34).length, j50: fr.filter(d => d > 50).length, sum: fr.reduce((a, b) => a + b, 0), cnt: fr.length }); }
     log({ variant: vn, r: agg(rr) }); st.remove(); if (undo) undo(); await sl(300);
   }
   tap(tabEl('상점')); await sl(1500);
