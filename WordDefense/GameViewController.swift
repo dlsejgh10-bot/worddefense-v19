@@ -26,13 +26,35 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
         loadGameIfNeeded()
+        pushSafeArea()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        loadGameIfNeeded()
+    }
+
+    /// Notch / home-indicator insets in CSS px (= points). The window's insets are used too because the
+    /// view's can still be zero on the very first callback, before it is attached to the window.
+    private func currentInsets() -> UIEdgeInsets {
+        let v = view.safeAreaInsets
+        let w = view.window?.safeAreaInsets ?? .zero
+        return UIEdgeInsets(top: max(v.top, w.top), left: max(v.left, w.left), bottom: max(v.bottom, w.bottom), right: max(v.right, w.right))
+    }
+
+    /// Re-sends the insets to the page (the game also reads env(safe-area-inset-*) and ?sat=&sab=).
+    private func pushSafeArea() {
+        guard loaded, let web = webView else { return }
+        let i = currentInsets()
+        let js = "window.__wdSafe&&window.__wdSafe(\(Int(i.top.rounded())),\(Int(i.bottom.rounded())))"
+        web.evaluateJavaScript(js, completionHandler: nil)
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         // Fallback if the insets callback never fires (matches Android's delayed load).
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
-            self?.loadGameIfNeeded()
+            self?.loadGameIfNeeded(force: true)
         }
     }
 
@@ -93,10 +115,12 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         bridge.viewController = self
     }
 
-    private func loadGameIfNeeded() {
+    private func loadGameIfNeeded(force: Bool = false) {
         guard !loaded, webView != nil else { return }
+        // Wait until the view is on screen so the notch / home-indicator insets are real (not 0).
+        let insets = currentInsets()
+        if !force && (view.window == nil || (insets.top <= 0 && insets.bottom <= 0)) { return }
         loaded = true
-        let insets = view.safeAreaInsets
         // CSS pixels ≈ points, same idea as Android passing density-independent px via ?sat=&sab=.
         var components = URLComponents(url: BundledSchemeHandler.startURL, resolvingAgainstBaseURL: false)!
         components.queryItems = [
@@ -108,6 +132,10 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
     }
 
     // MARK: - WKNavigationDelegate
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        pushSafeArea()
+    }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else {
