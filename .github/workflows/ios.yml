@@ -108,11 +108,15 @@ jobs:
           fi
 
       - name: Screenshot the game on a simulator
+        if: github.event.inputs.upload_appstore != 'true'
+        timeout-minutes: 20
         run: |
           set -euo pipefail
           ./scripts/ci_screenshot.sh dist/WordDefense-simulator.app dist/shots
 
       - name: iPhone 11 tab / layout diagnostics (screenshots + frame times)
+        if: github.event.inputs.upload_appstore != 'true'
+        timeout-minutes: 25
         continue-on-error: true
         run: ./scripts/ci_diag.sh dist/WordDefense-simulator.app dist/diag
 
