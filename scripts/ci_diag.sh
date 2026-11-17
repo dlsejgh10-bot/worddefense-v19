@@ -15,11 +15,11 @@ xcrun simctl install "$UDID" "$APP"
 xcrun simctl launch --console --terminate-running-process "$UDID" com.wordgame.worddefense > "$OUT/console.log" 2>&1 &
 LP=$!
 seen=""
-for i in $(seq 1 600); do
-  sleep 0.5
+for i in $(seq 1 1500); do
+  sleep 0.3
   while read -r name; do
     case " $seen " in *" $name "*) continue;; esac
-    seen="$seen $name"; sleep 0.8; xcrun simctl io "$UDID" screenshot "$OUT/$name.png" >/dev/null 2>&1; echo "shot $name"
+    seen="$seen $name"; xcrun simctl io "$UDID" screenshot "$OUT/$name.png" </dev/null >/dev/null 2>&1; echo "shot $name $(date +%T)"
   done < <(grep -o 'WDDIAG SHOT [a-z0-9]*' "$OUT/console.log" 2>/dev/null | awk '{print $3}')
   grep -q 'WDDIAG DONE' "$OUT/console.log" 2>/dev/null && break
 done
