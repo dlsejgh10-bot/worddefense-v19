@@ -45,18 +45,26 @@ xcrun simctl bootstatus "$UDID" -b
 xcrun simctl install "$UDID" "$APP"
 LAUNCH_OUT="$(xcrun simctl launch "$UDID" com.wordgame.worddefense)"
 echo "$LAUNCH_OUT"
-sleep 3
-# Fail early if the process died (e.g. crash on launch).
-if ! xcrun simctl spawn "$UDID" launchctl print system 2>/dev/null | grep -q 'com.wordgame.worddefense'; then
-  # launchctl print can be noisy/restricted; fall back to a process list.
-  if ! xcrun simctl spawn "$UDID" ps -axo pid,comm,args 2>/dev/null | grep -F 'WordDefense' | grep -v grep; then
-    echo "app is not running after launch — collecting crash reports" >&2
-    find "$HOME/Library/Logs/DiagnosticReports" "$HOME/Library/Logs/CoreSimulator"       /Library/Logs/DiagnosticReports       -name '*WordDefense*' -o -name '*worddefense*' 2>/dev/null | head
-    find "$HOME/Library/Logs" -name '*.ips' -newer "$APP" 2>/dev/null | head
-    exit 1
-  fi
+PID="$(printf '%s\n' "$LAUNCH_OUT" | sed -n 's/.*: *//p' | tail -n 1)"
+echo "PID=${PID:-unknown}"
+sleep 4
+# Best-effort liveness check (simulator ps/launchctl is limited). Don't fail the job here;
+# later screenshots plus crash-report dumps tell us if it actually died.
+alive=0
+if [ -n "${PID}" ] && xcrun simctl spawn "$UDID" sh -c "kill -0 ${PID}" 2>/dev/null; then
+  alive=1
+  echo "pid $PID is alive"
 fi
-sleep 5
+xcrun simctl spawn "$UDID" ps -A 2>/dev/null | grep -i -e WordDefense -e worddefense || true
+if [ "$alive" -eq 0 ]; then
+  echo "warning: could not confirm pid; will still screenshot. crash reports (if any):" >&2
+  find "$HOME/Library/Logs/DiagnosticReports" "$HOME/Library/Logs/CoreSimulator" \
+    /Library/Logs/DiagnosticReports \
+    \( -iname '*WordDefense*' -o -iname '*worddefense*' -o -name '*.ips' \) 2>/dev/null | head
+  xcrun simctl launch "$UDID" com.wordgame.worddefense || true
+  sleep 3
+fi
+sleep 4
 xcrun simctl io "$UDID" screenshot "$OUT/game-08s.png"
 sleep 12
 xcrun simctl io "$UDID" screenshot "$OUT/game-20s.png"

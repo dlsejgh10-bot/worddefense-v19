@@ -64,11 +64,6 @@ jobs:
           ditto "$APP" dist/WordDefense-simulator.app
           echo "simulator app: $(du -sh dist/WordDefense-simulator.app | awk '{print $1}')"
 
-      - name: Screenshot the game on a simulator
-        run: |
-          set -euo pipefail
-          ./scripts/ci_screenshot.sh dist/WordDefense-simulator.app dist/shots
-
       - name: Archive unsigned device build
         run: |
           set -euo pipefail
@@ -107,6 +102,11 @@ jobs:
             ditto "$APP" dist/WordDefense-device.app
             echo "device app: $(du -sh dist/WordDefense-device.app | awk '{print $1}')"
           fi
+
+      - name: Screenshot the game on a simulator
+        run: |
+          set -euo pipefail
+          ./scripts/ci_screenshot.sh dist/WordDefense-simulator.app dist/shots
 
       - name: Upload unsigned artifacts
         uses: actions/upload-artifact@v4
