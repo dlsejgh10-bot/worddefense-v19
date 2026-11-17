@@ -72,6 +72,12 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == Self.handlerName else { return }
+        #if DEBUG
+        if let body = message.body as? [String: Any], (body["method"] as? String) == "diagLog" {
+            fputs("WDDIAG " + (body["msg"] as? String ?? "") + "\n", stderr); fflush(stderr)
+            return
+        }
+        #endif
         guard let body = message.body as? [String: Any],
               let method = body["method"] as? String,
               let id = body["id"] as? String else { return }

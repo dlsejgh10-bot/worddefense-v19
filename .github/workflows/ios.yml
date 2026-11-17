@@ -11,6 +11,10 @@ on:
         description: "Sign with automatic signing and upload to App Store Connect (needs ASC_* secrets). Leave off unless you are ready to submit."
         type: boolean
         default: false
+      html_ref:
+        description: "Branch of this repo whose index.html is bundled (default main = GitHub Pages)"
+        type: string
+        default: main
 
 # Only the ios branch is listed above, so pushes to main (GitHub Pages) do not run this workflow.
 permissions:
@@ -27,7 +31,7 @@ jobs:
       - name: Fetch game HTML from main (GitHub Pages) branch
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.inputs.html_ref || 'main' }}
           sparse-checkout: index.html
           sparse-checkout-cone-mode: false
           path: _gamehtml
@@ -108,6 +112,10 @@ jobs:
           set -euo pipefail
           ./scripts/ci_screenshot.sh dist/WordDefense-simulator.app dist/shots
 
+      - name: iPhone 11 tab / layout diagnostics (screenshots + frame times)
+        continue-on-error: true
+        run: ./scripts/ci_diag.sh dist/WordDefense-simulator.app dist/diag
+
       - name: Upload unsigned artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -118,6 +126,7 @@ jobs:
             dist/WordDefense-device.app
             dist/WordDefense-unsigned.xcarchive
             dist/shots/
+            dist/diag/
 
   # Prepared only. This job is skipped on push/PR. It runs solely when someone
   # starts the workflow by hand and ticks "upload_appstore".
@@ -133,7 +142,7 @@ jobs:
       - name: Fetch game HTML from main (GitHub Pages) branch
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.inputs.html_ref || 'main' }}
           sparse-checkout: index.html
           sparse-checkout-cone-mode: false
           path: _gamehtml
