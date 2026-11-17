@@ -3503,7 +3503,7 @@ const shopGoldKey = v => (+v >= 8000) ? 'shop_gold_l' : (+v >= 4000) ? 'shop_gol
 const shopGemKey = v => (+v >= 10000) ? 'shop_gem_l' : (+v >= 2000) ? 'shop_gem_m' : 'shop_gem_s';
 const giveIcon = (k, v) => k === 'keys' ? KEYSVG('big') : k === 'relic' ? `<img src="${IMG[RELICS[v].img]}" alt="">` : k === 'gold' ? `<img src="${IMG[shopGoldKey(v)] || IMG.r_bag1}" alt="">` : k === 'gems' ? `<img src="${IMG[shopGemKey(v)] || IMG.r_gem1}" alt="">` : `<img src="${IMG.stone}" alt="">`;
 const TAGCL = { '인기': 'hot', '추천': 'rec', '최고 가치': 'best' };
-const cardHTML = (o, i) => `<div ${stc('sc' + (o.sold ? ' sold' : '') + (o.stockOut ? ' stock-sold' : '') + (o.k ? ' k-' + o.k : ''), i)}><div class="sc-nm"><div class="sc-name"><b class="pl-t ol">${o.name}</b></div></div><div class="sc-slot ${o.k || ''}"><div class="sc-art">${o.off ? `<i class="sc-rb">-${o.off}%</i>` : ''}${o.tag ? `<i class="sc-rb b ${TAGCL[o.tag] || ''}">${o.tag}</i>` : ''}${o.bonus ? `<i class="sc-bn">${o.bonus}</i>` : ''}${o.icon}${o.q && !/^[x×]\s*1$/.test(String(o.q).trim()) ? `<b class="sc-q">${o.q}</b>` : ''}</div>${o.sub ? `<span class="sc-sub">${o.sub}</span>` : ''}</div>${o.btn}</div>`;
+const cardHTML = (o, i) => `<div ${stc('sc' + (o.sold ? ' sold' : '') + (o.stockOut ? ' stock-sold' : '') + (o.k ? ' k-' + o.k : ''), i)}><div class="sc-nm"><div class="sc-name"><b class="pl-t ol">${o.name}</b></div></div><div class="sc-slot ${o.k || ''}">${o.off ? `<i class="sc-rb">-${o.off}%</i>` : ''}${o.tag ? `<i class="sc-rb b ${TAGCL[o.tag] || ''}">${o.tag}</i>` : ''}${o.bonus ? `<i class="sc-bn">${o.bonus}</i>` : ''}<div class="sc-art">${o.icon}${o.q && !/^[x×]\s*1$/.test(String(o.q).trim()) ? `<b class="sc-q">${o.q}</b>` : ''}</div>${o.sub ? `<span class="sc-sub">${o.sub}</span>` : ''}</div>${o.btn}</div>`;
 const goldPackBtn = (p, i, base) => {
   const cost = p.cost, list = p.base, hasOff = !!(list && list > cost && p.off);
   return `<div class="sc-buy${hasOff ? ' has-off' : ''}"><button class="sc-pr gold" data-act="buy" data-g="gold" data-i="${i + base}" data-press><img src="${IMG.gem}" alt=""><b>${num(cost)}</b></button></div>`;
@@ -19411,8 +19411,74 @@ html body #wdl-ov .modal.bpq2:not(#_p):not(#_x) > .x{top:calc(94*var(--u))!impor
   align-items:center!important;
   justify-content:center!important;
   flex:0 0 auto!important;
-  max-width:100%;
-  max-height:100%
+  width:max-content!important;
+  max-width:calc(0.78 * 804 / 1024 * var(--card-w))!important
+}
+/* 아이콘 크기는 b134과 같게: 슬롯 너비의 78% · 높이 52u (g2는 66u). % 를 shrink-wrap 부모에 두면 아이콘이 작아짐. */
+#wdl .sgrid .sc:not(.k-gem) .sc-art img,
+#wdl .sgrid .sc:not(.k-gem) .sc-art .kico,
+#wdl .g2 .sc:not(.k-gem) .sc-art img,
+#wdl .g2 .sc:not(.k-gem) .sc-art .kico,
+#wdl .g3 .sc:not(.k-gem) .sc-art img,
+#wdl .g3 .sc:not(.k-gem) .sc-art .kico,
+#wdl .sc.k-gold .sc-art img,
+#wdl .sc.k-keys .sc-art img,
+#wdl .sc.k-keys .sc-art .kico,
+#wdl .sc.k-stone .sc-art img,
+#wdl .sc.k-relic .sc-art img,
+#wdl .sc.k-gems .sc-art img{
+  width:auto!important;
+  height:auto!important;
+  max-width:calc(0.78 * 804 / 1024 * var(--card-w))!important;
+  max-height:calc(52*var(--u))!important;
+  object-fit:contain!important;
+  display:block!important
+}
+#wdl .sgrid.g2 .sc:not(.k-gem) .sc-art img,
+#wdl .sgrid.g2 .sc:not(.k-gem) .sc-art .kico,
+#wdl .g2 .sc:not(.k-gem) .sc-art img,
+#wdl .g2 .sc:not(.k-gem) .sc-art .kico{
+  max-height:calc(66*var(--u))!important
+}
+/* 할인 태그 = 본문(슬롯) 왼쪽 위, 이름띠 바로 아래. 아이콘 위에 올리지 않음 */
+#wdl .sgrid .sc:not(.k-gem) .sc-slot > .sc-rb,
+#wdl .g2 .sc:not(.k-gem) .sc-slot > .sc-rb,
+#wdl .g3 .sc:not(.k-gem) .sc-slot > .sc-rb,
+#wdl .sc.k-gold .sc-slot > .sc-rb,
+#wdl .sc.k-keys .sc-slot > .sc-rb,
+#wdl .sc.k-stone .sc-slot > .sc-rb,
+#wdl .sc.k-relic .sc-slot > .sc-rb,
+#wdl .sc.k-gems .sc-slot > .sc-rb,
+#wdl .sgrid .sc:not(.k-gem) .sc-slot > .sc-bn,
+#wdl .g2 .sc:not(.k-gem) .sc-slot > .sc-bn,
+#wdl .sc.k-gold .sc-slot > .sc-bn{
+  position:absolute!important;
+  left:calc(-8*var(--u))!important;
+  top:calc(4*var(--u))!important;
+  right:auto!important;
+  z-index:3!important
+}
+#wdl .sgrid.g2 .sc:not(.k-gem) .sc-slot > .sc-rb.b,
+#wdl .g2 .sc:not(.k-gem) .sc-slot > .sc-rb.b{
+  left:auto!important;
+  right:calc(-8*var(--u))!important;
+  top:calc(4*var(--u))!important
+}
+/* ×N 수량은 아이콘(.sc-art) 오른쪽 아래 */
+#wdl .sgrid .sc:not(.k-gem) .sc-art > .sc-q,
+#wdl .g2 .sc:not(.k-gem) .sc-art > .sc-q,
+#wdl .g3 .sc:not(.k-gem) .sc-art > .sc-q,
+#wdl .sc.k-gold .sc-art > .sc-q,
+#wdl .sc.k-keys .sc-art > .sc-q,
+#wdl .sc.k-stone .sc-art > .sc-q,
+#wdl .sc.k-relic .sc-art > .sc-q,
+#wdl .sc.k-gems .sc-art > .sc-q{
+  position:absolute!important;
+  right:calc(5*var(--u))!important;
+  bottom:calc(1*var(--u))!important;
+  left:auto!important;
+  top:auto!important;
+  z-index:3!important
 }
 #wdl .sgrid .sc:not(.k-gem) > .sc-buy,
 #wdl .g2 .sc:not(.k-gem) > .sc-buy,
