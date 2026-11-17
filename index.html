@@ -2670,9 +2670,10 @@ function _load() {
       S.swords = sw1; S.equip = (Number.isInteger(j.equip) && sw1[j.equip]) ? j.equip : -1; S.enhStone = Math.max(0, Math.floor(+j.enhStone) || 0); S.v = 2; }
   } catch (e) {}
 }
-function load() { _load(); fixState(); }
+let wdLoaded = false;   /* 11/18 b141: 저장 불러오기 전엔 저장 안 함 (큰 문서를 느리게 읽는 동안 1초 타이머가 기본값으로 덮어써 데이터가 날아가던 문제) */
+function load() { _load(); wdLoaded = true; fixState(); }
 let saveT = 0;
-function save(now) { clearTimeout(saveT); const w = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }; if (now) w(); else saveT = setTimeout(w, 120); }
+function save(now) { if (!wdLoaded) return; clearTimeout(saveT); const w = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }; if (now) w(); else saveT = setTimeout(w, 120); }
 addEventListener('pagehide', () => save(true)); document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
 
 /* ---------- helpers ---------- */
@@ -22344,6 +22345,8 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
   const fp = o => { const j = main(o), x = {}; for (const k of ['gold', 'gems', 'keys', 'enhStone', 'swords', 'relics', 'equip', 'nick', 'avatar', 'frame', 'vip', 'bp', 'iapOrd', 'unlockAll']) x[k] = j[k];
     const t = j.stats || {}; x.st = [t.runs, t.bestWave, t.best, t.drawS, t.drawR, t.pf]; x.ml = (j.mails || []).map(m => m && (m.id + (m.got ? '+' : ''))).join(','); return fnv(JSON.stringify(x)); };
   const reload = () => { lock = true; setTimeout(() => location.reload(), 30); };
+  /* 11/18 b141: 빈 저장 = 기본 상태 (닉네임·판수·최고 웨이브·패스·VIP·결제 없음). 서버에 진행이 있으면 절대 덮어쓰지 않음 */
+  const blank = o => { if (!o || !o.wd_main_v1) return true; const j = main(o), t = j.stats || {}; return !j.nick && !(t.runs > 0) && !(t.bestWave > 0) && !(j.bp && j.bp.exp > 0) && !(+j.vip > 0) && !(j.iapOrd && Object.keys(j.iapOrd).length); };
   let sdk = null, booting = null, user = null, busy = false;
   const bindTok = () => { try { N().setTok(async () => { const u = sdk && goog(sdk.auth.currentUser); return u ? { uid: u.uid, id: await u.getIdToken() } : null; }); } catch (e) {} };   /* 서버 요청 = 구글 계정 토큰 */
   const goog = u => (u && !u.isAnonymous && (u.providerData || []).some(p => p.providerId === 'google.com' || p.providerId === 'apple.com')) ? u : null;   /* 11/17 구글 또는 Apple(iOS) */
@@ -22373,6 +22376,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
     catch (e) { if (e.status === 404) return null; throw e; }
   }
   async function putSrv(uid, o, prevUt) {
+    if (blank(o)) { const s0 = await getSrv(uid); if (s0 && !s0.bad && !blank(s0.d)) { const e = new Error('blank-save'); e.status = 412; throw e; } }   /* 11/18 b141: 마지막 안전장치 */
     const w = { update: { name: W().dn('saves', uid), fields: W().encF({ d: JSON.stringify(o), h: hOf(o), t: Date.now(), nick: String(main(o).nick || '').slice(0, 40), v: 1 }) }, updateTransforms: [W().REQ('at')] };
     if (prevUt) w.currentDocument = { updateTime: prevUt }; else if (prevUt === null) w.currentDocument = { exists: false };
     const r = await W().call(':commit', { writes: [w] });
@@ -22414,6 +22418,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
         await delMark(uid, 0); srv = await getSrv(uid); toast('계정을 복구했어요'); if (srv && !srv.bad) { applySrv(srv, uid); return 'down'; }
       } else { await purge(uid); toast('삭제된 계정이에요'); return 'gone'; }
     }
+    if (srv && !srv.bad && blank(loc) && !blank(srv.d)) { try { N().log('acct_blank_restore', uid); } catch (e) {} try { localStorage.removeItem(NL); } catch (e) {} applySrv(srv, uid); return 'down'; }   /* 11/18 b141: 이 기기 저장이 비었음 = 서버 저장으로 복구 (기본값으로 덮어쓰기 금지) */
     if (localStorage.getItem(NL) && srv && !srv.bad) { try { localStorage.removeItem(NL); } catch (e) {} applySrv(srv, uid); return 'down'; }   /* 11/18 로그아웃 뒤 로그인 화면에서 = 이 기기는 빈 데이터 → 서버 데이터 그대로 */
     if (!srv || srv.bad) { const ut = await putSrv(uid, loc, srv ? srv.ut : null); setMeta({ uid, email: em, ut, h: lh, fp: fp(loc) }); return 'up'; }
     if (hOf(srv.d) === lh || fp(srv.d) === fp(loc)) { setMeta({ uid, email: em, ut: srv.ut, h: hOf(srv.d), fp: fp(loc) }); return 'same'; }   /* 진행이 같으면 같은 데이터 */
@@ -22439,6 +22444,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
   async function up(force, quiet) {
     if (!user || upBusy || lock) return false; const m = meta(); if (m.uid !== user.uid) return false;
     flushLocal(); const o = pack(), h = hOf(o); if (!force && h === m.h) return true;
+    if (blank(o)) return true;   /* 11/18 b141: 빈 저장은 자동으로 안 올림 */
     upBusy = true;
     try { const ut = await putSrv(user.uid, o, m.ut || undefined); const m2 = Object.assign({}, m, { ut, h, fp: fp(o) }); delete m2.pend; setMeta(m2); return true; }
     catch (e) { setMeta(Object.assign({}, meta(), { pend: 1 }));   /* 못 올림 = 다음 로그인 때 서버가 바뀌었으면 선택 창 */
