@@ -43,8 +43,20 @@ echo "UDID=$UDID"
 xcrun simctl boot "$UDID" || true
 xcrun simctl bootstatus "$UDID" -b
 xcrun simctl install "$UDID" "$APP"
-xcrun simctl launch "$UDID" com.wordgame.worddefense
-sleep 8
+LAUNCH_OUT="$(xcrun simctl launch "$UDID" com.wordgame.worddefense)"
+echo "$LAUNCH_OUT"
+sleep 3
+# Fail early if the process died (e.g. crash on launch).
+if ! xcrun simctl spawn "$UDID" launchctl print system 2>/dev/null | grep -q 'com.wordgame.worddefense'; then
+  # launchctl print can be noisy/restricted; fall back to a process list.
+  if ! xcrun simctl spawn "$UDID" ps -axo pid,comm,args 2>/dev/null | grep -F 'WordDefense' | grep -v grep; then
+    echo "app is not running after launch — collecting crash reports" >&2
+    find "$HOME/Library/Logs/DiagnosticReports" "$HOME/Library/Logs/CoreSimulator"       /Library/Logs/DiagnosticReports       -name '*WordDefense*' -o -name '*worddefense*' 2>/dev/null | head
+    find "$HOME/Library/Logs" -name '*.ips' -newer "$APP" 2>/dev/null | head
+    exit 1
+  fi
+fi
+sleep 5
 xcrun simctl io "$UDID" screenshot "$OUT/game-08s.png"
 sleep 12
 xcrun simctl io "$UDID" screenshot "$OUT/game-20s.png"

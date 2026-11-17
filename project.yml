@@ -31,7 +31,11 @@ targets:
     sources:
       - path: WordDefense
         excludes:
-          - Resources/www/.gitkeep
+          - Resources/www
+          - Resources/www/**
+      - path: WordDefense/Resources/www
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: GoogleSignIn
         product: GoogleSignIn

@@ -65,7 +65,6 @@ jobs:
           echo "simulator app: $(du -sh dist/WordDefense-simulator.app | awk '{print $1}')"
 
       - name: Screenshot the game on a simulator
-        continue-on-error: true
         run: |
           set -euo pipefail
           ./scripts/ci_screenshot.sh dist/WordDefense-simulator.app dist/shots

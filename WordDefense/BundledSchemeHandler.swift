@@ -15,10 +15,16 @@ final class BundledSchemeHandler: NSObject, WKURLSchemeHandler {
     private var stopped = Set<ObjectIdentifier>()
 
     override init() {
-        guard let root = Bundle.main.url(forResource: "www", withExtension: nil) else {
-            preconditionFailure("www folder missing from the app bundle — run scripts/sync_html.sh")
+        let fm = FileManager.default
+        if let www = Bundle.main.url(forResource: "www", withExtension: nil),
+           fm.fileExists(atPath: www.appendingPathComponent("index.html").path) {
+            self.root = www.standardizedFileURL
+        } else if let html = Bundle.main.url(forResource: "index", withExtension: "html") {
+            // Xcode may flatten the www folder and copy index.html to the bundle root.
+            self.root = html.deletingLastPathComponent().standardizedFileURL
+        } else {
+            self.root = Bundle.main.bundleURL.standardizedFileURL
         }
-        self.root = root.standardizedFileURL
         super.init()
     }
 
@@ -37,7 +43,13 @@ final class BundledSchemeHandler: NSObject, WKURLSchemeHandler {
         }
         guard FileManager.default.fileExists(atPath: file.path),
               let data = try? Data(contentsOf: file) else {
-            urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
+            let message = "<!doctype html><meta charset=utf-8><body style='background:#1B1410;color:#fff;font-family:sans-serif;padding:24px'>게임을 찾지 못했어요 (\(path)).</body>"
+            let fallback = Data(message.utf8)
+            let response = URLResponse(url: url, mimeType: "text/html", expectedContentLength: fallback.count, textEncodingName: "utf-8")
+            guard !stopped.contains(token) else { return }
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didReceive(fallback)
+            urlSchemeTask.didFinish()
             return
         }
         let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
