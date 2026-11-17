@@ -56,18 +56,29 @@ README 아래 «Apple 심사» 절과 에이전트 보고를 참고하세요. �
 - **ITSAppUsesNonExemptEncryption**  
   HTTPS만 쓰므로 `false`로 두었습니다. 별도의 암호 기능을 넣으면 수출 규정 질문을 다시 봐야 합니다.
 
-## GitHub Actions 워크플로를 켜려면
+## GitHub Actions
 
-`dlsejgh10-bot` GitHub 토큰에 `workflow` 스코프가 없어서 `.github/workflows/ios.yml`을 이 브랜치에 푸시하지 못했습니다. 워크플로 원본은 `docs/github-workflows/ios.yml`에 있습니다.
+워크플로는 `.github/workflows/ios.yml`에 있고, `ios` 브랜치 push/PR(또는 수동 실행)에서만 돕니다. `main`(GitHub Pages)에는 워크플로 파일이 없고, 트리거에도 `main`이 없습니다.
 
-토큰에 `workflow` 권한을 추가한 뒤:
+## 게임 HTML에 필요한 JS 변경 (이 브랜치에서는 HTML을 수정하지 않음)
 
-```bash
-mkdir -p .github/workflows
-cp docs/github-workflows/ios.yml .github/workflows/ios.yml
-git add .github/workflows/ios.yml
-git commit -m "Add iOS GitHub Actions workflow"
-git push origin ios
+네이티브는 이미 `window.WDNative.appleSignIn()`을 주입합니다. 게임 HTML은 아직 구글 로그인만 호출합니다. 앱스토어 가이드라인 4.8을 맞추려면 HTML 쪽에서 대략 아래를 추가해야 합니다.
+
+```javascript
+const appleNat = () => window.WDNative && typeof window.WDNative.appleSignIn === 'function';
+
+async function appleCred(FU) {
+  const r = await window.WDNative.appleSignIn();
+  const t = r && (r.idToken || (typeof r === 'string' ? r : ''));
+  const nonce = r && r.nonce;
+  if (!t) { const e = new Error('cancel'); e.code = 'cancel'; throw e; }
+  // 네이티브가 SHA256(nonce)를 Apple에 보냈으므로, Firebase에는 raw nonce를 넘깁니다.
+  return new FU.OAuthProvider('apple.com').credential({ idToken: t, rawNonce: nonce });
+}
+
+// 로그인 UI에 «Apple로 로그인» 버튼을 구글과 함께 두고:
+//   cred = await FU.signInWithCredential(auth, await appleCred(FU));
+// 계정 삭제 재인증도 provider가 apple.com이면 appleCred를 쓰면 됩니다.
 ```
 
-또는 GitHub 웹에서 `ios` 브랜치에 `.github/workflows/ios.yml`로 같은 파일을 추가해도 됩니다. 파일이 올라가면 unsigned 시뮬레이터·기기 빌드가 자동으로 돕니다. App Store 업로드 잡은 수동 실행에서만 켜집니다.
+추가로 Firebase Authentication에서 Apple 제공업체를 켜고, App ID에 Sign in with Apple 능력을 넣어야 합니다. Apple은 이름·이메일을 최초 로그인 때만 주므로, 그때 받은 값은 서버/계정에 저장하는 편이 좋습니다.

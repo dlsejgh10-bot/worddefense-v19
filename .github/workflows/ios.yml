@@ -12,6 +12,7 @@ on:
         type: boolean
         default: false
 
+# Only the ios branch is listed above, so pushes to main (GitHub Pages) do not run this workflow.
 permissions:
   contents: read
 
@@ -55,12 +56,19 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
             build
           APP="$(find build/DerivedData/Build/Products -name 'WordDefense.app' -type d | head -n 1)"
           test -n "$APP" && test -d "$APP"
           mkdir -p dist
           ditto "$APP" dist/WordDefense-simulator.app
           echo "simulator app: $(du -sh dist/WordDefense-simulator.app | awk '{print $1}')"
+
+      - name: Screenshot the game on a simulator
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          ./scripts/ci_screenshot.sh dist/WordDefense-simulator.app dist/shots
 
       - name: Archive unsigned device build
         run: |
@@ -77,6 +85,7 @@ jobs:
               CODE_SIGNING_ALLOWED=NO \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGN_IDENTITY="" \
+              CODE_SIGN_ENTITLEMENTS="" \
               archive; then
             test -d dist/WordDefense-unsigned.xcarchive
             echo "unsigned xcarchive ok"
@@ -92,6 +101,7 @@ jobs:
               CODE_SIGNING_ALLOWED=NO \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGN_IDENTITY="" \
+              CODE_SIGN_ENTITLEMENTS="" \
               build
             APP="$(find build/DerivedData/Build/Products -name 'WordDefense.app' -path '*-iphoneos*' -type d | head -n 1)"
             test -n "$APP" && test -d "$APP"
@@ -108,6 +118,7 @@ jobs:
             dist/WordDefense-simulator.app
             dist/WordDefense-device.app
             dist/WordDefense-unsigned.xcarchive
+            dist/shots/
 
   # Prepared only. This job is skipped on push/PR. It runs solely when someone
   # starts the workflow by hand and ticks "upload_appstore".

@@ -16,3 +16,4 @@ AuthKey_*.p8
 *.p8
 *.ipa
 *.dSYM.zip
+shots/

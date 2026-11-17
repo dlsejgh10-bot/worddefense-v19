@@ -35,6 +35,7 @@ targets:
     dependencies:
       - package: GoogleSignIn
         product: GoogleSignIn
+      - sdk: AuthenticationServices.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wordgame.worddefense
@@ -47,6 +48,7 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "15.0"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
+        CODE_SIGN_ENTITLEMENTS: WordDefense/WordDefense.entitlements
         ENABLE_PREVIEWS: "NO"
       configs:
         Debug:

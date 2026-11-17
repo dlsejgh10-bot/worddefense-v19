@@ -32,3 +32,5 @@ GitHub Actions에서 이 워크플로를 수동 실행하고 `upload_appstore`�
 7. 수동으로 워크플로를 돌리기 전에 위 시크릿이 들어 있는지 확인합니다. 이 잡이 인증서·프로필을 자동으로 만듭니다 (`xcodebuild -allowProvisioningUpdates`). fastlane match는 쓰지 않습니다.
 
 Team ID는 [developer.apple.com/account](https://developer.apple.com/account) Membership 세부정보에서 확인할 수 있습니다.
+
+네이티브 `window.WDNative.appleSignIn()` 브리지는 이미 들어 있습니다. 서명된 빌드가 실제로 Apple 로그인을 쓰려면 App ID에 Sign in with Apple 능력이 켜져 있어야 하고, 게임 HTML에 Apple 로그인 버튼과 `appleSignIn()` 호출이 추가되어야 합니다. (HTML 변경은 이 iOS 브랜치에서 하지 않았습니다.)
