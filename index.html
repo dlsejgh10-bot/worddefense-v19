@@ -3157,6 +3157,7 @@ function wbS() {
       w.dmg = 0; w.ext = 0; w.best = 0; w.runs = 0; w.cleared = false; w.killAt = 0; w.nextStart = 0; save();
     }
   }
+  if (!w.extSrv && w.ext && !S.wbTest) w.ext = 0;   /* 11/18 예전 시뮬레이션 피해는 버림 (서버 합계로만) */
   return w;
 }
 function wbHp() { return Math.max(0, wbRawHp(wbS())); }   /* 탭 표시는 0 미만이면 0. ext = 다른 유저 피해 */
@@ -3207,39 +3208,94 @@ async function wbPost(p, dmg, best) {   /* 내 점수 올리기 (같은 값·같
   if (w.p === p) { w.sp = { p, dmg: Math.min(sent, dmg), n: nick, a: av, f: fr, uid: a.uid }; save(); }
   return sent;
 }
-async function wbRankAt(p, dmg) {   /* 서버 순위: 나보다 큰 수 + 1, 전체 참가자 수 */
-  const N = wbNet(); if (!N) throw new Error('off');
+/* 11/18 b140: 읽기 아끼기 (Spark 하루 읽기 5만). 순위 위쪽은 20명씩 (스크롤하면 20명 더, 최대 100), 30분 캐시 (localStorage wd_wbrk).
+   집계 (참가자 수 + 피해 합계 = 보스 체력, 내 순위) 는 2분 캐시, 월보 탭에서 3분마다·전투 끝·접속 때 (10분 지났으면) 만 */
+const WB_TOP_PAGE = 20, WB_TOP_TTL = 30 * 60e3, WB_AGG_TTL = 2 * 60e3, WBK = 'wd_wbrk';
+try { const c = JSON.parse(localStorage.getItem(WBK) || 'null'); if (c && Array.isArray(c.top)) Object.assign(WB_SRV, c, { ok: 0, cached: 1 });   /* 캐시는 명단 재사용용. 서버에 한 번 닿기 전엔 ok 0 (오프라인 = 서버 연결 중) */ } catch (e) {}
+const wbSave = () => { try { const { p, top, more, topAt, cnt, sum, myRank, myDmg, uid, at } = WB_SRV; localStorage.setItem(WBK, JSON.stringify({ p, top, more, topAt, cnt, sum, myRank, myDmg, uid, at })); } catch (e) {} };
+const wbAggF = r => { const x = Array.isArray(r) ? r.find(y => y && y.result) : r, f = (x && x.result && x.result.aggregateFields) || {}, v = o => o ? +(o.integerValue != null ? o.integerValue : o.doubleValue || 0) : 0; return { n: v(f.n), s: v(f.s) }; };
+async function wbAgg(N, p, dmg) {   /* 참가자 수 + 피해 합계 (1번) / 나보다 큰 수 (1번) */
   const par = `/wb_scores/${wbSid(p)}`, from = [{ collectionId: 'entries' }];
-  const agg = where => N._.call(par + ':runAggregationQuery', { structuredAggregationQuery: { structuredQuery: where ? { from, where } : { from }, aggregations: [{ alias: 'n', count: {} }] } });
-  const [g, c] = await Promise.all([agg({ fieldFilter: { field: { fieldPath: 'dmg' }, op: 'GREATER_THAN', value: { integerValue: String(Math.max(0, dmg | 0)) } } }), agg(null)]);
-  const rank = wbAggN(g) + 1; return { rank, cnt: Math.max(rank, wbAggN(c)) };
+  const [all, g] = await Promise.all([
+    N._.call(par + ':runAggregationQuery', { structuredAggregationQuery: { structuredQuery: { from }, aggregations: [{ alias: 'n', count: {} }, { alias: 's', sum: { field: { fieldPath: 'dmg' } } }] } }),
+    dmg > 0 ? N._.call(par + ':runAggregationQuery', { structuredAggregationQuery: { structuredQuery: { from, where: { fieldFilter: { field: { fieldPath: 'dmg' }, op: 'GREATER_THAN', value: { integerValue: String(Math.max(0, dmg | 0)) } } } }, aggregations: [{ alias: 'n', count: {} }] } }) : null]);
+  const A = wbAggF(all), rank = dmg > 0 ? wbAggF(g).n + 1 : 0; return { cnt: Math.max(A.n, rank), sum: Math.max(0, A.s), rank };
+}
+async function wbRankAt(p, dmg) {   /* 서버 순위: 나보다 큰 수 + 1, 전체 참가자 수, 피해 합계 */
+  const N = wbNet(); if (!N) throw new Error('off');
+  const r = await wbAgg(N, p, Math.max(1, dmg | 0)); return { rank: r.rank, cnt: r.cnt, sum: r.sum };
+}
+async function wbTopPage(N, p, after) {
+  const q = { from: [{ collectionId: 'entries' }], orderBy: [{ field: { fieldPath: 'dmg' }, direction: 'DESCENDING' }, { field: { fieldPath: '__name__' }, direction: 'DESCENDING' }], limit: WB_TOP_PAGE };
+  if (after && after.nm) q.startAt = { values: [{ integerValue: String(after.sc) }, { referenceValue: after.nm }], before: false };
+  const res = await N._.call(`/wb_scores/${wbSid(p)}:runQuery`, { structuredQuery: q }), out = [];
+  for (const r of res) if (r && r.document) { const d = N._.dec({ mapValue: { fields: r.document.fields } }) || {}; out.push({ uid: r.document.name.split('/').pop(), nm: r.document.name, n: String(d.nick || '모험가').slice(0, 20), a: PORT[d.av | 0] ? d.av | 0 : 4, f: Math.max(0, d.fr | 0), sc: Math.max(0, d.dmg | 0) }); }
+  return out;
 }
 let wbLoadP = null;
-function wbLoad(force) {
+function wbLoad(force, aggOnly) {   /* force = 내 점수 올리고 집계 다시 (위쪽 명단은 30분 지났을 때만) */
   const N = wbNet(); if (!N || navigator.onLine === false) return Promise.resolve(false);
-  const w0 = wbS(), p = w0.p | 0;
-  if (!force && WB_SRV.ok && WB_SRV.p === p && Date.now() - WB_SRV.at < 30e3) return Promise.resolve(true);
-  if (wbLoadP) return force ? wbLoadP.then(() => wbLoad(true)) : wbLoadP;   /* 받는 중에 새 기록 = 끝나고 한 번 더 */
+  const p = wbS().p | 0, R = WB_SRV, fresh = !!((R.ok || R.cached) && R.p === p);
+  if (!force && R.ok && fresh && Date.now() - R.at < WB_AGG_TTL && (aggOnly || Date.now() - (R.topAt || 0) < WB_TOP_TTL)) return Promise.resolve(true);
+  if (wbLoadP) return force ? wbLoadP.then(() => wbLoad(true, aggOnly)) : wbLoadP;   /* 받는 중에 새 기록 = 끝나고 한 번 더 */
   return (wbLoadP = (async () => {
     try {
       const w = wbS(), dmg = Math.max(0, w.dmg | 0);
-      if (dmg > 0) { try { await wbPost(p, dmg, w.best); } catch (e) {} }
-      const a = await N._.token(), par = `/wb_scores/${wbSid(p)}`;
-      const q = await N._.call(par + ':runQuery', { structuredQuery: { from: [{ collectionId: 'entries' }], orderBy: [{ field: { fieldPath: 'dmg' }, direction: 'DESCENDING' }], limit: 100 } });
-      const top = []; for (const r of q) if (r && r.document) { const d = N._.dec({ mapValue: { fields: r.document.fields } }) || {}; top.push({ uid: r.document.name.split('/').pop(), n: String(d.nick || '모험가').slice(0, 20), a: PORT[d.av | 0] ? d.av | 0 : 4, f: Math.max(0, d.fr | 0), sc: Math.max(0, d.dmg | 0) }); }
-      const mine = top.find(e => e.uid === a.uid), myDmg = mine ? mine.sc : (w.sp && w.sp.p === p && w.sp.uid === a.uid ? w.sp.dmg : 0);
-      const R = await wbRankAt(p, myDmg > 0 ? myDmg : dmg);
-      Object.assign(WB_SRV, { p, ok: 1, top, cnt: R.cnt, myRank: myDmg > 0 ? R.rank : 0, myDmg, uid: a.uid, at: Date.now() });
-      return true;
+      if (dmg > 0 && !S.wbTest) { try { await wbPost(p, dmg, w.best); } catch (e) {} }
+      const a = await N._.token(), same = fresh && R.uid === a.uid;
+      let top = same ? R.top : [], more = same ? R.more : true, topAt = same ? (R.topAt || 0) : 0;
+      if (!aggOnly && (!topAt || Date.now() - topAt > WB_TOP_TTL)) { top = await wbTopPage(N, p); more = top.length >= WB_TOP_PAGE; topAt = Date.now(); }
+      const sp = (w.sp && w.sp.p === p && w.sp.uid === a.uid) ? w.sp.dmg | 0 : 0, mine = top.find(e => e.uid === a.uid), myDmg = Math.max(sp, mine ? mine.sc : 0);
+      const G = await wbAgg(N, p, myDmg);
+      Object.assign(WB_SRV, { p, ok: 1, top, more, topAt, cnt: G.cnt, sum: G.sum, myRank: myDmg > 0 ? G.rank : 0, myDmg, uid: a.uid, at: Date.now() });
+      wbSave(); wbExt(); return true;
     } catch (e) { return false; } finally { wbLoadP = null; }
   })());
 }
+let wbMoreP = null;
+function wbMore() {   /* 스크롤이 명단 끝에 오면 20명 더 (최대 100) */
+  const N = wbNet(), R = WB_SRV; if (!N || !R.ok || !R.more || wbMoreP || R.top.length >= 100 || !R.topAt) return;
+  const p = R.p;
+  wbMoreP = wbTopPage(N, p, R.top[R.top.length - 1]).then(L => {
+    if (WB_SRV.p !== p) return; const seen = new Set(R.top.map(e => e.uid)); for (const e of L) if (!seen.has(e.uid)) R.top.push(e);
+    R.top = R.top.slice(0, 100); R.more = L.length >= WB_TOP_PAGE && R.top.length < 100; wbSave(); wbRerank();
+  }).catch(() => {}).finally(() => { wbMoreP = null; });
+}
+function wbMoreChk() { try { if (route !== 'worldBoss' || !WB_SRV.more) return; const g = [...document.querySelectorAll('.wb-page')].pop(), l = g && g.querySelector('#wbx-list'), z = l && l.lastElementChild; if (z && z.getBoundingClientRect().top < innerHeight + 160) wbMore(); } catch (e) {} }
+addEventListener('scroll', wbMoreChk, true);
+function wbExt() {   /* 다른 사람 피해 = 서버 합계 - 서버에 있는 내 점수 → 보스 체력. 서버 합계가 체력을 넘으면 격파 */
+  const w = wbS(), R = WB_SRV; if (S.wbTest || !R.ok || R.p !== (w.p | 0)) return;
+  w.ext = Math.max(0, (R.sum || 0) - (R.myDmg || 0)); w.extSrv = 1;
+  let kill = false;
+  if (wbRawHp(w) <= 0 && !w.cleared) { const sc = wbSched(); if (!sc.done && !sc.settle && !sc.wait) { w.cleared = true; w.killAt = Date.now(); w.nextStart = wbNextMid(w.killAt); kill = true; try { wbSeasonMail(w, { killed: true }); } catch (e) {} } }
+  save();
+  const hp = wbHp(), mx = WORLD_BOSS_PREVIEW.maxHp, n = document.querySelector('.wbx-hpn'), b = document.querySelector('.wbx-hpbar i'); if (n) n.textContent = num(hp); if (b) b.style.width = (100 * hp / mx).toFixed(2) + '%';
+  if (kill && LOBBY.open && route === 'worldBoss') setTimeout(() => go('worldBoss', { force: true, noanim: true }), 0);
+}
+async function wbClaim(p) {   /* 시즌 보상 1번만 (서버 wb_claims/{uid}_s{기수}, 만들기만 됨) → true 처음 / false 이미 받음 */
+  const N = wbNet(); if (!N) throw new Error('off'); const a = await N._.token();
+  try { await N._.call(':commit', { writes: [{ update: { name: N._.dn('wb_claims', a.uid + '_s' + p), fields: N._.encF({ uid: a.uid, k: 's' + p }) }, updateTransforms: [N._.REQ('at')], currentDocument: { exists: false } }] }); return true; }
+  catch (e) { if (e.status === 409 || e.status === 400 || e.status === 403) { try { await N._.call(`/wb_claims/${a.uid}_s${p}`, null, 'GET'); return false; } catch (x) { if (x.status === 404) throw e; throw x; } } throw e; }
+}
+async function wbDel(tok) {   /* 계정 삭제: 내 월보 순위·보상 기록 지움 (이번·지난 기수) */
+  const N = wbNet(); if (!N) return; const a = tok || await N._.token(), p = wbS().p | 0;
+  for (const q of [p, p - 1]) if (q >= 0) for (const path of [`/wb_scores/${wbSid(q)}/entries/${a.uid}`, `/wb_claims/${a.uid}_s${q}`]) { try { await N._.call(path, null, 'DELETE', a); } catch (e) { if (e.status !== 404 && e.status !== 403) throw e; } }
+  try { localStorage.removeItem(WBK); } catch (e) {} WB_SRV.ok = 0; WB_SRV.cached = 0; WB_SRV.uid = '';
+}
+async function wbMove() {   /* 게스트 → 구글 연동: 게스트(익명) uid 의 이번 기수 순위 지움. 점수는 고른 저장 데이터로 구글 uid 에 다시 올라감 (중복 없음) */
+  const N = wbNet(); if (!N || !N._.anonTok) return;
+  const t = await N._.anonTok(); if (!t) return; const g = await N._.token(); if (!g || g.uid === t.uid) return;
+  const w = wbS(), ps = new Set([w.p | 0].concat((S.wbPend || []).map(x => x.p | 0)));
+  for (const q of ps) { try { await N._.call(`/wb_scores/${wbSid(q)}/entries/${t.uid}`, null, 'DELETE', t); } catch (e) {} }
+  delete w.sp; WB_SRV.ok = 0; WB_SRV.cached = 0; WB_SRV.uid = ''; try { localStorage.removeItem(WBK); } catch (e) {} save(true);
+}
+setTimeout(() => { try { if (!WB_SRV.ok || Date.now() - (WB_SRV.at || 0) > 10 * 60e3) wbLoad(false, true); } catch (e) {} }, 6000);   /* 접속 때 보스 체력·격파 확인 (집계 2번) */
 function wbMine() {   /* 내 순위 = 서버 (WB_SRV). 서버 받기 전/오프라인 = 순위 없음 (0) */
   const w = wbS(), score = Math.max(0, w.dmg | 0), R = WB_SRV, ok = !!(R.ok && R.p === (w.p | 0));
   let rank = 0, cnt = ok ? R.cnt | 0 : 0;
   if (ok && score > 0) {
     if (R.myDmg > 0 && score === R.myDmg) rank = R.myRank;
-    else { const above = R.top.filter(e => e.uid !== R.uid && e.sc > score).length; rank = (above < R.top.length || R.top.length < 100) ? above + 1 : Math.max(R.myRank, 101); if (!(R.myDmg > 0)) cnt++; }
+    else { const above = R.top.filter(e => e.uid !== R.uid && e.sc > score).length; rank = (above < R.top.length || !R.more) ? above + 1 : (R.myRank || R.top.length + 1); if (!(R.myDmg > 0)) cnt++; }
     cnt = Math.max(cnt, rank);
   }
   const p = rank && cnt ? rank / cnt * 100 : 0, pct = !rank ? '' : p < 1 ? Math.max(0.1, Math.ceil(p * 10) / 10).toFixed(1) : String(Math.min(100, Math.ceil(p)));
@@ -3249,14 +3305,15 @@ function wbTop100() {
   const me = wbMine(), R = WB_SRV;
   if (!me.ok) return { me, L: [] };
   const L = R.top.filter(e => e.uid !== R.uid).map(e => ({ n: e.n, a: e.a, f: e.f, sc: e.sc }));
-  if (me.score > 0 && me.rank > 0 && me.rank <= 100) L.splice(Math.min(L.length, me.rank - 1), 0, { n: me.nick, a: me.av, f: S.frame | 0, sc: me.score, me: true });
+  if (me.score > 0 && me.rank > 0 && me.rank <= 100 && me.rank - 1 <= L.length) L.splice(me.rank - 1, 0, { n: me.nick, a: me.av, f: S.frame | 0, sc: me.score, me: true });
   return { me, L: L.slice(0, 100) };
 }
 function wbRerank() {   /* 순위 탭이 열려 있으면 다시 그림 (디자인 그대로, 스크롤 유지) */
-  const c = document.querySelector('.wb-page .wb-content'); if (!c) return;
-  const b = document.querySelector('.wb-page .wb-tabs button[aria-pressed="true"]'), tab = b ? b.dataset.tab : 'rank';
+  const g = [...document.querySelectorAll('.wb-page')].pop(), c = g && g.querySelector('.wb-content'); if (!c) return;   /* 화면 넘어갈 때 옛 페이지가 잠깐 같이 있음 → 새 페이지에 그림 */
+  const b = g.querySelector('.wb-tabs button[aria-pressed="true"]'), tab = b ? b.dataset.tab : 'rank';
   const l0 = c.querySelector('#wbx-list'), st = l0 ? l0.scrollTop : 0; c.innerHTML = worldBossList(tab);
   const l1 = c.querySelector('#wbx-list'); if (l1) l1.scrollTop = st;
+  setTimeout(wbMoreChk, 50);
 }
 function wbPendAdd(it) {
   S.wbPend = Array.isArray(S.wbPend) ? S.wbPend : [];
@@ -3269,16 +3326,19 @@ async function wbPendRun() {
   try {
     for (const it of S.wbPend.slice()) {
       let R = null;
-      try { if (!wbNet()) throw new Error('off'); try { await wbPost(it.p, it.dmg, it.dmg); } catch (e) {} const r = await wbRankAt(it.p, it.dmg); R = wbSeasonRw(it.dmg, it.killed, r.rank, r.cnt); }
+      try { if (!wbNet()) throw new Error('off'); try { await wbPost(it.p, it.dmg, it.dmg); } catch (e) {} const r = await wbRankAt(it.p, it.dmg);
+        if (!it.killed && r.sum >= WORLD_BOSS_PREVIEW.maxHp) it.killed = true;   /* 11/18 다른 사람들과 함께 체력을 다 깎음 = 격파 보상 */
+        if (!it.cl) { if (!(await wbClaim(it.p))) { S.wbPend = (S.wbPend || []).filter(x => x.id !== it.id); save(true); continue; } it.cl = 1; save(true); }   /* 다른 기기에서 이미 받음 = 안 보냄 */
+        R = wbSeasonRw(it.dmg, it.killed, r.rank, r.cnt); }
       catch (e) {
         if (Date.now() - (it.t0 || 0) < 48 * 3600e3) continue;   /* 오래 못 붙음 → 마지막 서버 순위, 없으면 상위 100% 칸 */
         const okP = WB_SRV.ok && WB_SRV.p === it.p && WB_SRV.myRank > 0;
         R = wbSeasonRw(it.dmg, it.killed, okP ? WB_SRV.myRank : 0, okP ? WB_SRV.cnt : 0);
       }
       S.wbPend = (S.wbPend || []).filter(x => x.id !== it.id);
-      if (it.k === 'fail') { const w = S.wb || wbS(); w.fr = { p: it.p, dmg: it.dmg, rank: R.rank, label: R.label, rw: R.rw }; }
+      if (it.k === 'fail' && !it.killed) { const w = S.wb || wbS(); w.fr = { p: it.p, dmg: it.dmg, rank: R.rank, label: R.label, rw: R.rw }; }
       mbPush(wbMailMake(it.id, it.p, it.dmg, it.killed, R)); save(true);
-      if (it.k === 'fail') setTimeout(() => { try { wbFailPop(); } catch (e) {} }, 0);
+      if (it.k === 'fail' && !it.killed) setTimeout(() => { try { wbFailPop(); } catch (e) {} }, 0);
     }
   } finally { wbPendBusy = false; }
 }
@@ -5115,12 +5175,7 @@ function init() {
   // idle the game loop while the lobby is open (frame() is a function declaration of the game script)
   try { const _f = frame; frame = function (ts) { if (LOBBY.open) { last = ts; requestAnimationFrame(frame); return; } _f(ts); }; } catch (e) { console.warn('lobby: frame wrap failed', e); }
   setInterval(pollGame, 250);
-  setInterval(() => {   /* 월보 탭/전투 중 10초 서버(시뮬) 체력. 백그라운드면 안 함 */
-    if (document.hidden) return;
-    const amt = Math.max(1, Math.round(WORLD_BOSS_PREVIEW.maxHp * (0.00015 + Math.random() * 0.0004)));
-    try { if (typeof G !== 'undefined' && G && G.wb && !G.over && !LOBBY.open) { G.wb.xDmg = (G.wb.xDmg || 0) + amt; G.wb.xPop = { n: amt, t0: performance.now() }; if (G.wb.boss) G.wb.boss.flash = 0.16; return; } } catch (e) {}
-    if (LOBBY.open && route === 'worldBoss') { const w = wbS(), sc = wbSched(); if (w.cleared || sc.settle || sc.wait) return; w.ext = (w.ext || 0) + amt; save(); const hp = wbHp(), mx = WORLD_BOSS_PREVIEW.maxHp, n = document.querySelector('.wbx-hpn'), b = document.querySelector('.wbx-hpbar i'); if (n) n.textContent = num(hp); if (b) b.style.width = (100 * hp / mx).toFixed(2) + '%'; }
-  }, 10000);
+  setInterval(() => { if (document.hidden || !LOBBY.open || route !== 'worldBoss') return; wbLoad().then(ok => { if (ok) wbRerank(); }); }, 180e3);   /* 11/18 보스 체력·순위 = 실서버 집계 (월보 탭 볼 때 3분마다). 예전 10초 시뮬레이션 없앰 */
   addEventListener('resize', () => { if (exitBtn.classList.contains('show')) pollGame(); });
   qEnsure(); setInterval(() => { if (qEnsure()) qDots(); }, 30000); enBoot();
   /* 11/12: 토벌 실패 창은 홈/주기 팝업 없음. 기간 종료 후 월보 탭 첫 입장 때 1회 */
@@ -5153,7 +5208,7 @@ window.WDLobby = {
   dbgWbResult(over) { wbResult({ over: Object.assign({ dmg: 412000, t: 600, win: true }, over || {}) }); },
   wbFailNow() { const sc = wbSched(), w = wbS(); return !!((sc.settle || sc.done) && w.p === sc.idx && !wbKilled(w)); },   /* 성 불 = 정산·확정 구간 (다음 기간 시작 = 꺼짐) */
   wbFailPop, wbTestSet, wbTestReset,
-  wbSrv() { return { load: wbLoad, rerank: wbRerank, pend: wbPendRun, srv: WB_SRV, mine: wbMine, top: wbTop100, record: g => wbRecord(g), mail: (w, o) => wbSeasonMail(w, o) }; },   /* 11/18 확인용: 월보 서버 순위 */
+  wbSrv() { return { load: wbLoad, rerank: wbRerank, pend: wbPendRun, srv: WB_SRV, mine: wbMine, top: wbTop100, record: g => wbRecord(g), mail: (w, o) => wbSeasonMail(w, o), del: wbDel, move: wbMove, ext: wbExt, more: wbMore }; },   /* 11/18 확인용: 월보 서버 순위 */
   wbDebugHp(n) { const w = wbS(); w.ext = Math.max(0, WORLD_BOSS_PREVIEW.maxHp - (w.dmg || 0) - Math.max(0, n | 0)); w.cleared = n <= 0; save(true); if (route === 'worldBoss') go('worldBoss', { force: true, noanim: true }); },   /* 11/10 확인용 (화면 UI 없음): 시즌 보스 남은 체력 = n */ back() { if ($('.rv')) return true; if (mstack.length) { const m = mstack[mstack.length - 1]; if (m._dismiss) { closeModal(m); return true; } return true; } if (!LOBBY.open) { askExit(); return true; } if (route !== 'home') { go('home'); return true; } return false; },
   set forceGrade(v) { FORCE = v; }, ENH, ENH_REWARD, swMult, convChance, adDoubleEnhStone() { const g = lastRunGold; if (g > 0) { S.gold += g; lastRunGold = 0; save(true); renderTop(); } lastRunStone = 0; return { gold: g, stone: 0 }; },   // 광고 2배 훅(미연결): 골드만 한 번 더 지급. 강화석은 배수/추가 지급 없음
   qAdd, qOpen, fmOpen, qEnsure, relic: k => window.WDRelic.get(k), RELICS, QDEF, atkPct, MILES,
@@ -22011,7 +22066,9 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
   let auth = null; try { auth = JSON.parse(localStorage.getItem(AK) || 'null'); } catch (e) {}
   let ext = null;   /* 11/17 구글 로그인 중이면 그 계정 토큰 (WDAcct) */
   const acctM = () => { try { return JSON.parse(localStorage.getItem('wd_acct') || 'null') || {}; } catch (e) { return {}; } };
-  async function token() {
+  let tokP = null;   /* 11/18 동시에 여러 곳에서 부르면 익명 계정이 2개 생기던 것 → 받는 중이면 같은 결과 기다림 */
+  function token() { if (!tokP) tokP = token0().finally(() => { tokP = null; }); return tokP; }
+  async function token0() {
     if (!ext && acctM().uid && window.WDAcct && window.WDAcct._boot) { try { await window.WDAcct._boot(); } catch (e) {} }   /* 11/18 구글/Apple 연동 기기: 계정 토큰이 붙을 때까지 기다림 */
     if (ext) { const t = await ext(); if (t) return t; }
     if (acctM().uid || localStorage.getItem('wd_need_login')) throw new Error('acct');   /* 11/18 연동 기기·로그인 화면 = 익명 계정 새로 만들지 않음 (나중에 다시) */
@@ -22025,8 +22082,13 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
     if (!r.ok) throw new Error(r.status >= 500 ? 'net' : 'auth ' + r.status);
     const j = await r.json(); auth = { uid: j.localId, id: j.idToken, rt: j.refreshToken, exp: now() + (+j.expiresIn) * 1000 }; _set.call(localStorage, AK, JSON.stringify(auth)); return auth;
   }
-  async function call(path, body, method) {
-    const a = await token();
+  async function anonTok() {   /* 11/18 게스트(익명) 토큰 (구글 연동 뒤 게스트 순위 정리용). 새로 만들지 않음 */
+    if (!auth || !auth.rt) return null; if (auth.exp > now() + 60e3) return auth;
+    const r = await fetch(`${STS}/v1/token?key=${CFG.apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(auth.rt) });
+    if (!r.ok) return null; const j = await r.json(); auth = { uid: j.user_id, id: j.id_token, rt: j.refresh_token, exp: now() + (+j.expires_in) * 1000 }; _set.call(localStorage, AK, JSON.stringify(auth)); return auth;
+  }
+  async function call(path, body, method, as) {
+    const a = as || await token();
     const r = await fetch(DOCS() + path, { method: method || 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + a.id }, body: body ? JSON.stringify(body) : undefined });
     if (!r.ok) { const e = new Error('fs ' + r.status); e.status = r.status; throw e; }
     return r.json();
@@ -22157,7 +22219,7 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
   let boots = 0; const biv = setInterval(() => { boots++; if (S() && window.WDMail) { clearInterval(biv); flush(); pull(); } if (boots > 60) clearInterval(biv); }, 1000);
   window.WDNet = { open, report, log, flush, pull, left, queue: qGet, ring: () => ring.slice(), uid: () => auth && auth.uid, on: ON, emu: EMU, cfg: CFG, emuHost: EH,
     setTok: f => { ext = typeof f === 'function' ? f : null; },
-    _: { call, dn, encF, dec, REQ, token, AUTH, anon: () => auth, dropAnon: () => { auth = null; try { localStorage.removeItem(AK); } catch (e) {} } } };
+    _: { call, dn, encF, dec, REQ, token, anonTok, AUTH, anon: () => auth, dropAnon: () => { auth = null; try { localStorage.removeItem(AK); } catch (e) {} } } };
 })();
 
 /* 11/16 BP 보상 칸 '받기' = 사용자 버튼판 (초록 = lime, 판 비율에 맞는 모양) 을 칸 크기 그대로 비트맵 1장으로 */
@@ -22336,6 +22398,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
   }
   async function purge(uid) {   /* 완전 삭제: 서버 문서 + 로그인 계정 */
     const del = async (c, id) => { try { await W().call(`/${c}/${id}`, null, 'DELETE'); } catch (e) { if (e.status !== 404 && e.status !== 403) throw e; } };
+    try { await L().wbSrv().del(); } catch (e) {}   /* 11/18 월보 순위 */
     for (const c of ['saves', 'report_limits', 'log_limits']) await del(c, uid);
     const u = sdk && goog(sdk.auth.currentUser);
     if (u) { try { await sdk.FU.deleteUser(u); } catch (e) { if (!/requires-recent-login/.test((e && e.code) || '')) throw e; await reauth(u); await sdk.FU.deleteUser(u); } }
@@ -22446,6 +22509,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
   async function after(u) {
     user = goog(u); if (!user) throw new Error('no google user'); bindTok();
     const fresh = !!localStorage.getItem(NL);
+    if (!fresh) { try { await L().wbSrv().move(); } catch (e) {} }   /* 11/18 게스트 순위 → 구글 계정 (중복 없음) */
     const r = await syncLogin(user.uid);
     if (r !== 'cancel' && r !== 'gone') { loginLost = false; try { document.querySelectorAll('#wdl-ov .aclog').forEach(m => { const b = m.closest('.mback') || m; try { P().closeModal(b); } catch (e) { b.remove(); } }); } catch (e) {} }
     if (fresh && r !== 'cancel' && r !== 'gone') { try { localStorage.removeItem(NL); } catch (e) {} if (r !== 'down') { toast('로그인했어요'); reload(); } return; }   /* 새 계정 = 새로 시작 (닉네임 창) */
@@ -22503,7 +22567,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
     if (linked && ready()) {   /* 11/17 연동 계정 = 7일 유예: 마지막 저장을 올리고 삭제 예정 표시 → 로그아웃 + 이 기기 데이터 지움 */
       try {
         const { FU, auth } = await boot(); const u = goog(auth.currentUser);
-        if (u) { try { await up(true, true); } catch (e) {} await delMark(u.uid, Date.now() + 7 * 86400000); try { N().log('acct_delete_req', u.uid); } catch (e) {} try { await FU.signOut(auth); } catch (e) {} }
+        if (u) { try { await up(true, true); } catch (e) {} try { await L().wbSrv().del(); } catch (e) {} await delMark(u.uid, Date.now() + 7 * 86400000); try { N().log('acct_delete_req', u.uid); } catch (e) {} try { await FU.signOut(auth); } catch (e) {} }
         try { N().setTok(null); } catch (e) {}
       } catch (e) { toast('삭제하지 못했어요'); try { N().log('acct_delete', (e && (e.code || e.message)) || 'fail'); } catch (x) {} return; }
       lock = true; user = null;
@@ -22529,7 +22593,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
         }
         const an = W().anon();
         if (an && an.uid) {   /* 익명(게스트) 서버 계정도 */
-          try { const t = await W().token(); await docs(t.uid); await fetch(`${W().AUTH}/v1/accounts:delete?key=${N().cfg.apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: t.id }) }); } catch (e) {}
+          try { const t = await W().token(); await docs(t.uid); try { await L().wbSrv().del(t); } catch (e) {} await fetch(`${W().AUTH}/v1/accounts:delete?key=${N().cfg.apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: t.id }) }); } catch (e) {}
           W().dropAnon();
         }
       }
