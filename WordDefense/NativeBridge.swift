@@ -90,7 +90,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler {
     private func topViewController() -> UIViewController? {
         if let vc = viewController { return vc }
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let window = scenes.flatMap(\.windows).first(where: \\.isKeyWindow) ?? scenes.first?.windows.first
+        let window = scenes.flatMap { $0.windows }.first { $0.isKeyWindow } ?? scenes.first?.windows.first
         var top = window?.rootViewController
         while let presented = top?.presentedViewController { top = presented }
         return top
