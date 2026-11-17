@@ -42,13 +42,12 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         return UIEdgeInsets(top: max(v.top, w.top), left: max(v.left, w.left), bottom: max(v.bottom, w.bottom), right: max(v.right, w.right))
     }
 
-    /// Re-sends the insets to the page (the game also reads env(safe-area-inset-*) and ?sat=&sab=).
+    /// Re-sends the real insets to the page (the game also reads env(safe-area-inset-*) and ?sat=&sab=).
+    /// The web view covers the whole screen (edge to edge); the page keeps only its buttons/text inside these insets.
     private func pushSafeArea() {
         guard loaded, let web = webView else { return }
         let i = currentInsets()
-        _ = i
-        // The web view is already inside the safe area, so the page must not add the insets again.
-        let js = "window.__wdSafe&&window.__wdSafe(0,0)"
+        let js = "window.__wdSafe&&window.__wdSafe(\(Int(i.top.rounded())),\(Int(i.bottom.rounded())))"
         web.evaluateJavaScript(js, completionHandler: nil)
     }
 
@@ -107,10 +106,10 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         #endif
         view.addSubview(web)
         NSLayoutConstraint.activate([
-            // 11/17 build 22: the web view itself sits inside the safe area (below the notch, above the home indicator).
-            // Nothing in the game can be cut off there, whatever the page's CSS/JS does; the strips outside are the splash colour.
-            web.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            web.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            // Build 23: full screen, edge to edge (game background under the notch and the home indicator).
+            // The page gets the insets and keeps only its interactive UI inside them.
+            web.topAnchor.constraint(equalTo: view.topAnchor),
+            web.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             web.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
@@ -128,13 +127,11 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         // CSS pixels ≈ points, same idea as Android passing density-independent px via ?sat=&sab=.
         var components = URLComponents(url: BundledSchemeHandler.startURL, resolvingAgainstBaseURL: false)!
         components.queryItems = [
-            // Insets are 0 inside the page: the web view is pinned to the safe area (see installWebView).
-            URLQueryItem(name: "sat", value: "0"),
-            URLQueryItem(name: "sab", value: "0"),
+            URLQueryItem(name: "sat", value: String(Int(insets.top.rounded()))),
+            URLQueryItem(name: "sab", value: String(Int(insets.bottom.rounded()))),
             // Bundle build number: a new build never reuses anything WebKit kept from an older one.
             URLQueryItem(name: "v", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0")
         ]
-        _ = insets
         guard let url = components.url else { return }
         // Drop any HTTP/memory cache WebKit kept (never localStorage / save data), then load the bundled game fresh.
         let types: Set<String> = [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache, WKWebsiteDataTypeOfflineWebApplicationCache, WKWebsiteDataTypeFetchCache, WKWebsiteDataTypeServiceWorkerRegistrations]
@@ -147,6 +144,12 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         pushSafeArea()
+        #if DEBUG
+        // CI only: a wd_diag.js dropped into the simulator .app drives the tabs and prints measurements (never in release builds).
+        if let u = Bundle.main.url(forResource: "wd_diag", withExtension: "js"), let js = try? String(contentsOf: u, encoding: .utf8) {
+            webView.evaluateJavaScript(js, completionHandler: nil)
+        }
+        #endif
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
