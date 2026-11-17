@@ -65,6 +65,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
       function postIap(o) { try { window.webkit.messageHandlers.WDNative.postMessage(o); } catch (e) {} }
       if (typeof raw.iapBuy !== 'function') raw.iapBuy = function (id, sku) { postIap({ method: 'iapBuy', id: String(id), sku: String(sku) }); };
       if (typeof raw.iapFinish !== 'function') raw.iapFinish = function (token, sku) { postIap({ method: 'iapFinish', id: '', token: String(token || ''), sku: String(sku || '') }); };
+      if (typeof raw.iapPrices !== 'function') raw.iapPrices = function (id, skus) { postIap({ method: 'iapPrices', id: String(id), skus: String(skus || '[]') }); };
       if (typeof raw.iapRestore !== 'function') raw.iapRestore = function () { postIap({ method: 'iapRestore', id: '' }); };
     })();
     """
@@ -85,6 +86,9 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
         case "iapFinish":
             let token = body["token"] as? String ?? ""
             store.finish(token: token)
+        case "iapPrices":
+            let list = (try? JSONSerialization.jsonObject(with: Data((body["skus"] as? String ?? "[]").utf8))) as? [String] ?? []
+            store.prices(id: id, skus: list)
         case "iapRestore":
             store.restore()
         default:

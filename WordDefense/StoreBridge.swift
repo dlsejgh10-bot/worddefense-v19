@@ -52,6 +52,19 @@ final class StoreBridge {
         }
     }
 
+    /// StoreKit localized prices: { sku: { p: price, d: displayPrice, c: currencyCode } }
+    func prices(id: String, skus: [String]) {
+        Task { @MainActor in
+            var out: [String: Any] = [:]
+            if let products = try? await Product.products(for: skus) {
+                for p in products {
+                    out[p.id] = ["p": NSDecimalNumber(decimal: p.price).doubleValue, "d": p.displayPrice, "c": p.priceFormatStyle.currencyCode]
+                }
+            }
+            self.callback(id: id, result: out, err: nil)
+        }
+    }
+
     func finish(token: String) {
         guard !token.isEmpty else { return }
         Task { @MainActor in
