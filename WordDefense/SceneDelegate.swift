@@ -1,0 +1,24 @@
+import UIKit
+import GoogleSignIn
+
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        let window = UIWindow(windowScene: windowScene)
+        window.backgroundColor = UIColor(red: 27 / 255, green: 20 / 255, blue: 16 / 255, alpha: 1)
+        window.rootViewController = GameViewController()
+        window.makeKeyAndVisible()
+        self.window = window
+        if let url = connectionOptions.urlContexts.first?.url {
+            GIDSignIn.sharedInstance.handle(url)
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        if let url = URLContexts.first?.url {
+            GIDSignIn.sharedInstance.handle(url)
+        }
+    }
+}

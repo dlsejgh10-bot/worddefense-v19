@@ -1,0 +1,219 @@
+name: iOS
+
+on:
+  push:
+    branches: [ios]
+  pull_request:
+    branches: [ios]
+  workflow_dispatch:
+    inputs:
+      upload_appstore:
+        description: "Sign with automatic signing and upload to App Store Connect (needs ASC_* secrets). Leave off unless you are ready to submit."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Unsigned simulator + device
+    runs-on: macos-latest
+    steps:
+      - name: Check out iOS branch
+        uses: actions/checkout@v4
+
+      - name: Fetch game HTML from main (GitHub Pages) branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: index.html
+          sparse-checkout-cone-mode: false
+          path: _gamehtml
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Sync HTML and generate the Xcode project
+        run: |
+          set -euo pipefail
+          export WORD_DEFENSE_HTML="$GITHUB_WORKSPACE/_gamehtml/index.html"
+          ./scripts/sync_html.sh
+          test -s WordDefense/Resources/www/index.html
+          xcodegen generate
+          ls -la WordDefense.xcodeproj
+
+      - name: Build unsigned iOS Simulator app
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project WordDefense.xcodeproj \
+            -scheme WordDefense \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+          APP="$(find build/DerivedData/Build/Products -name 'WordDefense.app' -type d | head -n 1)"
+          test -n "$APP" && test -d "$APP"
+          mkdir -p dist
+          ditto "$APP" dist/WordDefense-simulator.app
+          echo "simulator app: $(du -sh dist/WordDefense-simulator.app | awk '{print $1}')"
+
+      - name: Archive unsigned device build
+        run: |
+          set -euo pipefail
+          # Prefer a real .xcarchive. If signing infrastructure still blocks archive,
+          # fall back to an unsigned iphoneos .app so CI still proves the device target compiles.
+          if xcodebuild \
+              -project WordDefense.xcodeproj \
+              -scheme WordDefense \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath dist/WordDefense-unsigned.xcarchive \
+              -derivedDataPath build/DerivedData \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              archive; then
+            test -d dist/WordDefense-unsigned.xcarchive
+            echo "unsigned xcarchive ok"
+          else
+            echo "archive blocked without signing; building unsigned iphoneos .app instead"
+            xcodebuild \
+              -project WordDefense.xcodeproj \
+              -scheme WordDefense \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath build/DerivedData \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              build
+            APP="$(find build/DerivedData/Build/Products -name 'WordDefense.app' -path '*-iphoneos*' -type d | head -n 1)"
+            test -n "$APP" && test -d "$APP"
+            ditto "$APP" dist/WordDefense-device.app
+            echo "device app: $(du -sh dist/WordDefense-device.app | awk '{print $1}')"
+          fi
+
+      - name: Upload unsigned artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: worddefense-ios-unsigned
+          if-no-files-found: error
+          path: |
+            dist/WordDefense-simulator.app
+            dist/WordDefense-device.app
+            dist/WordDefense-unsigned.xcarchive
+
+  # Prepared only. This job is skipped on push/PR. It runs solely when someone
+  # starts the workflow by hand and ticks "upload_appstore".
+  appstore:
+    name: Sign and upload to App Store Connect
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_appstore == 'true'
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - name: Check out iOS branch
+        uses: actions/checkout@v4
+
+      - name: Fetch game HTML from main (GitHub Pages) branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: index.html
+          sparse-checkout-cone-mode: false
+          path: _gamehtml
+
+      - name: Require App Store Connect API secrets
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 ASC_TEAM_ID; do
+            if [ -z "${!v}" ]; then
+              echo "missing secret: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Add the secrets listed in docs/APP_STORE.md, then re-run."
+            exit 1
+          fi
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Sync HTML and generate the Xcode project
+        run: |
+          set -euo pipefail
+          export WORD_DEFENSE_HTML="$GITHUB_WORKSPACE/_gamehtml/index.html"
+          ./scripts/sync_html.sh
+          xcodegen generate
+
+      - name: Write AuthKey .p8
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/private_keys"
+          # Accept a key pasted either as raw PEM or with literal \n sequences.
+          printf '%s\n' "$ASC_KEY_P8" | sed 's/\\n/\n/g' > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Archive with automatic signing
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          KEY="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          xcodebuild \
+            -project WordDefense.xcodeproj \
+            -scheme WordDefense \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath dist/WordDefense.xcarchive \
+            -derivedDataPath build/DerivedData \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$ASC_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            archive
+
+      - name: Export and upload to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          KEY="$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          # teamID is filled at export time from the secret (not committed).
+          EXPORT="$RUNNER_TEMP/ExportOptions.plist"
+          /usr/libexec/PlistBuddy -c "Clear dict" "$EXPORT" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :method string app-store-connect" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :destination string upload" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :signingStyle string automatic" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :teamID string $ASC_TEAM_ID" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :uploadSymbols bool true" "$EXPORT"
+          /usr/libexec/PlistBuddy -c "Add :manageAppVersionAndBuildNumber bool true" "$EXPORT"
+          xcodebuild -exportArchive \
+            -archivePath dist/WordDefense.xcarchive \
+            -exportPath dist/export \
+            -exportOptionsPlist "$EXPORT" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
