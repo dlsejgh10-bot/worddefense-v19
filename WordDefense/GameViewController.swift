@@ -2,7 +2,7 @@ import AVFoundation
 import UIKit
 import WebKit
 
-final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate {
     private let splash = UIColor(red: 27 / 255, green: 20 / 255, blue: 16 / 255, alpha: 1)
     private var webView: WKWebView!
     private let schemeHandler = BundledSchemeHandler()
@@ -64,6 +64,17 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         UIApplication.shared.isIdleTimerDisabled = false
     }
 
+    @objc private func pinScroll() {
+        guard let sv = webView?.scrollView else { return }
+        sv.contentInset = .zero
+        if sv.contentOffset != .zero { sv.setContentOffset(.zero, animated: false) }
+        DispatchQueue.main.async { if sv.contentOffset != .zero { sv.setContentOffset(.zero, animated: false) } }
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if scrollView.contentOffset != .zero { scrollView.contentOffset = .zero }
+    }
+
     private func configureAudio() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
@@ -97,6 +108,16 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         web.scrollView.minimumZoomScale = 1
         web.scrollView.maximumZoomScale = 1
         web.scrollView.pinchGestureRecognizer?.isEnabled = false
+        // Build 24: the game never scrolls. The keyboard (summon word input) must not push or scroll the page:
+        // scrolling off, and any offset WebKit applies for the keyboard is reset to zero right away.
+        web.scrollView.isScrollEnabled = false
+        web.scrollView.panGestureRecognizer.isEnabled = false
+        web.scrollView.delegate = self
+        for n in [UIResponder.keyboardWillShowNotification, UIResponder.keyboardDidShowNotification,
+                  UIResponder.keyboardWillHideNotification, UIResponder.keyboardDidHideNotification,
+                  UIResponder.keyboardWillChangeFrameNotification] {
+            NotificationCenter.default.addObserver(self, selector: #selector(pinScroll), name: n, object: nil)
+        }
         web.allowsBackForwardNavigationGestures = false
         web.allowsLinkPreview = false
         web.navigationDelegate = self

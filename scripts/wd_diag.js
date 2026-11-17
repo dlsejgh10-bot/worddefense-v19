@@ -34,9 +34,7 @@
   const agg = rs => ({ worstFrame: Math.max(...rs.map(r => r.max)), meanWorst: Math.round(rs.reduce((a, r) => a + r.max, 0) / rs.length), jank34: rs.reduce((a, r) => a + r.j33, 0), jank50: rs.reduce((a, r) => a + r.j50, 0), fps: +(rs.reduce((a, r) => a + r.cnt, 0) / rs.reduce((a, r) => a + r.sum, 0) * 1000).toFixed(1) });
   log({ tabs1: agg(res.filter(r => !r.round)), tabs2: agg(res.filter(r => r.round)), per: res.map(r => r.n + r.round + ':' + r.max).join(' ') });
   /* same taps with single changes switched on, to see what the cost is on a real WKWebView */
-  const VAR = [['base', ''], ['noViewAnim', '#wdl .view.enter,#wdl .view.leave{animation:none!important}'], ['leaveNone', '#wdl .view.leave{display:none!important}'], ['opacityOnly', '@keyframes view-in{from{opacity:0}to{opacity:1}} #wdl .view.leave{display:none!important}'],
-    ['translateOnly', '@keyframes view-in{from{transform:translateX(calc(var(--dir,1)*calc(46*var(--u))))}to{transform:none}} #wdl .view.leave{display:none!important}'],
-    ['blob', '', () => { for (const I of [window.__WD_IMG, window.__V19A]) for (const k in I) if (typeof I[k] === 'string' && I[k].startsWith('data:')) I[k] = __wdBlobOf(I[k]); return null; }], ['blob+noViewAnim', '#wdl .view.enter,#wdl .view.leave{animation:none!important}'], ['blob+base', '']];
+  const VAR = [['base', '']];
   for (const [vn, css, jsf] of VAR) {
     const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); const undo = jsf ? jsf() : null; await sl(300);
     const rr = [];
