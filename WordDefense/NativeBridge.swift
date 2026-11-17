@@ -11,7 +11,8 @@ import WebKit
 /// iOS injects a shim that provides both, and talks to this handler over `webkit.messageHandlers.WDNative`.
 final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     weak var viewController: UIViewController?
-    weak var webView: WKWebView?
+    weak var webView: WKWebView? { didSet { store.webView = webView } }
+    lazy var store: StoreBridge = StoreBridge()
 
     static let handlerName = "WDNative"
 
@@ -61,6 +62,10 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
       var raw = window.WDNativeRaw || (window.WDNativeRaw = {});
       if (typeof raw.googleSignIn !== 'function') raw.googleSignIn = function (id) { post('googleSignIn', id); };
       if (typeof raw.appleSignIn !== 'function') raw.appleSignIn = function (id) { post('appleSignIn', id); };
+      function postIap(o) { try { window.webkit.messageHandlers.WDNative.postMessage(o); } catch (e) {} }
+      if (typeof raw.iapBuy !== 'function') raw.iapBuy = function (id, sku) { postIap({ method: 'iapBuy', id: String(id), sku: String(sku) }); };
+      if (typeof raw.iapFinish !== 'function') raw.iapFinish = function (token, sku) { postIap({ method: 'iapFinish', id: '', token: String(token || ''), sku: String(sku || '') }); };
+      if (typeof raw.iapRestore !== 'function') raw.iapRestore = function () { postIap({ method: 'iapRestore', id: '' }); };
     })();
     """
 
@@ -74,6 +79,14 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
             googleSignIn(id: id)
         case "appleSignIn":
             appleSignIn(id: id)
+        case "iapBuy":
+            let sku = body["sku"] as? String ?? ""
+            store.buy(id: id, sku: sku)
+        case "iapFinish":
+            let token = body["token"] as? String ?? ""
+            store.finish(token: token)
+        case "iapRestore":
+            store.restore()
         default:
             callback(id: id, result: nil, err: "unknown-method")
         }
