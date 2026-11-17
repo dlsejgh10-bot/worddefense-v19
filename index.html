@@ -3183,7 +3183,7 @@ const wbMyNick = () => S.nick || '용감한여우';
    순위 탭 = 서버 상위 100명 (dmg 내림차순) + 내 순위 (나보다 dmg 큰 사람 수 + 1, count 집계) + 참가자 수 (count). 서버에 못 붙으면 내 점수만 + '서버 연결 중'.
    시즌 보상 우편 = 서버 순위로 (S.wbPend 큐 → 붙을 때까지 다시. 48시간 넘게 못 붙으면 마지막 서버 순위, 그것도 없으면 상위 100% 칸). 설정 월보 테스트 중에는 서버에 안 올림 */
 const WB_SRV = { p: -1, ok: 0, top: [], cnt: 0, myRank: 0, myDmg: 0, uid: '', at: 0 };
-const WB_STEP = 600000000;
+const WB_RUN_MAX = 100000000, WB_STEP = WB_RUN_MAX;   /* 11/18 사용자 결정: 월보 1판 피해 최대 1억 (서버 규칙도 1번에 1억 넘게 못 올림) */
 const wbNet = () => { const N = window.WDNet; return N && N._ && N.on && N.on() ? N : null; };
 const wbSid = p => 's' + Math.max(0, p | 0);
 const wbField = () => Math.max(1, (WB_SRV.ok && WB_SRV.cnt) | 0);
@@ -3194,13 +3194,15 @@ async function wbPost(p, dmg, best) {   /* 내 점수 올리기 (같은 값·같
   const w = wbS(), nick = String(wbMyNick()).slice(0, 20), av = PORT[S.avatar] ? S.avatar | 0 : 4, fr = Math.max(0, S.frame | 0), a = await N._.token();
   const sp = w.sp || {}; if (sp.p === p && sp.uid === a.uid && sp.dmg >= dmg && sp.n === nick && sp.a === av && sp.f === fr) return true;
   const path = `/wb_scores/${wbSid(p)}/entries/${a.uid}`, name = N._.dn(`wb_scores/${wbSid(p)}/entries`, a.uid);
-  const send = d => N._.call(':commit', { writes: [{ update: { name, fields: N._.encF({ uid: a.uid, nick, av, fr, dmg: d, best: Math.min(d, Math.max(0, best | 0)) }) }, updateTransforms: [N._.REQ('updatedAt')] }] });
+  const send = d => N._.call(':commit', { writes: [{ update: { name, fields: N._.encF({ uid: a.uid, nick, av, fr, dmg: d, best: Math.min(d, WB_RUN_MAX, Math.max(0, best | 0)) }) }, updateTransforms: [N._.REQ('updatedAt')] }] });
   let sent = dmg;
   try { await send(dmg); }
   catch (e) {   /* 거부 = 서버 값이 더 큼(다른 기기) 또는 1번에 너무 많이 → 서버 값 기준으로 다시 */
     if (e.status !== 403 && e.status !== 400) throw e;
     let cur = 0; try { const r = await N._.call(path, null, 'GET'); cur = N._.dec(r.fields.dmg) | 0; } catch (x) { if (x.status !== 404 && x.status !== 403) throw x; }
-    sent = cur >= dmg ? cur : Math.min(dmg, cur + WB_STEP); await send(sent);
+    sent = cur;
+    if (cur >= dmg) await send(cur);   /* 서버가 더 큼 = 프로필만 갱신 */
+    else for (let i = 0; i < 40 && sent < dmg; i++) { sent = Math.min(dmg, sent + WB_STEP); await send(sent); }   /* 오프라인으로 여러 판 모임 = 1억씩 나눠 올림 */
   }
   if (w.p === p) { w.sp = { p, dmg: Math.min(sent, dmg), n: nick, a: av, f: fr, uid: a.uid }; save(); }
   return sent;
@@ -3217,7 +3219,7 @@ function wbLoad(force) {
   const N = wbNet(); if (!N || navigator.onLine === false) return Promise.resolve(false);
   const w0 = wbS(), p = w0.p | 0;
   if (!force && WB_SRV.ok && WB_SRV.p === p && Date.now() - WB_SRV.at < 30e3) return Promise.resolve(true);
-  if (wbLoadP) return wbLoadP;
+  if (wbLoadP) return force ? wbLoadP.then(() => wbLoad(true)) : wbLoadP;   /* 받는 중에 새 기록 = 끝나고 한 번 더 */
   return (wbLoadP = (async () => {
     try {
       const w = wbS(), dmg = Math.max(0, w.dmg | 0);
@@ -5048,7 +5050,7 @@ function openRoulette(mult, items, done) {
   ok.addEventListener('click', () => { if (!fin) return; sfx('click'); cancelAnimationFrame(raf); ov2.remove(); done(); });
 }
 function wbRecord(g) {
-  const w = wbS(), d = Math.max(0, (g.over && g.over.dmg) | 0);
+  const w = wbS(), d = Math.min(WB_RUN_MAX, Math.max(0, (g.over && g.over.dmg) | 0));   /* 11/18 1판 최대 1억 */
   { const dr = (g.over && g.over.drops) || {}; if ((dr.gem | 0) + (dr.stone | 0) + (dr.key | 0) > 0) giveRw({ gem: dr.gem | 0, stone: dr.stone | 0, key: dr.key | 0 }); }   /* 11/10: 정예 드랍 지급 (끝난 방식 상관없이) */
   w.dmg = (w.dmg || 0) + d; w.best = Math.max(w.best || 0, d); w.runs = (w.runs || 0) + 1; { const o = pfS(); o.wbDmgAll = (o.wbDmgAll || 0) + d; }   /* 11/16e 월드 보스 누적 피해 (설치 후 전체) */
   try { pfFlush(); if (d > 0) { const rk = wbMine().rank | 0, o = pfS(); if (rk > 0 && rk <= 100) o.wbTop100 = (o.wbTop100 | 0) + 1; if (rk > 0) o.wbBest = o.wbBest ? Math.min(o.wbBest, rk) : rk; } } catch (e) {}
@@ -5057,7 +5059,7 @@ function wbRecord(g) {
   if (d > 0) setTimeout(() => wbLoad(true).then(ok => { if (ok) wbRerank(); }), 0);   /* 11/18 서버에 내 점수 올리고 순위 다시 */
 }
 function wbResult(g) {
-  const o = g.over || {}, w = wbS(), win = !!o.win, kill = o.reason === 'kill', ts = Math.floor(o.t || 0), d = Math.max(0, o.dmg | 0);
+  const o = g.over || {}, w = wbS(), win = !!o.win, kill = o.reason === 'kill', ts = Math.floor(o.t || 0), d = Math.min(WB_RUN_MAX, Math.max(0, o.dmg | 0));
   const mm = `${String(Math.floor(ts / 60)).padStart(2, '0')}:${String(ts % 60).padStart(2, '0')}`;
   const title = kill ? '격파' : win ? '임무 완료' : '종료';
   const msg = kill ? '공허의 시선을 쓰러뜨렸어요!' : win ? '10분 동안 성문을 지켜냈어요' : '체력이 0이 되어 전투가 끝났어요. 준 피해는 그대로 기록돼요.';
