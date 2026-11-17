@@ -46,7 +46,9 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
     private func pushSafeArea() {
         guard loaded, let web = webView else { return }
         let i = currentInsets()
-        let js = "window.__wdSafe&&window.__wdSafe(\(Int(i.top.rounded())),\(Int(i.bottom.rounded())))"
+        _ = i
+        // The web view is already inside the safe area, so the page must not add the insets again.
+        let js = "window.__wdSafe&&window.__wdSafe(0,0)"
         web.evaluateJavaScript(js, completionHandler: nil)
     }
 
@@ -105,8 +107,10 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         #endif
         view.addSubview(web)
         NSLayoutConstraint.activate([
-            web.topAnchor.constraint(equalTo: view.topAnchor),
-            web.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            // 11/17 build 22: the web view itself sits inside the safe area (below the notch, above the home indicator).
+            // Nothing in the game can be cut off there, whatever the page's CSS/JS does; the strips outside are the splash colour.
+            web.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            web.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             web.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
@@ -124,11 +128,19 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         // CSS pixels ≈ points, same idea as Android passing density-independent px via ?sat=&sab=.
         var components = URLComponents(url: BundledSchemeHandler.startURL, resolvingAgainstBaseURL: false)!
         components.queryItems = [
-            URLQueryItem(name: "sat", value: String(Int(insets.top.rounded()))),
-            URLQueryItem(name: "sab", value: String(Int(insets.bottom.rounded())))
+            // Insets are 0 inside the page: the web view is pinned to the safe area (see installWebView).
+            URLQueryItem(name: "sat", value: "0"),
+            URLQueryItem(name: "sab", value: "0"),
+            // Bundle build number: a new build never reuses anything WebKit kept from an older one.
+            URLQueryItem(name: "v", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0")
         ]
+        _ = insets
         guard let url = components.url else { return }
-        webView.load(URLRequest(url: url))
+        // Drop any HTTP/memory cache WebKit kept (never localStorage / save data), then load the bundled game fresh.
+        let types: Set<String> = [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache, WKWebsiteDataTypeOfflineWebApplicationCache, WKWebsiteDataTypeFetchCache, WKWebsiteDataTypeServiceWorkerRegistrations]
+        WKWebsiteDataStore.default().removeData(ofTypes: types, modifiedSince: .distantPast) { [weak self] in
+            self?.webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData))
+        }
     }
 
     // MARK: - WKNavigationDelegate
