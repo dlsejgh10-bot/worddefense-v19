@@ -23,7 +23,7 @@ permissions:
 jobs:
   build:
     name: Unsigned simulator + device
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - name: Check out iOS branch
         uses: actions/checkout@v4
@@ -134,7 +134,7 @@ jobs:
     name: Sign and upload to App Store Connect
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_appstore == 'true'
     needs: build
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     steps:
       - name: Check out iOS branch
         uses: actions/checkout@v4
