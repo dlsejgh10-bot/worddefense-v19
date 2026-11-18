@@ -1,58 +1,58 @@
-/* CI/diag only: drive tabs, measure tab-switch frames + layout, ask the runner for screenshots ("SHOT name") */
+/* CI/diag only (ios-logindiag branch): probe Firebase Auth + native sign-in bridge inside the real WKWebView (wdgame:// origin) */
 (async function () {
   if (window.__wdDiagRan) return; window.__wdDiagRan = 1;
-  const log = m => { const s = typeof m === 'string' ? m : JSON.stringify(m); try { window.webkit.messageHandlers.WDNative.postMessage({ method: 'diagLog', id: '0', msg: s }); } catch (e) {} try { (window.__diagOut || (window.__diagOut = [])).push(s); console.log('WDDIAG ' + s); } catch (e) {} };
+  const log = m => { const s = typeof m === 'string' ? m : JSON.stringify(m); try { window.webkit.messageHandlers.WDNative.postMessage({ method: 'diagLog', id: '0', msg: s }); } catch (e) {} try { console.log('WDDIAG ' + s); } catch (e) {} };
   const sl = ms => new Promise(r => setTimeout(r, ms));
+  const race = (p, ms) => Promise.race([p.then(v => ({ ok: 1, v }), e => ({ err: (e && (e.code || e.message)) || String(e) })), sl(ms).then(() => ({ timeout: ms }))]);
+  window.addEventListener('error', e => log('ONERROR ' + e.message + ' @' + e.lineno));
+  window.addEventListener('unhandledrejection', e => log('UNHANDLED ' + ((e.reason && (e.reason.code || e.reason.message)) || e.reason)));
   try {
     if (!localStorage.getItem('wd_diag_seed')) {
       const S = { nick: '배고픈여우', gold: 50000, gems: 5000, tut: { intro: 3, lobby: 3, battle: 3, defeat: 3, draw: 3, sword: 3, relic: 3, inbox: 3, wb: 3, bp: 3, win1: 3 } };
       localStorage.clear(); localStorage.setItem('wd_main_v1', JSON.stringify(S)); localStorage.setItem('wd_diag_seed', '1'); log('seeded, reloading'); location.reload(); return;
     }
   } catch (e) { log('seed err ' + e); }
-  for (let i = 0; i < 300 && !(window.WDLobby && document.querySelector('#wdl-tabs .tab')); i++) await sl(200);
-  await sl(6000);
-  const clean = () => document.querySelectorAll('#wdl-ov .mback').forEach(e => e.remove());
-  clean(); try { WDLobby.go('home'); } catch (e) {} await sl(1500); clean();
-  const R = el => { if (!el) return null; const r = el.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height)]; };
-  const cs = getComputedStyle(document.documentElement);
-  log({ ua: navigator.userAgent, inner: [innerWidth, innerHeight], dpr: devicePixelRatio, cls: document.documentElement.className, wst: cs.getPropertyValue('--wst'), wsb: cs.getPropertyValue('--wsb'), q: location.search });
-  const shot = async n => { log('SHOT ' + n); await sl(2500); };
-  await shot('lobby');
-  /* frame times after each tab tap (rAF deltas, 1.5 s window) */
-  window.__fd = []; let last = 0; const f = t => { if (last) window.__fd.push([t, t - last]); last = t; requestAnimationFrame(f); }; requestAnimationFrame(f);
-  const tabEl = n => [...document.querySelectorAll('#wdl-tabs .tab')].find(x => x.textContent.includes(n));
-  const tap = el => { const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, o = { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1, pointerType: 'touch', isPrimary: true };
-    el.dispatchEvent(new PointerEvent('pointerdown', o)); try { const t = new Touch({ identifier: 1, target: el, clientX: x, clientY: y }); el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [t], targetTouches: [t], changedTouches: [t] })); el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], targetTouches: [], changedTouches: [t] })); } catch (e) {}
-    el.dispatchEvent(new PointerEvent('pointerup', o)); el.dispatchEvent(new MouseEvent('click', o)); };
-  const seq = ['상점', '유물', '속성검', '상점', '전투', '유물', '전투', '속성검', '상점', '전투'];
-  const res = [];
-  for (let round = 0; round < 2; round++) for (const n of seq) {
-    const t0 = performance.now(); tap(tabEl(n)); await sl(1700);
-    const fr = window.__fd.filter(a => a[0] > t0 && a[0] < t0 + 1500).map(a => a[1]);
-    res.push({ n, round, max: Math.round(Math.max(...fr)), j33: fr.filter(d => d > 34).length, j50: fr.filter(d => d > 50).length, sum: fr.reduce((a, b) => a + b, 0), cnt: fr.length });
+  for (let i = 0; i < 300 && !(window.WDLobby && window.WDAcct && document.querySelector('#wdl-tabs .tab')); i++) await sl(200);
+  await sl(3000);
+  document.querySelectorAll('#wdl-ov .mback').forEach(e => e.remove());
+  log({ step: 'env', href: location.href.slice(0, 60), origin: location.origin, ua: navigator.userAgent, ready: WDAcct.ready(), gs: typeof (window.WDNative && WDNative.googleSignIn), as: typeof (window.WDNative && WDNative.appleSignIn), raw: !!window.WDNativeRaw, idb: typeof indexedDB, build: (document.querySelector('meta[name=wd-build]') || {}).content });
+  /* 1. raw network: identitytoolkit from this origin */
+  try { const c = WDNet.cfg; const r = await race(fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=' + c.apiKey, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestUri: 'http://localhost', postBody: 'id_token=x.y.z&providerId=google.com', returnSecureToken: true }) }).then(r => r.status), 20000); log({ step: 'rest', r }); } catch (e) { log('rest err ' + e); }
+  /* 2. indexedDB open */
+  log({ step: 'idb', r: await race(new Promise((res, rej) => { const q = indexedDB.open('wd_probe_db', 1); q.onsuccess = () => { q.result.close(); res('ok'); }; q.onerror = () => rej(q.error); q.onblocked = () => rej(new Error('blocked')); }), 10000) });
+  /* 3. SDK import */
+  const V = '10.14.1', U = n => `https://www.gstatic.com/firebasejs/${V}/firebase-${n}.js`;
+  let t = performance.now(); const imp = await race(Promise.all([import(U('app')), import(U('auth'))]), 30000); log({ step: 'import', ms: Math.round(performance.now() - t), r: imp.ok ? 'ok' : imp });
+  if (!imp.ok) { log('DONE'); return; }
+  const [FA, FU] = imp.v, c = WDNet.cfg;
+  const CONF = {
+    A_old: { persistence: [FU.indexedDBLocalPersistence, FU.browserLocalPersistence], popupRedirectResolver: FU.browserPopupRedirectResolver },
+    B_idb_noresolver: { persistence: [FU.indexedDBLocalPersistence, FU.browserLocalPersistence] },
+    C_local_noresolver: { persistence: [FU.browserLocalPersistence] },
+  };
+  for (const [name, deps] of Object.entries(CONF)) {
+    t = performance.now();
+    const app = FA.initializeApp({ apiKey: c.apiKey, authDomain: c.authDomain, projectId: c.projectId, appId: c.appId }, 'probe-' + name);
+    const auth = FU.initializeAuth(app, deps);
+    const rd = await race(auth.authStateReady(), 40000); const ms1 = Math.round(performance.now() - t);
+    t = performance.now();
+    const sc = await race(FU.signInWithCredential(auth, FU.GoogleAuthProvider.credential('eyJhbGciOiJSUzI1NiJ9.eyJ4IjoxfQ.sig')), 30000);
+    log({ step: 'cfg', name, ready: rd.ok ? 'ok' : rd, readyMs: ms1, fakeCred: sc.ok ? 'SIGNED?' : sc, credMs: Math.round(performance.now() - t), iframes: document.querySelectorAll('iframe').length });
   }
-  const agg = rs => ({ worstFrame: Math.max(...rs.map(r => r.max)), meanWorst: Math.round(rs.reduce((a, r) => a + r.max, 0) / rs.length), jank34: rs.reduce((a, r) => a + r.j33, 0), jank50: rs.reduce((a, r) => a + r.j50, 0), fps: +(rs.reduce((a, r) => a + r.cnt, 0) / rs.reduce((a, r) => a + r.sum, 0) * 1000).toFixed(1) });
-  log({ tabs1: agg(res.filter(r => !r.round)), tabs2: agg(res.filter(r => r.round)), per: res.map(r => r.n + r.round + ':' + r.max).join(' ') });
-  /* same taps with single changes switched on, to see what the cost is on a real WKWebView */
-  const VAR = [['base', '']];
-  for (const [vn, css, jsf] of VAR) {
-    const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); const undo = jsf ? jsf() : null; await sl(300);
-    const rr = [];
-    for (const n of seq) { const t0 = performance.now(); tap(tabEl(n)); await sl(1700); const fr = window.__fd.filter(a => a[0] > t0 && a[0] < t0 + 1500).map(a => a[1]); rr.push({ n, round: 0, max: Math.round(Math.max(...fr)), j33: fr.filter(d => d > 34).length, j50: fr.filter(d => d > 50).length, sum: fr.reduce((a, b) => a + b, 0), cnt: fr.length }); }
-    log({ variant: vn, r: agg(rr) }); st.remove(); if (undo) undo(); await sl(300);
-  }
-  tap(tabEl('상점')); await sl(1500);
-  log({ shop: [...document.querySelectorAll('#wdl .sgrid .sc')].slice(0, 6).map(e => R(e)[1]), tabs: R(document.querySelector('#wdl-tabs')), app: R(document.querySelector('#wdl .wdl-app')), view: R(document.querySelector('#wdl .view.on') || document.querySelector('#wdl .view')) });
-  await shot('shop');
-  tap(tabEl('유물')); await sl(1500);
-  log({ relic: [...document.querySelectorAll('#wdl .rl-grid > *, #wdl .grid .rcell')].slice(0, 6).map(e => R(e)[1]) });
-  await shot('relic');
-  const sc = document.querySelector('#wdl .view.on') || document.querySelector('#wdl .view'); if (sc) { const s = [...sc.querySelectorAll('*')].find(e => e.scrollHeight > e.clientHeight + 20 && /auto|scroll/.test(getComputedStyle(e).overflowY)); if (s) s.scrollTop = 400; } await sl(600);
-  await shot('relic2');
-  tap(tabEl('전투')); await sl(1200); try { WDLobby.go('home'); } catch (e) {} await sl(800);
-  try { WDLobby._att.startGame(null); } catch (e) { log('start err ' + e); }
-  for (let k = 0; k < 150; k++) { if (window.__wd && __wd.G && __wd.G.towers) break; await sl(100); }
-  await sl(4500); clean();
-  await shot('battle');
+  /* 4. real game boot */
+  t = performance.now(); const b = await race(WDAcct._boot(), 45000); log({ step: 'game_boot', r: b.ok ? 'ok' : b, ms: Math.round(performance.now() - t) });
+  /* 5. native bridge: Apple (simulator w/o Apple ID -> error expected) */
+  const pa = race(WDNative.appleSignIn(), 25000);
+  await sl(4000); log('SHOT apple'); await sl(2500);
+  log({ step: 'apple_native', r: await pa });
+  /* 6. real Google button in the login screen (tap) */
+  WDAcct.showLogin(); await sl(2500);
+  const btn = document.querySelector('#wdl-ov [data-acct="login"]'); log({ step: 'login_btn', found: !!btn });
+  const posted = []; const pm = window.webkit.messageHandlers.WDNative.postMessage.bind(window.webkit.messageHandlers.WDNative);
+  try { window.webkit.messageHandlers.WDNative.postMessage = o => { posted.push(o && o.method); return pm(o); }; } catch (e) { log('pm wrap fail ' + e); }
+  log('SHOT loginscreen'); await sl(2500);
+  if (btn) btn.click();
+  await sl(6000); log({ step: 'after_google_click', posted });
+  log('SHOT google'); await sl(3000);
   log('DONE');
 })();
