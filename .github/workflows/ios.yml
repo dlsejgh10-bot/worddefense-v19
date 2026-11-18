@@ -138,7 +138,8 @@ jobs:
   appstore:
     name: Sign and upload to App Store Connect
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_appstore == 'true'
-    runs-on: macos-15-intel
+    # macos-15-intel often fails to acquire (job cancelled after ~15m). macos-latest (Nov 2026) still has Xcode 26.
+    runs-on: macos-latest
     steps:
       - name: Check out iOS branch
         uses: actions/checkout@v4
