@@ -2844,8 +2844,20 @@ function enpSync() {
   const h = $('h3', m); if (h) h.textContent = e.v >= EN_COST ? '에너지' : '에너지 부족';
   const pv = $('#wdl-enp-v'); if (pv) pv.textContent = e.v; const pt = $('#wdl-enp-t'); if (pt) pt.textContent = e.v >= EN_MAX ? '가득 참' : '다음 +1 · ' + enClock(enLeftMs());
 }
+/* b145 VIP 기간제: 유료 VIP = S.vipUntil(끝나는 시각, 구매 우편 받을 때마다 남은 기간 + 30일). 첨 가입 기념 3일 = S.vipTrialUntil (따로, 우편 받은 시각부터 72시간).
+   예전 영구 VIP(S.vip=1) = b145 첫 실행 때부터 30일. 둘 중 하나라도 남아 있으면 VIP (보석 500·2배속·뱃지) */
+const VIP_D = 30 * 864e5;
+function vipPaidOn() { return (Number(S.vipUntil) || 0) > Date.now(); }
+function vipTrialOn() { return (Number(S.vipTrialUntil) || 0) > Date.now(); }
+function vipAny() { return vipPaidOn() || vipTrialOn(); }
+function vipSync() { if (!S || !wdLoaded) return; let ch = false; const now = Date.now();
+  if (!S.vipMig) { S.vipMig = 1; if (S.vip) S.vipUntil = Math.max(Number(S.vipUntil) || 0, now + VIP_D); ch = true; }
+  if (!S.vipTrialAt && Array.isArray(S.mails)) { const m = S.mails.find(x => x && x.rw && x.rw.vipd > 0 && x.got); if (m) { S.vipTrialAt = m.got; S.vipTrialUntil = m.got + (m.rw.vipd | 0) * 864e5; ch = true; } }   /* 한 번만: 다시 받아도·다른 기기에서도 안 늘어남 */
+  window.WD_VIP_PAID_LEFT = Math.max(0, (Number(S.vipUntil) || 0) - now);
+  const on = vipAny() || URL_VIP; if (ch || !!window.WD_VIP !== on) { window.WD_VIP = on; if (ch) save(true); renderTop(); try { vipDaily(); } catch (e) {} if (route === 'shop' && !document.querySelector('#wdl-ov .mback')) try { go('shop', { force: true, noanim: true }); } catch (e) {} } }
+const vipDaysLeft = () => Math.max(1, Math.ceil(((Number(S.vipUntil) || 0) - Date.now()) / 864e5));
 function vipDaily() {
-  if (!S.vip) return;
+  if (!vipAny()) return;
   const d = kstDay();
   if (S.vipDay !== d) {
     S.vipDay = d; S.gems += VIP_DAILY_GEMS; S.vipToast = 1; save(true); renderTop();
@@ -2853,7 +2865,7 @@ function vipDaily() {
   showVipToast();
 }
 function showVipToast() {
-  if (route !== 'home' || !S.vip || !S.vipToast) return;
+  if (route !== 'home' || !vipAny() || !S.vipToast) return;
   S.vipToast = 0; save(true);
   toast(`VIP 보석 +${VIP_DAILY_GEMS}`, 1500);
 }
@@ -2862,10 +2874,10 @@ function enRefresh() {
   if (ch || e.d !== lastEnDay) { lastEnDay = e.d; renderTop(); }
   const t = $('#wdl-ent'); if (t) t.textContent = e.v >= EN_MAX ? '' : enClock(enLeftMs());
   enpSync();
-  window.WD_VIP = !!S.vip || URL_VIP; vipDaily();
+  window.WD_VIP = vipAny() || URL_VIP; vipDaily();
 }
 let lastEnDay = 0; const URL_VIP = /[?&]vip\b/.test(location.search);   // ?vip : 테스트용 (저장 안 함)
-function enBoot() { enTick(); lastEnDay = S.en.d; window.WD_VIP = !!S.vip || URL_VIP; vipDaily(); renderTop(); setInterval(enRefresh, 1000); }
+function enBoot() { enTick(); lastEnDay = S.en.d; window.WD_VIP = vipAny() || URL_VIP; vipDaily(); renderTop(); setInterval(enRefresh, 1000); }
 let lastTop = {};
 const numC = v => v >= 1e6 ? (Math.floor(v / 1e4) / 100).toFixed(2).replace(/\.?0+$/, '') + 'M' : num(v);   // 9,999,999 → 9.99M (한 줄 상단바에서 안 잘리게)
 /* 11/10 상단바 (승인된 한 줄 시안 mock_top.js 그대로): 정사각 프사 | 닉네임 바 | 에너지 | 골드 | 보석.
@@ -2898,7 +2910,7 @@ function renderTop() {
   const chip = (k, img, v) => `<div class="t1c" data-cur="${k}" data-act="go" data-r="shop" data-press role="button" aria-label="${k === 'gold' ? '골드 충전' : '보석 충전'}"><img src="${IMG[img]}" alt="${k === 'gold' ? '골드' : '보석'}"><b>${numT(v)}</b></div>`;
   const en = () => { enTick(); const e = S.en; return `<div class="t1c en${e.v < EN_COST ? ' low' : ''}" data-cur="en" data-act="energy" data-press role="button" aria-label="에너지"><img src="${IMG.ebolt}" alt=""><b>${e.v}<s>/${EN_MAX}</s></b></div>`; };
   const old = { gold: lastTop.gold, gems: lastTop.gems };
-  const P = PORT[S.avatar] || PORT[4], pi = PORT[S.avatar] ? S.avatar : 4, vip = !!(S.vip || URL_VIP);
+  const P = PORT[S.avatar] || PORT[4], pi = PORT[S.avatar] ? S.avatar : 4, vip = !!(vipAny() || URL_VIP);
   const prof = `<div class="t1-pf pfx" data-act="go" data-r="profile" data-press role="button" aria-label="프사 관리">${window.WDPF.html(pi, S.frame | 0, '100%', 't1-av')}${vip && window.WD_VIP_MEDAL ? `<img class="t1-vip" src="${window.WD_VIP_MEDAL_OL || window.WD_VIP_MEDAL}" alt="VIP">` : ''}</div>`;
   topEl.innerHTML = `<div class="t1"><div class="t1row">${prof}<div class="t1-nb" data-act="go" data-r="profile" data-press role="button" aria-label="내 정보"><b>${esc(S.nick || '모험가')}</b></div><i class="t1-sp"></i>${chip('gold', 'coin', hudV('gold'))}${chip('gems', 'gem', hudV('gems'))}${en()}</div></div>`;
   t1Fit();
@@ -3686,9 +3698,9 @@ V.shop = () => {
   ${secHTML('일일 열쇠', `<span class="sh-timer"><i></i><b id="wdl-key-timer">${dsLeft()}</b></span>`, 'sec-keys')}<div class="sgrid g3">${keys}</div>
   ${secHTML('일일 강화석', `<span class="sh-timer"><i></i><b id="wdl-stone-timer">${dsLeft()}</b></span>`, 'sec-stone')}<div class="sgrid g3">${stones}</div>
   ${secHTML('VIP', '', '', true)}
-  <div ${stc('vipc v17 exact' + (S.vip ? ' on' : ''), 10)} data-act="vipbuy" data-press role="button" aria-label="VIP 패스">
+  <div ${stc('vipc v17 exact' + (vipPaidOn() ? ' on' : ''), 10)} data-act="vipbuy" data-press role="button" aria-label="VIP 패스">
     <div class="vip-art" aria-hidden="true"></div>
-    <button class="vip-hit-buy ${S.vip ? 'on' : ''}" data-act="vipbuy" data-press aria-label="${S.vip ? '이용중' : '9,900원 구매'}">${S.vip ? '<span class="vip-using">이용중</span>' : ''}</button>
+    <button class="vip-hit-buy ${vipPaidOn() ? 'on' : ''}" data-act="vipbuy" data-press aria-label="${vipPaidOn() ? vipDaysLeft() + '일 남음' : '9,900원 구매'}">${vipPaidOn() ? `<span class="vip-using">${vipDaysLeft()}일 남음</span>` : ''}</button>
   </div>
   ${secHTML('주간 보석', `<span class="sh-timer"><i></i><b id="wdl-gem-timer">${leftTxt(nextWeekAt(), true)}</b></span>`, '', true)}<div class="sgrid g2">${pk(PACKS.gem, 'gem', 2, true)}</div>
   ${secHTML('골드')}<div class="sgrid g3">${pk(PACKS.gold, 'gold', 6, false)}</div>
@@ -4128,7 +4140,7 @@ function acqMerge(L) { const m = new Map(); for (const x of L || []) { if (!x) c
 function acqBegin() { ACQB = []; }
 function acqEnd() { const L = ACQB; ACQB = null; acqShow(acqMerge(L)); }
 const ACQ_K = { gold: ['coin', '골드'], gem: ['gem', '보석'], gems: ['gem', '보석'], stone: ['stone', '강화석'], key: ['key', '열쇠'], keys: ['key', '열쇠'] };
-function acqRw(rw) { if (rw) acqShow(['gold', 'gem', 'stone', 'key'].filter(k => rw[k] > 0).map(k => ({ img: IMG[ACQ_K[k][0]], name: ACQ_K[k][1], n: rw[k] })).concat(['bpp', 'vip'].filter(k => rw[k] > 0).map(k => ({ img: RW_PASS[k][0](), name: RW_PASS[k][1] })))); }
+function acqRw(rw) { if (rw) acqShow(['gold', 'gem', 'stone', 'key'].filter(k => rw[k] > 0).map(k => ({ img: IMG[ACQ_K[k][0]], name: ACQ_K[k][1], n: rw[k] })).concat(['bpp', 'vip'].filter(k => rw[k] > 0).map(k => ({ img: RW_PASS[k][0](), name: RW_PASS[k][1] }))).concat(rw.vipd > 0 ? [{ img: RW_PASS.vip[0](), name: 'VIP ' + (rw.vipd | 0) + '일' }] : [])); }
 function acqKind(kind, n) { if (kind === 'relic') { const it = RELICS[n]; if (it) acqShow([{ img: IMG[it.img], name: it.name }]); return; } const d = ACQ_K[kind]; if (d) acqShow([{ img: IMG[d[0]], name: d[1], n }]); }
 const rwHTML = rw => ['gold', 'gem', 'stone', 'key'].filter(k => rw[k]).map(k => `<span class="rwc"><img src="${IMG[rwIcons[k]]}" alt="${rwNames[k]}"><b>${num(rw[k])}</b></span>`).join('');
 let qTab = 'd', qTimer = 0;
@@ -4224,14 +4236,13 @@ const ACT = {
   energy: (t, e) => { if (e) e.stopPropagation(); if ($('.enm')) return; enPopup(); }, enad: () => enAd(),
   vipbuy: () => { if (typeof window.vipPassModal === 'function') window.vipPassModal(); else toast('VIP 정보를 불러오지 못했어요'); },
   vippurchase: (t, e, ok) => {
-    if (S.vip) { closeModal(); toast('이미 VIP 이용 중이에요'); return; }
     if (!ok && window.WDPay) { window.WDPay.open({ sku: 'vip_pass', won: 9900, onBuy: () => ACT.vippurchase(null, null, 1) }); return; }
     if (iapPending('vip_pass')) { closeModal(); toast('우편함에서 받아 주세요'); return; }
     if (window.WDStore && window.WDStore.on()) { window.WDStore.buy('vip_pass').then(r => { if (!r || r.cancelled) return; pfAdd('iap', 1); iapSend({ oid: r.orderId || r.transactionId, won: 9900, sku: 'vip_pass', title: 'VIP 패스', rw: { vip: 1 } }); save(true); window.WDStore.finish(r); closeModal(); go('shop', { force: true }); }).catch(() => toast('구매를 완료하지 못했어요')); return; }   /* 11/17 앱 = 스토어 결제 */
     pfAdd('iap', 1); iapSend({ won: 9900, sku: 'vip_pass', title: 'VIP 패스', rw: { vip: 1 } }); save(true);   /* 11/16k 우편으로 (받을 때 VIP 켜짐) */
     closeModal(); go('shop', { force: true });
   },
-  vipdemo: () => { S.vip = S.vip ? 0 : 1; window.WD_VIP = !!S.vip || URL_VIP; save(true); renderTop(); toast(S.vip ? 'VIP 켜짐' : 'VIP 꺼짐'); vipDaily(); go('shop', { force: true }); },
+  vipdemo: () => { S.vipUntil = vipPaidOn() ? 0 : Date.now() + VIP_D; S.vip = vipPaidOn() ? 1 : 0; window.WD_VIP = vipAny() || URL_VIP; save(true); renderTop(); toast(vipAny() ? 'VIP 켜짐' : 'VIP 꺼짐'); vipDaily(); go('shop', { force: true }); },
   endemo: () => { const e = enNorm(); e.v = e.v >= EN_MAX ? 0 : EN_MAX; e.t = Date.now(); e.n = 0; save(true); renderTop(); toast('에너지 ' + e.v); },
   rewards: t => {
     clearInterval(window._rpT); wkEnsure();
@@ -4273,6 +4284,7 @@ const ACT = {
     if (route === 'sword') refresh();
   },
   rldrawad: () => {
+    if (window.WDTut && WDTut.adFirst && WDTut.adFirst(() => ACT.rldrawad())) return;   /* b145 첫 탭 = 동네주민 대사 먼저, 끝나면 아래 그대로 */
     const day = dsDay();
     if (S.rlAdDay === day) { toast('오늘은 이미 무료 뽑기를 했어요'); return; }
     showRewardAd(() => { S.rlAdDay = day; save(true); doDraw(1, 'ad'); if (route === 'relic') refresh(); }, WD_AD_PLACEMENTS.relic_free_rewarded);
@@ -4557,6 +4569,7 @@ function mbList() {
   if (!seed.u1110) { seed.u1110 = 1; ch = true; const old = S.mailGot && S.mailGot.u1110;
     L.push({ id: 'u1110', t: Date.now(), from: MAIL_1110.from, title: MAIL_1110.title, body: '업데이트를 기념해 작은 선물을 보내드려요!', lines: MAIL_1110.lines.slice(), rw: { gem: MAIL_1110.gem }, got: old || 0, read: old || 0 }); }
   if (!seed.welcome) { seed.welcome = 1; ch = true; }
+  if (!seed.vip3) { seed.vip3 = 1; ch = true; if (!L.some(m => m.id === 'vip3')) L.push({ id: 'vip3', t: Date.now(), from: '운영진', title: '첨 가입 기념 VIP 3일', body: '', lines: null, rw: { vipd: 3 }, got: 0, read: 0 }); }   /* b145: 계정당 1번 (저장과 같이 동기화) */
   if (!seed.n1110) { seed.n1110 = 1; ch = true;
     L.push({ id: 'n1110', t: Date.now() - 1000, from: '운영진', title: '월드 보스 시즌 보상', body: '월드 보스 시즌 보상을 알려 드려요.', rw: null, got: 0, read: 0,
       lines: ['시즌은 13일 동안 열려요.', '보스를 격파하면 순위 보상을 전부 드려요.', '격파하지 못하면 절반을 드려요. (최소 1개)', '보상은 시즌이 끝나면 우편으로 보내드려요.'] }); }
@@ -4606,7 +4619,7 @@ function mbPush(m) {   /* 같은 id 가 있으면 다시 안 넣음 */
 const mbLeft = m => { const d = Math.ceil(((m.t || 0) + mbKeep(m) - Date.now()) / MAIL_DAY); return d <= 1 ? '오늘 만료' : `${d}일 남음`; };
 const mbAgo = t => { const s = Math.max(0, (Date.now() - (t || Date.now())) / 1000); if (s < 60) return '방금 전'; if (s < 3600) return Math.floor(s / 60) + '분 전'; if (s < 86400) return Math.floor(s / 3600) + '시간 전'; return Math.floor(s / 86400) + '일 전'; };
 const mbRwRows = rw => ['gem', 'gold', 'stone', 'key'].filter(k => rw && rw[k] > 0).map(k => `<span class="mb-r"><img src="${IMG[rwIcons[k]]}" alt="${rwNames[k]}"><b>${num(rw[k])}</b></span>`).join('')
-  + (rw && rw.bpp > 0 ? `<span class="mb-r mb-rp"><img src="${RW_PASS.bpp[0]()}" alt="${RW_PASS.bpp[1]}"><b>${num(rw.bpp)}</b></span>` : '') + (rw && rw.vip > 0 ? `<span class="mb-r mb-rp"><img src="${RW_PASS.vip[0]()}" alt="${RW_PASS.vip[1]}"><b>${num(rw.vip)}</b></span>` : '');   /* 11/17 패스도 다른 보상처럼 수량(1) */
+  + (rw && rw.bpp > 0 ? `<span class="mb-r mb-rp"><img src="${RW_PASS.bpp[0]()}" alt="${RW_PASS.bpp[1]}"><b>${num(rw.bpp)}</b></span>` : '') + (rw && rw.vip > 0 ? `<span class="mb-r mb-rp"><img src="${RW_PASS.vip[0]()}" alt="${RW_PASS.vip[1]}"><b>${num(rw.vip)}</b></span>` : '') + (rw && rw.vipd > 0 ? `<span class="mb-r mb-rp"><img src="${RW_PASS.vip[0]()}" alt="VIP ${rw.vipd | 0}일"><b>${rw.vipd | 0}일</b></span>` : '');   /* 11/17 패스도 다른 보상처럼 수량(1) */
 const mbRowIcon = m => { if (m && m.rw && m.rw.bpp > 0 && window.__V19A && window.__V19A['bp_ticket_ic.webp']) return window.__V19A['bp_ticket_ic.webp']; const rwm = mbHasRw(m), first = rwm && ['gem', 'gold', 'stone', 'key'].find(k => m.rw[k] > 0); return IMG[first ? rwIcons[first] : 'sd_mail'] || (typeof L6 !== 'undefined' && L6.sd_mail) || IMG.gem; };
 function mbRow(m) {
   const rwm = mbHasRw(m), done = rwm ? !!m.got : !!m.read;
@@ -4683,6 +4696,7 @@ function iapSend(o) {
 }
 const iapPending = sku => (S.mails || []).some(m => m.kind === 'iap' && m.sku === sku && !m.got);
 function iapApply() {
+  try { vipSync(); } catch (e) {}
   let ch = false; if (!S || !Array.isArray(S.mails)) return;
   for (const m of S.mails) {
     if (m.kind !== 'iap' || !m.got || m.applied) continue;
@@ -4690,7 +4704,7 @@ function iapApply() {
     const od = S.iapOrd[m.oid] || (S.iapOrd[m.oid] = { sku: m.sku, won: m.won, t: m.t, st: 'mail' });
     m.applied = Date.now(); ch = true;
     if (od.st === 'revoked') continue;
-    if (m.rw && m.rw.vip) { S.vip = 1; window.WD_VIP = true; pfAdd('vip', 1); }
+    if (m.rw && m.rw.vip) { S.vip = 1; S.vipUntil = Math.max(Number(S.vipUntil) || 0, Date.now()) + VIP_D * Math.max(1, m.rw.vip | 0); window.WD_VIP = true; pfAdd('vip', 1); }   /* b145: 받을 때마다 남은 기간 + 30일 */
     if (m.rw && m.rw.bpp) { try { window.WDBP.st().prem = 1; } catch (e) {} }
     od.st = 'got'; od.got = m.applied;
     try { window.WDTut && window.WDTut.purchase({ orderId: m.oid, won: m.won, sku: m.sku }); } catch (e) {}   /* 대화+보너스 = 주문번호당 1번 */
@@ -4709,7 +4723,7 @@ function revokePurchase(oid) {
   else {
     const rw = (m && m.rw) || {}; res = { ok: true, how: 'deduct' };
     if (rw.gem) { const back = Math.min(S.gems | 0, rw.gem | 0); S.gems = (S.gems | 0) - back; res.gem = back; }
-    if (rw.vip) { S.vip = 0; window.WD_VIP = !!URL_VIP; res.vip = 'off'; }
+    if (rw.vip) { S.vipUntil = Math.max(0, (Number(S.vipUntil) || 0) - VIP_D * Math.max(1, rw.vip | 0)); if (!vipPaidOn()) S.vip = 0; window.WD_VIP = vipAny() || !!URL_VIP; res.vip = vipPaidOn() ? 'shortened' : 'off'; }   /* b145: 환불 = 그 30일만 뺌 */
     if (rw.bpp) { try { window.WDBP.st().prem = 0; } catch (e) {} res.bp = 'off'; }
     try { res.bonus = window.WDTut ? window.WDTut.iapRefund(oid) : 0; } catch (e) {}
   }
@@ -4734,7 +4748,7 @@ window.revokePurchase = revokePurchase; window.WDIap = { send: iapSend, apply: i
   function grant(r) {   /* 앱이 꺼져서 못 받은 결제 · 다시 설치 후 VIP 복원: 주문번호당 1번 (S.iapOrd) */
     const oid = String(r.orderId || r.transactionId || r.purchaseToken || ''), f = info(r.sku); if (!oid || !f) return;
     if (S.iapOrd && S.iapOrd[oid]) return;
-    if (f.rw.vip && (S.vip || iapPending('vip_pass'))) return;
+    if (f.rw.vip && iapPending('vip_pass')) return;   /* b145: 기간제 → 이용 중에도 새 주문은 연장 (주문번호당 1번은 S.iapOrd) */
     if (f.rw.bpp) { try { if (window.WDBP.st().prem || iapPending('bp_premium')) return; } catch (e) {} }
     pfAdd('iap', 1); if (f.i != null) { try { gemSold()[f.i] = 1; } catch (e) {} }
     iapSend({ oid, won: f.won, sku: String(r.sku), title: f.title, rw: f.rw }); save(true);
@@ -4832,7 +4846,7 @@ function playBegin(btn) {
 function playStop(keep) { clearInterval(playSearch); playSearch = 0; playUI(); if (!keep) { try { window.WDCoop && window.WDCoop.cancel(); } catch (e) {} } }
 let runDiff = 'normal';
 async function startGame(btn, wb) {
-  if (busy) return; if (!wb && !window.__wdIntro && !enSpend()) { enPopup(); return; } busy = true; window.WD_WB_RUN = wb || null; try { if (window.WBBGM) window.WBBGM.stop(); } catch (e) {} runDiff = DIFF; window.WD_VIP = !!S.vip || URL_VIP; try { if (window.WDOM) window.WDOM.pre(wb, DIFF); } catch (e) {} window.WD_DIFFICULTY = DIFF; // 어려움 규칙 미정: 플래그만 전달
+  if (busy) return; if (!wb && !window.__wdIntro && !enSpend()) { enPopup(); return; } busy = true; window.WD_WB_RUN = wb || null; try { if (window.WBBGM) window.WBBGM.stop(); } catch (e) {} runDiff = DIFF; window.WD_VIP = vipAny() || URL_VIP; try { if (window.WDOM) window.WDOM.pre(wb, DIFF); } catch (e) {} window.WD_DIFFICULTY = DIFF; // 어려움 규칙 미정: 플래그만 전달
   try {
     const [x, y] = btn ? center(btn) : [innerWidth / 2, innerHeight * 0.8];
     unlockAudio(); sfx('wave'); vib([25, 30, 40]);
@@ -11356,6 +11370,33 @@ coinIcon = function (x, y, r) { if (_coinImg4.complete && _coinImg4.naturalWidth
   const t = new Image(); t.onload = () => { if (t.naturalWidth) run(); }; t.src = tb;
 })();
 </script>
+<script id="b145-js">
+/* b145 (d) 유물 칸 높이 고정: 칸 너비 × 149.6/105.2 (b142 의 원래 비율) */
+(function () {
+  var R = 149.6 / 105.2, q = 0;
+  function fix() {
+    q = 0;
+    var gs = document.querySelectorAll('#wdl .grid.rl-grid');
+    for (var i = 0; i < gs.length; i++) {
+      var g = gs[i], c = g.querySelector('.cell.rcell'); if (!c) continue;
+      var w = c.getBoundingClientRect().width; if (!(w > 20)) continue;
+      var a = c.querySelector('.art'), aw = a ? a.getBoundingClientRect().width : 0;
+      var h = Math.round(w * R * 100) / 100, k = h + '|' + aw;
+      if (g.__rlk === k) continue; g.__rlk = k;
+      g.style.setProperty('--rlh', h + 'px'); if (aw > 4) g.style.setProperty('--rla', (Math.round(aw * 100) / 100) + 'px');
+      g.classList.add('rlfix');
+    }
+  }
+  function sch() { if (!q) { q = 1; requestAnimationFrame(fix); } }
+  function init() {
+    var v = document.getElementById('wdl-views'); if (!v) { setTimeout(init, 300); return; }
+    new MutationObserver(function (m) { for (var i = 0; i < m.length; i++) if (m[i].addedNodes.length) { sch(); return; } }).observe(v, { childList: true, subtree: true });
+    addEventListener('resize', function () { var gs = document.querySelectorAll('#wdl .grid.rl-grid'); for (var i = 0; i < gs.length; i++) { gs[i].__rlk = ''; gs[i].classList.remove('rlfix'); } sch(); });
+    sch();
+  }
+  init();
+})();
+</script>
 </body>
 
 <style id="wd-v17-ui">
@@ -11818,13 +11859,13 @@ coinIcon = function (x, y, r) { if (_coinImg4.complete && _coinImg4.naturalWidth
   window.vipPassModal = function vipPassModal() {
     const open = (window.WDLobby && typeof window.WDLobby.modal === 'function') ? window.WDLobby.modal : null;
     if (!open) { try { (window.WDLobby && window.WDLobby.go && console.warn('vipPassModal: WDLobby.modal missing')); } catch (e) {} return null; }
-    const owned = !!window.WD_VIP || !!(typeof S !== 'undefined' && S.vip);
+    const owned = window.WD_VIP_PAID_LEFT > 0, dl = Math.max(1, Math.ceil((window.WD_VIP_PAID_LEFT || 0) / 864e5));   /* b145: 유료 30일 남은 날 (체험 중엔 구매 가능, 이용 중 구매 = 연장) */
     const art = (window.WD_VIP_ART && window.WD_VIP_ART.modal) || '';
     const body = '<div class="vip-pass-shell exact">'
       + '<div class="vip-pass-art" aria-hidden="true">' + (art ? '<img src="' + art + '" alt="VIP 패스">' : '') + '</div>'
       + '<button class="vip-pass-hit-close" data-act="close" aria-label="닫기"></button>'
       + '<button class="vip-pass-hit-note" data-vipnote="1" type="button" aria-label="유의사항"></button>'
-      + '<button class="vip-pass-hit-buy ' + (owned ? 'on' : '') + '"' + (owned ? ' disabled' : ' data-act="vippurchase"') + ' aria-label="' + (owned ? '이용중' : '9,900원 구매하기') + '">' + (owned ? '<span class="vip-using">이용중</span>' : '') + '</button>'
+      + '<button class="vip-pass-hit-buy ' + (owned ? 'on' : '') + '" data-act="vippurchase" aria-label="' + (owned ? dl + '일 남음 · 30일 연장' : '9,900원 구매하기') + '">' + (owned ? '<span class="vip-using">' + dl + '일 남음</span>' : '') + '</button>'
       + '</div>';
     return open(body, { x: false, cls: 'vip-pass exact', dismiss: true });
   };
@@ -19909,6 +19950,18 @@ html body #wdl .grid.rl-grid .cell.rcell.rcell:not(#_b143) .art img{object-fit:c
 #wdl-ov .bpq2 .bpl > .bpr:not(#_b143){scroll-snap-align:none!important}
 /* (10) 주간 보석 카드: 보석 그림 가로 가운데 */
 #wdl .sc.k-gem > .sc-slot .sc-art > img:not(#_b143){margin-left:auto!important;margin-right:auto!important}
+
+/* ======================= b145 (11/18) ======================= */
+/* (a) 로비 아래 UI(월드 보스 버튼·WAVE 판·게임 시작/같이하기)도 탭바와 같이 홈 막대만큼 아래로 (간격 b142 그대로, 늘리지 않음). iOS 홈 막대 있을 때만 */
+html.wd-sa.wd-sab #wdl #wdl-views .home > .dock:not(#_b145){top:var(--wsb,0px)!important}
+/* (b) 월드 보스 화면에서 아래 탭바 숨김 (b132d 의 display:flex!important 가 예전 숨김 규칙을 덮어서 다시 보이던 것) */
+#wdl .wdl-app[data-route="worldBoss"] #wdl-tabs:not(#_t):not(#_z):not(#_k):not(#_b145){display:none!important}
+/* (c) 퀘스트 일일/주간 탭: 안 눌린 탭 height:calc(100% - 4u) → 옛 iOS WebKit 에서 %가 팝업 전체 높이로 풀려 크림색 판이 목록을 덮던 것. % 없이 늘이기(stretch)로 같은 모양 */
+html body #wdl-ov .modal.qm .qtabs .qt:not(.on):not(#_q):not(#_q):not(#_f):not(#_b145){height:auto!important;align-self:stretch!important}
+/* (d) 유물 칸: 줄 높이·그림 높이를 실제 칸 너비에서 계산한 px 로 고정 (aspect-ratio·그림 로딩·옛 WebKit 격자 높이 계산에 기대지 않음). JS 가 --rlh/--rla 를 넣기 전엔 기존 규칙 그대로 */
+html body #wdl .grid.rl-grid.rlfix:not(#_b145){grid-auto-rows:var(--rlh)!important;align-items:start!important}
+html body #wdl .grid.rl-grid.rlfix .cell.rcell.rcell:not(#_b145){height:var(--rlh)!important;min-height:var(--rlh)!important;max-height:var(--rlh)!important;aspect-ratio:auto!important}
+html body #wdl .grid.rl-grid.rlfix .cell.rcell.rcell:not(#_b145) .art{height:var(--rla)!important;min-height:var(--rla)!important;aspect-ratio:auto!important}
 </style>
 <script id="v19-js">
 window.WD_BUILD = "v19-1117-2328";
@@ -21062,7 +21115,8 @@ window.__WD_DONGNE={"win":{"10":["흥, 운이 좋았구만","몬스터들이 배
     { id: 'relic',  lines: '오래된 물건엔 힘이 깃들어 있다네 / 모을수록 든든해질 걸세 / 잃어버리지나 말게' },
     { id: 'inbox',  lines: '받을 건 꼬박꼬박 챙기게 / 공짜는 놓치면 손해라네 / 모두받기 한 번이면 끝이지' },
     { id: 'wb',     lines: '아 또 저녀석이군 / 자 상대법을 알려주겠네 잘 듣도록 / 잽 보디페인팅후 리버샷!' },   /* 11/16b 월보 로비 화면에 들어올 때. 첫 번째만 이 3줄 + 보상, 그다음부턴 WB_POOL 에서 무작위(직전 것 빼고), 보상 없음 */
-    { id: 'bp',     lines: '꾸준히 하면 보따리가 커진다네 / 레벨을 올리면 칸마다 선물이 있지 / 매일 들르게나' },   /* 배틀패스 화면이 생기면 WDTut.fire('bp') */
+    { id: 'bp',     lines: '꾸준히 하면 보따리가 커진다네 / 레벨을 올리면 칸마다 선물이 있지 / 매일 들르게나' },
+    { id: 'rlad',   lines: '광고 보려고? / 사실 광고같은건 없다네 촤하하! / 오픈기념 써비쓰! 나중에 추가할걸세', norw: 1 },   /* b145 유물 탭 광고 보기 첫 탭 (계정당 1번, 보상 없음). 유물 첫 대사가 남아 있으면 그 뒤에 (TUT 순서) */   /* 배틀패스 화면이 생기면 WDTut.fire('bp') */
   ];
   /* 11/16 출석 인사 (보상 없음): 출석 받기를 할 때마다 하나 (무작위, 고른 번호는 상태와 같이 저장 → 다시 열어도 같은 대사).
      상태 = S.tut['G'+주차+'_'+요일] (1 대기 · 2 보는 중 · 3 끝), 고른 줄 = S.tutRw['G…'] = { g: 번호 } */
@@ -21372,7 +21426,9 @@ window.__WD_DONGNE={"win":{"10":["흥, 운이 좋았구만","몬스터들이 배
   window.addEventListener('keydown', (e) => { if (cur) { e.preventDefault(); e.stopPropagation(); } }, true);   /* 대화 중엔 키 입력 전부 막음 */
   /* 11/16k 전투 안 동네주민 대화 (보상·상태 없음, 끝나면 onDone) */
   function say(lines, onDone) { if (cur) { const c = cur; c.abort(); } show({ id: 'OMX', lines: lines.join(' / '), norw: 1, onDone }); }
-  window.WDTut = { say, fire, get, TUT, purchase, iapRefund, buyBonus, get intro() { return get('intro'); }, reset() { const t = tut(); if (t) { for (const k in t) delete t[k]; save(); } }, get open() { return !!cur; } };
+  /* b145: 유물 광고 보기 첫 탭 → 대사 'rlad' 를 대기열에 넣고, 대사가 끝나면 go() (원래 광고 보기 그대로). 이미 봤으면 false */
+  function adFirst(go) { if (!tut() || get('rlad') === 3) return false; BY.rlad.onDone = () => { BY.rlad.onDone = null; try { go(); } catch (e) {} }; if (get('rlad') === 0) setSt('rlad', 1); try { pump(); } catch (e) {} return true; }
+  window.WDTut = { say, fire, get, TUT, adFirst, purchase, iapRefund, buyBonus, get intro() { return get('intro'); }, reset() { const t = tut(); if (t) { for (const k in t) delete t[k]; save(); } }, get open() { return !!cur; } };
   function boot() { hookBack(); setInterval(() => { try { hookBack(); watch(); } catch (e) { console.warn('tut', e); } }, 400); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 600)); else setTimeout(boot, 600);
 })();
@@ -21950,7 +22006,7 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
 <li>결제했는데 우편이 보이지 않으면 게임을 다시 켜 주세요. 그래도 없으면 아래 결제 문의로 알려 주세요.</li></ul>
 <h4>VIP 패스 · 배틀패스 고급 적용</h4><ul>
 <li>두 상품 모두 결제 시점이 아니라 <b>우편에서 받은 시점</b>부터 적용돼요.</li>
-<li>VIP 패스: 기간 제한 없이 계속 적용돼요. 매일 보석 500개는 한국 시간 자정 기준 하루 1번, 접속할 때 지급돼요.</li>
+<li>VIP 패스: 우편에서 받은 때부터 30일 동안 적용돼요. 이용 중에 다시 구매하면 남은 기간에 30일이 더해지고, 기간이 끝나면 VIP 혜택(매일 보석·2배속·VIP 뱃지)도 끝나요. 매일 보석 500개는 한국 시간 자정 기준 하루 1번, 접속할 때 지급돼요.</li>
 <li>배틀패스 고급: 받은 달의 시즌이 끝날 때까지 적용돼요. 시즌은 매월 1일 00:00(한국 시간)에 초기화되고, 다음 시즌에는 다시 구매해야 해요.</li>
 <li>배틀패스 고급은 구매한 달 안에 우편에서 받아 주세요. 다음 달에 받으면 받은 달 시즌에 적용돼요.</li></ul>
 <h4>청약철회 (구매 취소)</h4><ul>
@@ -21981,7 +22037,7 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
     const it = info('vip_pass');
     const biz = [['상호', BIZ_NAME], ['대표자', BIZ_CEO], ['사업자등록번호', BIZ_REG_NO], ['통신판매업 신고번호', BIZ_MAIL_ORDER_NO], ['사업장 주소', BIZ_ADDR], ['전화번호', BIZ_TEL], ['이메일', BIZ_EMAIL]];
     window.WDLobby._att.modal(`<div class="pp-h"><h3>유의사항</h3></div><div class="pn2">
-<h4>상품 구성</h4><ul>${it.c.map(x => `<li>${x}</li>`).join('')}<li>가격: ₩9,900 (한 번 구매)</li></ul>
+<h4>상품 구성</h4><ul>${it.c.map(x => `<li>${x}</li>`).join('')}<li>가격: ₩9,900 (30일)</li></ul>
 <h4>지급 방식</h4><ul>
 <li>결제가 끝나면 VIP 패스는 바로 적용되지 않고 <b>우편함</b>으로 보내져요.</li>
 <li>로비 왼쪽 '우편'에서 우편을 열고 [받기]를 눌러야 VIP 패스가 적용돼요.</li>
@@ -21989,7 +22045,7 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
 <li>결제했는데 우편이 보이지 않으면 게임을 다시 켜 주세요. 그래도 없으면 아래 결제 문의로 알려 주세요.</li></ul>
 <h4>적용 기간 · 혜택</h4><ul>
 <li>결제 시점이 아니라 <b>우편에서 받은 시점</b>부터 적용돼요.</li>
-<li>기간 제한 없이 계속 적용돼요. 이미 VIP 이용 중이면 다시 구매할 수 없어요.</li>
+<li>우편에서 받은 때부터 30일 동안 적용돼요. 이용 중에 다시 구매하면 남은 기간에 30일이 더해져요. 기간이 끝나면 VIP 혜택이 끝나요.</li>
 <li>매일 보석 500개는 한국 시간 자정 기준 하루 1번, 접속할 때 지급돼요. 접속하지 않은 날의 보석은 쌓이지 않아요.</li>
 <li>VIP 혜택은 이 계정에 적용되며 다른 계정으로 옮길 수 없어요.</li></ul>
 <h4>청약철회 (구매 취소)</h4><ul>
@@ -22900,7 +22956,7 @@ window.WDFly = function (list) {
     const S = LS(); let rl = null;
     try { const W = window.WDRelic; rl = W ? { slow: +W.get('slow') || 0, gate: W.get('gate') | 0, armorShred: +W.get('armorShred') || 0 } : null; } catch (e) {}
     let lv = 1; try { lv = (window.WDLobby && window.WDLobby.pfS && window.WDLobby.pfS().lv) || S.lv || 1; } catch (e) {}
-    return JSON.stringify({ n: String(S.nick || '모험가').slice(0, 16), a: S.avatar | 0, f: S.frame | 0, lv: lv | 0, vip: !!(S.vip || window.WD_VIP), rl, v: PV });
+    return JSON.stringify({ n: String(S.nick || '모험가').slice(0, 16), a: S.avatar | 0, f: S.frame | 0, lv: lv | 0, vip: !!window.WD_VIP, rl, v: PV });
   }
   function reset(keepRoom) {
     clrT(); clrS(); const old = M;
