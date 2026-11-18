@@ -67,6 +67,8 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
       if (typeof raw.iapFinish !== 'function') raw.iapFinish = function (token, sku) { postIap({ method: 'iapFinish', id: '', token: String(token || ''), sku: String(sku || '') }); };
       if (typeof raw.iapPrices !== 'function') raw.iapPrices = function (id, skus) { postIap({ method: 'iapPrices', id: String(id), skus: String(skus || '[]') }); };
       if (typeof raw.iapRestore !== 'function') raw.iapRestore = function () { postIap({ method: 'iapRestore', id: '' }); };
+      if (typeof raw.subStatus !== 'function') raw.subStatus = function () { postIap({ method: 'subStatus', id: '' }); };
+      if (typeof raw.iapSync !== 'function') raw.iapSync = function () { postIap({ method: 'iapSync', id: '' }); };
     })();
     """
 
@@ -97,6 +99,10 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
             store.prices(id: id, skus: list)
         case "iapRestore":
             store.restore()
+        case "subStatus":
+            store.subStatus()
+        case "iapSync":
+            store.syncRestore()
         default:
             callback(id: id, result: nil, err: "unknown-method")
         }

@@ -16,7 +16,8 @@ final class StoreBridge {
             for await result in Transaction.updates {
                 guard let self else { return }
                 if case .verified(let t) = result {
-                    if t.revocationDate != nil { await t.finish(); continue }
+                    if t.revocationDate != nil { await t.finish(); if t.productType == .autoRenewable { self.subStatus() }; continue }
+                    if t.productType == .autoRenewable { await t.finish(); self.subStatus(); continue }   // 11/18 b146 VIP subscription renewals
                     self.open[String(t.id)] = t
                     self.push([Self.payload(t)])
                 }
@@ -36,6 +37,15 @@ final class StoreBridge {
                 case .success(let verification):
                     guard case .verified(let t) = verification else {
                         self.callback(id: id, result: nil, err: "unverified"); return
+                    }
+                    if t.productType == .autoRenewable {   // entitlement, not a mailbox item: finish now and report the expiry
+                        await t.finish()
+                        var o = Self.payload(t)
+                        o["sub"] = 1
+                        o["orig"] = String(t.originalID)
+                        o["exp"] = (t.expirationDate?.timeIntervalSince1970 ?? 0) * 1000
+                        self.callback(id: id, result: o, err: nil)
+                        return
                     }
                     self.open[String(t.id)] = t
                     self.callback(id: id, result: Self.payload(t), err: nil)
@@ -80,17 +90,42 @@ final class StoreBridge {
             var list: [[String: Any]] = []
             var seen = Set<String>()
             for await result in Transaction.unfinished {
+                if case .verified(let t) = result, t.productType == .autoRenewable { await t.finish(); continue }
                 if case .verified(let t) = result, t.revocationDate == nil {
                     self.open[String(t.id)] = t
                     if seen.insert(String(t.id)).inserted { list.append(Self.payload(t)) }
                 }
             }
-            for await result in Transaction.currentEntitlements {   // non-consumable (VIP) restore
-                if case .verified(let t) = result, t.productType == .nonConsumable, t.revocationDate == nil {
-                    if seen.insert(String(t.id)).inserted { list.append(Self.payload(t)) }
-                }
-            }
+            // 11/18 b146: no automatic re-delivery of the old non-consumable vip_pass (no VIP re-grant after a game reset).
+            // Only unfinished (paid but not yet granted) transactions are delivered.
             if !list.isEmpty { self.push(list) }
+        }
+    }
+
+    /// 11/18 b146: auto-renewable subscription entitlements (VIP = vip_month).
+    /// JS `WDNativeRaw.subStatus()` → `window.__wdSubCb(json)` with {"vip_month":{"exp":ms,"auto":bool,"orig":originalTransactionId}} or {} when lapsed.
+    /// The game decides which game account the entitlement belongs to (bound by orig on its server); this only reports.
+    func subStatus() {
+        Task { @MainActor in
+            var out: [String: Any] = [:]
+            for await result in Transaction.currentEntitlements {
+                guard case .verified(let t) = result, t.productType == .autoRenewable, t.revocationDate == nil else { continue }
+                let exp = (t.expirationDate?.timeIntervalSince1970 ?? 0) * 1000
+                if let prev = out[t.productID] as? [String: Any], (prev["exp"] as? Double ?? 0) >= exp { continue }
+                var auto = true
+                if #available(iOS 16.6, *), let st = await t.subscriptionStatus, case .verified(let ri) = st.renewalInfo { auto = ri.willAutoRenew }
+                out[t.productID] = ["exp": exp, "auto": auto, "orig": String(t.originalID)]
+            }
+            let js = "window.__wdSubCb&&window.__wdSubCb(\(Self.json(Self.json(out))));"
+            self.webView?.evaluateJavaScript(js, completionHandler: nil)
+        }
+    }
+
+    /// Manual restore button: re-sync with the App Store (may ask the user to sign in), then report entitlements.
+    func syncRestore() {
+        Task { @MainActor in
+            try? await AppStore.sync()
+            self.subStatus()
         }
     }
 
