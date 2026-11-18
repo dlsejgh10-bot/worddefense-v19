@@ -138,8 +138,12 @@ jobs:
   appstore:
     name: Sign and upload to App Store Connect
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_appstore == 'true'
-    # macos-15-intel often fails to acquire (job cancelled after ~15m). macos-latest (Nov 2026) still has Xcode 26.
-    runs-on: macos-latest
+    # macos-latest is macOS 26 arm64 and is capacity-constrained (cancelled after ~15m:
+    # "The job was not acquired by Runner of type hosted even after multiple attempts"
+    # plus "jobs targeting macOS arm64 runners may experience longer queue times").
+    # macos-15-intel is the separate Intel pool that successfully built 33.
+    # macos-14 is retired. Do not use -large/-xlarge (paid larger runners).
+    runs-on: macos-15-intel
     steps:
       - name: Check out iOS branch
         uses: actions/checkout@v4
