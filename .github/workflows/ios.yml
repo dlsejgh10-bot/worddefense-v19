@@ -32,7 +32,7 @@ jobs:
       - name: Fetch game HTML from main (GitHub Pages) branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.html_ref || 'main' }}
+          ref: ${{ github.event.inputs.html_ref || 'b146a-test' }}
           sparse-checkout: index.html
           sparse-checkout-cone-mode: false
           path: _gamehtml

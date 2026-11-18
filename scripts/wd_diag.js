@@ -15,7 +15,7 @@
   for (let i = 0; i < 300 && !(window.WDLobby && window.WDAcct && document.querySelector('#wdl-tabs .tab')); i++) await sl(200);
   await sl(3000);
   document.querySelectorAll('#wdl-ov .mback').forEach(e => e.remove());
-  log({ step: 'env', href: location.href.slice(0, 60), origin: location.origin, ua: navigator.userAgent, ready: WDAcct.ready(), gs: typeof (window.WDNative && WDNative.googleSignIn), as: typeof (window.WDNative && WDNative.appleSignIn), raw: !!window.WDNativeRaw, idb: typeof indexedDB, build: (document.querySelector('meta[name=wd-build]') || {}).content });
+  log({ step: 'env', href: location.href.slice(0, 60), origin: location.origin, ua: navigator.userAgent, ready: WDAcct.ready(), gs: typeof (window.WDNative && WDNative.googleSignIn), as: typeof (window.WDNative && WDNative.appleSignIn), raw: !!window.WDNativeRaw, idb: typeof indexedDB, build: window.WD_BUILD });
   /* 1. raw network: identitytoolkit from this origin */
   try { const c = WDNet.cfg; const r = await race(fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=' + c.apiKey, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requestUri: 'http://localhost', postBody: 'id_token=x.y.z&providerId=google.com', returnSecureToken: true }) }).then(r => r.status), 20000); log({ step: 'rest', r }); } catch (e) { log('rest err ' + e); }
   /* 2. indexedDB open */
@@ -26,7 +26,6 @@
   if (!imp.ok) { log('DONE'); return; }
   const [FA, FU] = imp.v, c = WDNet.cfg;
   const CONF = {
-    A_old: { persistence: [FU.indexedDBLocalPersistence, FU.browserLocalPersistence], popupRedirectResolver: FU.browserPopupRedirectResolver },
     B_idb_noresolver: { persistence: [FU.indexedDBLocalPersistence, FU.browserLocalPersistence] },
     C_local_noresolver: { persistence: [FU.browserLocalPersistence] },
   };
