@@ -2,8 +2,13 @@ name: Rhythm full playthrough
 on:
   push:
     branches: [ios]
-    paths: ['scripts/cloud-playthrough-v58.cjs', '.github/workflows/rhythm-playthrough.yml', 'WordDefense/Resources/www/weekend/renderer.js', 'WordDefense/Resources/www/weekend/neon-border-v22.js']
+    paths: ['WordDefense/Resources/www/weekend/data/song-db.json', 'WordDefense/Resources/www/weekend/renderer.js', 'WordDefense/Resources/www/weekend/neon-border-v22.js']
   workflow_dispatch:
+    inputs:
+      songs:
+        description: 'JSON list of songs to replay'
+        type: string
+        default: '["beside","flex","seventy","rain","grandpa","friday","emotional","duet","youth"]'
 permissions:
   contents: read
 jobs:
@@ -13,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        songs: ['beside', 'flex', 'seventy', 'rain', 'grandpa', 'friday', 'emotional', 'duet', 'youth']
+        songs: ${{ fromJSON(inputs.songs || '["beside","flex","seventy","rain","grandpa","friday","emotional","duet","youth"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
