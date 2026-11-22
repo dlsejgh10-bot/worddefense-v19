@@ -2,7 +2,7 @@ name: Rhythm full playthrough
 on:
   push:
     branches: [ios]
-    paths: ['scripts/cloud-playthrough-v58.cjs', '.github/workflows/rhythm-playthrough.yml']
+    paths: ['scripts/cloud-playthrough-v58.cjs', '.github/workflows/rhythm-playthrough.yml', 'WordDefense/Resources/www/weekend/renderer.js', 'WordDefense/Resources/www/weekend/neon-border-v22.js']
   workflow_dispatch:
 permissions:
   contents: read

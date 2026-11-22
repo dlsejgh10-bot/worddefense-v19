@@ -20,6 +20,22 @@ function text(g,s,x,y,size=40,color='#ffffff',align='center',outline=5){g.save()
 
 function contain(g,img,cx,cy,w,h){const scale=Math.min(w/img.width,h/img.height);g.drawImage(img,cx-img.width*scale/2,cy-img.height*scale/2,img.width*scale,img.height*scale)}
 
+// Notes repeat the same four images and glow widths. Rasterize those glows once;
+// repeatedly filtering the large source PNG stalls software/mobile canvases.
+const noteSprites=new WeakMap();
+const noteGhosts=new WeakMap();
+function noteGhost(img){if(!noteGhosts.has(img)){const tile=document.createElement('canvas');tile.width=190;tile.height=108;const ctx=tile.getContext('2d');ctx.filter='blur(2px)';contain(ctx,img,95,54,154,72);noteGhosts.set(img,tile)}return noteGhosts.get(img)}
+function noteSprite(img,fever){
+ let variants=noteSprites.get(img);if(!variants){variants=[];noteSprites.set(img,variants)}
+ const index=fever?1:0;
+ if(!variants[index]){
+  const tile=document.createElement('canvas');tile.width=190;tile.height=108;
+  const ctx=tile.getContext('2d');ctx.shadowColor=fever?'#ffd34d':L.colors[Number(img._lane)||0];
+  ctx.shadowBlur=fever?10:3;contain(ctx,img,95,54,154,72);variants[index]=tile;
+ }
+ return variants[index];
+}
+
 function bar(g,x,y,w,h,ratio,color){box(g,x-3,y-3,w+6,h+6,h/2+2,'#050a15','#6785a3',2);g.save();g.beginPath();g.roundRect(x,y,w,h,h/2);g.clip();const grad=g.createLinearGradient(0,y,0,y+h);grad.addColorStop(0,'#fff6b8');grad.addColorStop(.25,color);grad.addColorStop(1,color);box(g,x,y,w*clamp(ratio),h,h/2,grad);g.fillStyle='#ffffff20';g.fillRect(x,y,w,h*.4);g.restore()}
 
 function dancer(g,poses,s,t){const requested=s.pose??1,index=poses[requested]?requested:1,m=window.POSE_METRICS[index],beat=musicalBeat(t),pulse=Math.exp(-beatPhase(t)*7),age=Math.max(0,t-(s.poseTime??-10)),kick=Math.sin(age*31)*Math.exp(-age*14),scale=m.scale*(1+.012*pulse);g.save();g.translate(426+Math.sin(beat*Math.PI)*4,466-Math.sin(beat*Math.PI*2)*2-Math.max(0,kick)*6);g.rotate(kick*.018);g.scale((s.mirrored?-1:1)*scale*(1+kick*.055),scale*(1-kick*.06));g.drawImage(poses[index],-m.cx,-m.bottom);g.restore();window.dancerFrameInfo={pose:index,mirrored:!!s.mirrored,headArea:m.headArea*scale*scale,baseHeadArea:m.headArea*m.scale*m.scale,spring:kick,scale,time:t};}
@@ -29,6 +45,7 @@ function combo(g,s,t){window.ComboRenderer.draw(g,s,t);}
 const capMeta=[{x:239,y:431,w:773,h:440,clearMargin:247},{x:220,y:448,w:810,h:417,clearMargin:228},{x:206,y:430,w:831,h:508,clearMargin:214},{x:197,y:417,w:857,h:479,clearMargin:205}];
 
 function prepare(im){window.ComboRenderer.prepare(im['combo-atlas'],im['combo-fever-atlas']);for(let i=0;i<4;i++){
+ im['note-'+i]._lane=i;
 
  const img=im['cap-'+i],cv=document.createElement('canvas');cv.width=img.width;cv.height=img.height;const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
 
@@ -200,8 +217,8 @@ function draw(g,im,poses,s,pads,clock){const t=s.mode==='ready'?clock*.7:s.time,
 
   }
 
-  if(!held&&window.SONG_CHART.noteMotionBlur){ng.save();ng.filter='blur(2px)';for(const [age,alpha] of [[.026,.055],[.013,.11]]){ng.globalAlpha=alpha;contain(ng,im['note-'+(active?2:n.lane)],x,head-speed*age,154,72);}ng.restore();}
-  ng.save();ng.shadowColor=col;ng.shadowBlur=held?18:active?10:3;if(!held)contain(ng,im['note-'+(active?2:n.lane)],x,head,154,72);ng.restore();
+  if(!held&&window.SONG_CHART.noteMotionBlur){ng.save();const ghost=noteGhost(im['note-'+(active?2:n.lane)]);for(const [age,alpha] of [[.026,.055],[.013,.11]]){ng.globalAlpha=alpha;ng.drawImage(ghost,x-95,head-speed*age-54,190,108);}ng.restore();}
+  if(!held)ng.drawImage(noteSprite(im['note-'+(active?2:n.lane)],active),x-95,head-54,190,108);
 
  }
 
