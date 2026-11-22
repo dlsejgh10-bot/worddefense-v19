@@ -1,0 +1,75 @@
+plugins {
+    id 'com.android.application'
+
+}
+
+def vp = new Properties()
+file("${rootDir}/version.properties").withInputStream { vp.load(it) }
+// build_aab.sh may override with -PversionCodeOverride=N
+def vCode = (project.findProperty('versionCodeOverride') ?: vp.getProperty('VERSION_CODE')).toInteger()
+def vName = vp.getProperty('VERSION_NAME')
+
+def ksDir = file("${rootDir}/keystore")
+def ksPwFile = new File(ksDir, 'upload.pw')
+def haveKs = new File(ksDir, 'upload.jks').exists() && ksPwFile.exists()
+def ksPw = haveKs ? ksPwFile.text.trim() : ''
+
+android {
+    namespace 'com.wordgame.worddefense'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.wordgame.worddefense.practice'
+        minSdk 24
+        targetSdk 36
+        versionCode vCode
+        versionName vName
+    }
+
+    signingConfigs {
+        if (haveKs) {
+            upload {
+                storeFile new File(ksDir, 'upload.jks')
+                storePassword ksPw
+                keyAlias 'upload'
+                keyPassword ksPw
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (haveKs) signingConfig signingConfigs.upload
+        }
+        debug {
+            // debug apk is signed with the default Android debug key
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // v18: index.html is stored deflate-compressed (AssetManager.open / WebViewAssetLoader read it fine) to keep the APK small
+
+    bundle {
+        language { enableSplit = false }
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    // 11/17 Credential Manager native Google sign-in (ID token -> JS signInWithCredential)
+    implementation 'androidx.credentials:credentials:1.3.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+    // 11/17 Google Play Billing
+    implementation 'com.android.billingclient:billing:8.0.0'
+    constraints {
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22')
+        implementation('org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22')
+    }
+}

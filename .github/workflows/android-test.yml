@@ -1,0 +1,31 @@
+name: Android practice APK
+on:
+  push:
+    branches: [ios]
+    paths: ['android-test/**', '.github/workflows/android-test.yml', 'WordDefense/Resources/www/**']
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build separate practice app
+        run: |
+          python3 scripts/verify_bundle.py
+          cp -r WordDefense/Resources/www android-test/app/src/main/assets
+          sed -i '1i window.__wdAndroidPractice=true;' android-test/app/src/main/assets/weekend-host.js
+          cd android-test
+          gradle --no-daemon :app:assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../WordDefense-Practice.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WordDefense-Practice-APK
+          path: WordDefense-Practice.apk

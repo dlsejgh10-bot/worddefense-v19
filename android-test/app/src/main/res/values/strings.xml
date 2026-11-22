@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">단어 디펜스 테스트</string>
+    <string name="exit_title">단어 디펜스</string>
+    <string name="exit_msg">게임을 종료할까요?</string>
+    <string name="exit_yes">종료</string>
+    <string name="exit_no">계속하기</string>
+</resources>

@@ -110,7 +110,7 @@ function frame(now){try{const dt=Math.min(.05,(now-last)/1000||.016);last=now;cl
  const hidden=document.hidden||window.GameHome?.visible===true;
  if(!hidden){const animated=state.mode==='playing'||state.mode==='failing';if(animated)update(dt);
   const drawKey=state.mode+':'+c.width+':'+c.height;
-  if(state.ready&&((animated&&now-lastDraw>=1000/60-.5)||drawnMode!==drawKey)){draw(clock);lastDraw=now;drawnMode=drawKey;state.renderedFrames=(state.renderedFrames||0)+1;}
+  if(state.ready&&((animated&&now-lastDraw>=1000/60-.5)||drawnMode!==drawKey)){draw(clock);const interval=1000/60;lastDraw=Number.isFinite(lastDraw)&&now-lastDraw<2*interval?Math.min(now,lastDraw+interval):now;drawnMode=drawKey;state.renderedFrames=(state.renderedFrames||0)+1;}
   if(now-lastTimeline>=100){window.GameTimeline.update(state,music);lastTimeline=now;}
  }else{drawnMode=null;state.skippedBackgroundFrames=(state.skippedBackgroundFrames||0)+1;}
  }catch(error){window.gameRuntimeError=String(error);window.GameDiagnostics?.error(error);console.error(error);}finally{requestAnimationFrame(frame)}}requestAnimationFrame(frame);
