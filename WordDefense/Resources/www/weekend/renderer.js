@@ -134,7 +134,9 @@ function draw(g,im,poses,s,pads,clock){const t=s.mode==='ready'?clock*.7:s.time,
 
  for(let i=1;i<4;i++){g.strokeStyle='#080e1d';g.lineWidth=6;g.beginPath();g.moveTo(36+i*195,L.laneTop);g.lineTo(36+i*195,L.hitY);g.stroke();g.strokeStyle='#58678345';g.lineWidth=1;g.stroke()}
 
- if(noteLayer.height!==L.H)noteLayer.height=L.H;ng.clearRect(0,0,L.W,L.H);ng.save();
+ const renderScale=L.renderScale||1,noteWidth=Math.round(L.W*renderScale),noteHeight=Math.round(L.H*renderScale);
+ if(noteLayer.width!==noteWidth)noteLayer.width=noteWidth;if(noteLayer.height!==noteHeight)noteLayer.height=noteHeight;
+ ng.setTransform(renderScale,0,0,renderScale,0,0);ng.clearRect(0,0,L.W,L.H);ng.save();
 
  const speed=(L.hitY-L.spawnY)/L.approach;
 
@@ -153,7 +155,7 @@ function draw(g,im,poses,s,pads,clock){const t=s.mode==='ready'?clock*.7:s.time,
 
  }
 
- ng.restore();ng.save();ng.globalCompositeOperation='destination-in';const spawnMask=ng.createLinearGradient(0,L.spawnY-50,0,L.spawnY+90);spawnMask.addColorStop(0,'#ffffff00');spawnMask.addColorStop(.2,'#ffffff00');spawnMask.addColorStop(1,'#ffffffff');ng.fillStyle=spawnMask;ng.fillRect(0,0,L.W,L.H);ng.restore();g.drawImage(noteLayer,0,0);combo(g,s,t);
+ ng.restore();ng.save();ng.globalCompositeOperation='destination-in';const spawnMask=ng.createLinearGradient(0,L.spawnY-50,0,L.spawnY+90);spawnMask.addColorStop(0,'#ffffff00');spawnMask.addColorStop(.2,'#ffffff00');spawnMask.addColorStop(1,'#ffffffff');ng.fillStyle=spawnMask;ng.fillRect(0,0,L.W,L.H);ng.restore();g.drawImage(noteLayer,0,0,L.W,L.H);combo(g,s,t);
 
  g.restore();
 

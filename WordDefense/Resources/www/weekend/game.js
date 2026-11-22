@@ -104,7 +104,16 @@ function update(dt){state.audioReaction=window.AudioReactive.sample(dt,state.mod
  for(const ring of state.rings)ring.age+=dt;state.rings=state.rings.filter(r=>r.age<.38);
 }
 function draw(t){window.CabinetRenderer.draw(g,images,poses,state,pads,t)}
-function frame(now){try{const dt=Math.min(.032,(now-last)/1000||.016);last=now;clock=now/1000;update(dt);if(state.ready)draw(clock);window.GameTimeline.update(state,music);}catch(error){window.gameRuntimeError=String(error);window.GameDiagnostics?.error(error);console.error(error);}finally{requestAnimationFrame(frame)}}requestAnimationFrame(frame);
+let lastDraw=-Infinity,lastTimeline=-Infinity,drawnMode=null;
+function frame(now){try{const dt=Math.min(.05,(now-last)/1000||.016);last=now;clock=now/1000;
+ // The home iframe owns its animation. Never paint the hidden full-screen game behind it.
+ const hidden=document.hidden||window.GameHome?.visible===true;
+ if(!hidden){const animated=state.mode==='playing'||state.mode==='failing';if(animated)update(dt);
+  const drawKey=state.mode+':'+c.width+':'+c.height;
+  if(state.ready&&((animated&&now-lastDraw>=1000/60-.5)||drawnMode!==drawKey)){draw(clock);lastDraw=now;drawnMode=drawKey;state.renderedFrames=(state.renderedFrames||0)+1;}
+  if(now-lastTimeline>=100){window.GameTimeline.update(state,music);lastTimeline=now;}
+ }else{drawnMode=null;state.skippedBackgroundFrames=(state.skippedBackgroundFrames||0)+1;}
+ }catch(error){window.gameRuntimeError=String(error);window.GameDiagnostics?.error(error);console.error(error);}finally{requestAnimationFrame(frame)}}requestAnimationFrame(frame);
 const assets=['combo-fever-atlas','combo-atlas','board-lyrics-v29','cap-0','cap-1','cap-2','cap-3','hud-rail-v54','hud-glow-v54','hud-life-v53','hud-fever-v53','hud-pause-v53',...keys.map((_,i)=>'note-'+i),...['perfect','great','good','miss'].map(n=>'judge-'+n)];
 Promise.all([window.ResultPresentation.ready,document.fonts.load('40px Game'),...assets.map(async name=>{images[name]=await img('assets/'+name+'.png')}),...window.GRANDPA.frames.map(async(path,i)=>{poses[i]=await img(path)})]).then(()=>{window.CabinetRenderer.prepare(images);state.ready=true;state.mode='ready';$('#primary').disabled=false;$('#primary').textContent='댄스 시작';window.gameReady=true}).catch(e=>{$('#primary').textContent='다시 불러오기';$('#primary').disabled=false;$('#primary').onclick=()=>location.reload();$('#description').textContent=e.message;window.gameError=String(e)});
 window.rhythmGame={state,pads,music,down,up,start,pause,resume,chart,finish,menu,seek:seekTo,constants:{beat,hitY:L.hitY,approach:L.approach,centers:L.centers,comboEvery:10,feverHits:R.config.feverHits,songTitle:window.SONG_CHART.title,endTime},render:()=>draw(clock)};window.GameTimeline.attach(window.rhythmGame);

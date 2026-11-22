@@ -93,6 +93,13 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         let user = config.userContentController
         user.add(bridge, name: NativeBridge.handlerName)
         user.addUserScript(WKUserScript(source: NativeBridge.shimJS, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        // Sandbox receipts identify TestFlight installs; the store app keeps normal limits.
+        #if DEBUG
+        let testInstall = true
+        #else
+        let testInstall = Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        #endif
+        user.addUserScript(WKUserScript(source: "window.__wdTestFlight = \(testInstall ? "true" : "false");", injectionTime: .atDocumentStart, forMainFrameOnly: false))
 
         let web = WKWebView(frame: .zero, configuration: config)
         web.translatesAutoresizingMaskIntoConstraints = false
