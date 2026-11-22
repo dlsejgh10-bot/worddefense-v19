@@ -28,7 +28,7 @@ permissions:
 jobs:
   build:
     name: Unsigned simulator + device
-    if: github.event.inputs.upload_appstore != 'true'
+    if: github.event_name != 'push' && github.event.inputs.upload_appstore != 'true'
     runs-on: macos-latest
     steps:
       - name: Check out iOS branch
