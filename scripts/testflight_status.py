@@ -64,10 +64,15 @@ assert build and build['attributes']['processingState']=='VALID'
 groups=request(f'apps/{app}/betaGroups?limit=200')['data']
 internal=[group for group in groups if group['attributes'].get('isInternalGroup')]
 for group in internal:
-    request(f'betaGroups/{group["id"]}/relationships/builds',{'data':[{'type':'builds','id':build['id']}]})
-    print('Available to internal TestFlight group: '+group['attributes']['name'],flush=True)
+    # Apple manages internal build access automatically. The build-group write
+    # relationship accepts external groups and rejects internal groups with 422.
+    print('Existing internal TestFlight group: '+group['attributes']['name'],flush=True)
 if not internal:print('No existing internal TestFlight groups found',flush=True)
-summary={'appId':app,'buildNumber':BUILD,'buildId':build['id'],'processingState':'VALID','internalGroups':len(internal)}
+details=request(f'builds/{build["id"]}/buildBetaDetail')['data']['attributes']
+internal_state=details.get('internalBuildState')
+print('Internal TestFlight state: '+str(internal_state),flush=True)
+assert internal_state in ['READY_FOR_BETA_TESTING','IN_BETA_TESTING'], internal_state
+summary={'appId':app,'buildNumber':BUILD,'buildId':build['id'],'processingState':'VALID','internalGroups':len(internal),'internalBuildState':internal_state}
 Path('dist').mkdir(exist_ok=True)
 Path('dist/testflight-status.json').write_text(json.dumps(summary,indent=2))
 print(json.dumps(summary),flush=True)
