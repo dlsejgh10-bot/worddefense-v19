@@ -1,11 +1,10 @@
 (()=>{'use strict';
-// Preserve track normalization. Keep a moderate trim for event music.
-const musicTrim=10**(-9/20);
-const sfxTrim=10**(-6/20);
+// Track gains normalize music to -18 LUFS. The user slider is applied once.
+const sfxTrim=1;
 function musicLevel(settings,src,kind,levels){
  const entry=Object.entries(levels||{}).find(([path])=>src.endsWith(path));
  const normalized=entry?.[1].gain??(kind==='home'?.508405:1);
- return Math.max(0,Math.min(1,settings.bgm*.55*settings.master*normalized*musicTrim));
+ return Math.max(0,Math.min(1,settings.bgm*normalized));
 }
 function applyLevel(media,level){
  const node=media.weekendGainNode;
@@ -17,5 +16,5 @@ function connect(media,ctx,input,level){
  const node=ctx.createGain();node.gain.value=level;
  input.connect(node);node.connect(ctx.destination);media.weekendGainNode=node;media.volume=1;
 }
-window.WeekendAudioMix=Object.freeze({musicTrim,sfxTrim,musicLevel,applyLevel,connect});
+window.WeekendAudioMix=Object.freeze({sfxTrim,musicLevel,applyLevel,connect});
 })();

@@ -161,10 +161,19 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
             URLQueryItem(name: "v", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0")
         ]
         guard let url = components.url else { return }
-        // Drop any HTTP/memory cache WebKit kept (never localStorage / save data), then load the bundled game fresh.
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
+        let cacheKey = "loadedBundledCacheVersion"
+        let defaults = UserDefaults.standard
+        if defaults.string(forKey: cacheKey) == build {
+            webView.load(URLRequest(url: url, cachePolicy: .useProtocolCachePolicy))
+            return
+        }
+        // Invalidate old code once per upgrade, then preserve caches on normal launches.
         let types: Set<String> = [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache, WKWebsiteDataTypeOfflineWebApplicationCache, WKWebsiteDataTypeFetchCache, WKWebsiteDataTypeServiceWorkerRegistrations]
         WKWebsiteDataStore.default().removeData(ofTypes: types, modifiedSince: .distantPast) { [weak self] in
-            self?.webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData))
+            guard let self = self else { return }
+            defaults.set(build, forKey: cacheKey)
+            self.webView.load(URLRequest(url: url, cachePolicy: .useProtocolCachePolicy))
         }
     }
 

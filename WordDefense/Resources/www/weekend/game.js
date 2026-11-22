@@ -115,6 +115,13 @@ function frame(now){try{const dt=Math.min(.05,(now-last)/1000||.016);last=now;cl
  }else{drawnMode=null;state.skippedBackgroundFrames=(state.skippedBackgroundFrames||0)+1;}
  }catch(error){window.gameRuntimeError=String(error);window.GameDiagnostics?.error(error);console.error(error);}finally{requestAnimationFrame(frame)}}requestAnimationFrame(frame);
 const assets=['combo-fever-atlas','combo-atlas','board-lyrics-v29','cap-0','cap-1','cap-2','cap-3','hud-rail-v54','hud-glow-v54','hud-life-v53','hud-fever-v53','hud-pause-v53',...keys.map((_,i)=>'note-'+i),...['perfect','great','good','miss'].map(n=>'judge-'+n)];
-Promise.all([window.ResultPresentation.ready,document.fonts.load('40px Game'),...assets.map(async name=>{images[name]=await img('assets/'+name+'.png')}),...window.GRANDPA.frames.map(async(path,i)=>{poses[i]=await img(path)})]).then(()=>{window.CabinetRenderer.prepare(images);state.ready=true;state.mode='ready';$('#primary').disabled=false;$('#primary').textContent='댄스 시작';window.gameReady=true}).catch(e=>{$('#primary').textContent='다시 불러오기';$('#primary').disabled=false;$('#primary').onclick=()=>location.reload();$('#description').textContent=e.message;window.gameError=String(e)});
+Promise.all([window.ResultPresentation.ready,document.fonts.load('40px Game'),...assets.map(async name=>{images[name]=await img('assets/'+name+'.png')}),...[0,1].filter(i=>window.GRANDPA.frames[i]).map(async i=>{poses[i]=await img(window.GRANDPA.frames[i])})]).then(()=>{window.CabinetRenderer.prepare(images);
+ const remainingPoses=window.GRANDPA.frames.map((path,i)=>({path,i})).filter(p=>p.i>1);
+ async function warmPoses(){
+  const batch=remainingPoses.splice(0,2);
+  await Promise.all(batch.map(async p=>{try{poses[p.i]=await img(p.path)}catch(error){window.poseAssetError=String(error)}}));
+  if(remainingPoses.length)setTimeout(warmPoses,30);
+ }
+ setTimeout(warmPoses,1500);state.ready=true;state.mode='ready';$('#primary').disabled=false;$('#primary').textContent='댄스 시작';window.gameReady=true}).catch(e=>{$('#primary').textContent='다시 불러오기';$('#primary').disabled=false;$('#primary').onclick=()=>location.reload();$('#description').textContent=e.message;window.gameError=String(e)});
 window.rhythmGame={state,pads,music,down,up,start,pause,resume,chart,finish,menu,seek:seekTo,constants:{beat,hitY:L.hitY,approach:L.approach,centers:L.centers,comboEvery:10,feverHits:R.config.feverHits,songTitle:window.SONG_CHART.title,endTime},render:()=>draw(clock)};window.GameTimeline.attach(window.rhythmGame);
 })();

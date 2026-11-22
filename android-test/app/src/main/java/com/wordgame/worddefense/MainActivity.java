@@ -98,6 +98,17 @@ public class MainActivity extends AppCompatActivity {
         s.setDisplayZoomControls(false);
         s.setTextZoom(100);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        try {
+            int version = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+            android.content.SharedPreferences cache = getSharedPreferences("bundle_cache", MODE_PRIVATE);
+            if (cache.getInt("version", -1) != version) {
+                web.clearCache(true);
+                cache.edit().putInt("version", version).apply();
+            }
+        } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
+            // The running app normally has a package entry.
+        }
+
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);

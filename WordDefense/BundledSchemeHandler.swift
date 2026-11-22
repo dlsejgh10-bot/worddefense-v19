@@ -12,7 +12,8 @@ final class BundledSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     private let root: URL
-    private var stopped = Set<ObjectIdentifier>()
+    private var activeTasks = [ObjectIdentifier: UUID]()
+    private let fileQueue = DispatchQueue(label: "worddefense.bundled-files", qos: .userInitiated)
 
     override init() {
         let fm = FileManager.default
@@ -30,37 +31,41 @@ final class BundledSchemeHandler: NSObject, WKURLSchemeHandler {
 
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         let token = ObjectIdentifier(urlSchemeTask)
+        let requestID = UUID()
+        activeTasks[token] = requestID
         guard let url = urlSchemeTask.request.url else {
+            activeTasks.removeValue(forKey: token)
             urlSchemeTask.didFailWithError(URLError(.badURL))
             return
         }
         var path = url.path
         if path.isEmpty || path == "/" { path = "/index.html" }
         let file = root.appendingPathComponent(String(path.dropFirst()), isDirectory: false).standardizedFileURL
-        guard file.path.hasPrefix(root.path) else {
+        guard file.path.hasPrefix(root.path + "/") else {
+            activeTasks.removeValue(forKey: token)
             urlSchemeTask.didFailWithError(URLError(.cannotOpenFile))
             return
         }
-        guard FileManager.default.fileExists(atPath: file.path),
-              let data = try? Data(contentsOf: file) else {
-            let message = "<!doctype html><meta charset=utf-8><body style='background:#1B1410;color:#fff;font-family:sans-serif;padding:24px'>게임을 찾지 못했어요 (\(path)).</body>"
-            let fallback = Data(message.utf8)
-            let response = URLResponse(url: url, mimeType: "text/html", expectedContentLength: fallback.count, textEncodingName: "utf-8")
-            guard !stopped.contains(token) else { return }
-            urlSchemeTask.didReceive(response)
-            urlSchemeTask.didReceive(fallback)
-            urlSchemeTask.didFinish()
-            return
+        // Map bundled files off the UI thread and return callbacks on main.
+        fileQueue.async {
+            let data = try? Data(contentsOf: file, options: .mappedIfSafe)
+            let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.activeTasks[token] == requestID else { return }
+                self.activeTasks.removeValue(forKey: token)
+                guard let data = data else {
+                    urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
+                    return
+                }
+                let response = URLResponse(url: url, mimeType: mime, expectedContentLength: data.count, textEncodingName: nil)
+                urlSchemeTask.didReceive(response)
+                urlSchemeTask.didReceive(data)
+                urlSchemeTask.didFinish()
+            }
         }
-        let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-        let response = URLResponse(url: url, mimeType: mime, expectedContentLength: data.count, textEncodingName: "utf-8")
-        guard !stopped.contains(token) else { return }
-        urlSchemeTask.didReceive(response)
-        urlSchemeTask.didReceive(data)
-        urlSchemeTask.didFinish()
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
-        stopped.insert(ObjectIdentifier(urlSchemeTask))
+        activeTasks.removeValue(forKey: ObjectIdentifier(urlSchemeTask))
     }
 }
