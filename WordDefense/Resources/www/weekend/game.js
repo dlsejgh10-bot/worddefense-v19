@@ -1,10 +1,11 @@
 (()=>{'use strict';
 const c=document.querySelector('canvas'),g=c.getContext('2d'),$=s=>document.querySelector(s);
-const L=window.GameLayout,R=window.RhythmRules,beat=window.SONG_CHART.beat,endTime=window.SONG_CHART.duration,keys=['d','f','j','k'];
+const L=window.GameLayout,R=window.RhythmRules,keys=['d','f','j','k'];
+let beat=window.SONG_CHART.beat,endTime=window.SONG_CHART.duration;
 const state={mode:'loading',time:0,displayScore:0,auto:false,offset:0,notes:[],particles:[],rings:[],pulses:[0,0,0,0],judge:'',judgeTime:-10,ready:false,danceHistory:[]};R.reset(state);
 const pads=L.centers.map(()=>({down:false,y:0,v:0,flash:0,pointers:new Set()})),images={},poses=[];
 const music=new Audio(window.SONG_CHART.audio);music.preload='auto';music.volume=.5;window.GameAudio?.media(music,'song');
-const bestKey='grandpa-rhythm-best:'+window.SONG_CHART.id;
+let bestKey='grandpa-rhythm-best:'+window.SONG_CHART.id;
 let audio,hitBuffer,last=0,clock=0,best=0;
 try{best=Number(localStorage.getItem(bestKey)||(window.SONG_CHART.id==='youth'?localStorage.getItem('grandpa-rhythm-v3-best'):0)||0)}catch{}
 $('#best').textContent='최고 기록 '+best.toLocaleString();
@@ -78,7 +79,26 @@ function finish(failed=false){if(state.mode==='result')return;$('#pause-menu').h
  for(const id of ['reward-coins','reward-gem','reward-chest']){const node=$('#'+id);if(node)node.textContent='0';}
  $('#overlay').classList.add('hidden');$('#results').hidden=false;$('#pause-control').hidden=true;$('.result-panel').focus({preventScroll:true});if(state.weekendRunId&&!state.auto&&!state.seekPractice){try{window.WeekendClient?.finish(state.weekendRunId,failed?'F':m.rank);state.weekendRunId=null;}catch(error){window.resultRewardError=String(error);window.GameDiagnostics?.error(error);console.error(error);}}window.ResultPresentation.play({score:state.score,rank:failed?'F':m.rank,audioContext:audio});window.RankUI?.present({score:state.score,accuracy:m.accuracy,maxCombo:state.maxCombo,failed,record:!state.auto&&!state.seekPractice});
 }
-function menu(){window.RankUI?.stop();if(state.mode==='paused')window.RhythmLeaderboard?.abandon();if(state.mode==='paused'&&state.weekendRunId){try{window.WeekendClient?.abandon?.(state.weekendRunId);state.weekendRunId=null;}catch(error){window.WeekendClient?.notice('로비로 이동을 다시 눌러 주세요');return;}}$('#pause-menu').hidden=true;if(state.mode==='result'){window.GameHome?.show();try{window.WeekendClient?.collect?.()}catch(error){window.WeekendClient?.notice('보상 지급을 다시 시도해 주세요');console.error(error);return;}}if(state.mode==='result'&&window.SongDB?.randomMode){location.replace(window.SongDB.urlFor('random'));return;}window.ResultPresentation.stop();music.pause();clearPads();state.mode='ready';$('#results').hidden=true;$('#pause-control').hidden=true;show(window.SONG_CHART.title,'4개의 버튼으로 박자를 타세요. 긴 노트는 끝까지 꾹!','댄스 시작');window.GameHome?.show();}
+function nextSong(){
+ if(!window.SongDB?.randomMode)return;
+ window.SongDB.next();beat=window.SONG_CHART.beat;endTime=window.SONG_CHART.duration;L.approach=window.SONG_CHART.approachSeconds||1;
+ bestKey='grandpa-rhythm-best:'+window.SONG_CHART.id;best=0;try{best=Number(localStorage.getItem(bestKey)||0)}catch{}
+ $('#best').textContent='최고 기록 '+best.toLocaleString();music.src=window.SONG_CHART.audio;music.load();window.GameAudio?.media(music,'song');
+ Object.assign(window.rhythmGame.constants,{beat,endTime,approach:L.approach,songTitle:window.SONG_CHART.title});window.GameSongPicker?.update();window.GameTimeline?.setSong();
+}
+let returningHome=false;
+function menu(){
+ if(returningHome)return;returningHome=true;
+ try{
+  const wasResult=state.mode==='result';window.RankUI?.stop();
+  if(state.mode==='paused'){window.RhythmLeaderboard?.abandon();if(state.weekendRunId){window.WeekendClient?.abandon?.(state.weekendRunId);state.weekendRunId=null;}}
+  // Finish the transition before showing the lobby or requesting its music.
+  window.ResultPresentation.stop();music.pause();clearPads();$('#pause-menu').hidden=true;$('#results').hidden=true;$('#pause-control').hidden=true;state.mode='ready';
+  if(wasResult){try{window.WeekendClient?.collect?.()}catch(error){state.mode='result';$('#results').hidden=false;window.WeekendClient?.notice('보상 지급을 다시 시도해 주세요');console.error(error);return;}nextSong();}
+  state.time=0;show(window.SONG_CHART.title,'4개의 버튼으로 박자를 타세요. 긴 노트는 끝까지 꾹!','댄스 시작');window.GameHome?.show();window.GameViewport?.fit();
+ }catch(error){window.gameRuntimeError=String(error);window.GameDiagnostics?.error(error);if(state.mode==='ready')window.GameHome?.show();window.WeekendClient?.notice('로비로 이동을 다시 눌러 주세요');console.error(error);}
+ finally{returningHome=false;}
+}
 $('#primary').onclick=()=>state.mode==='paused'?resume():start();$('#secondary').onclick=start;$('#return').onclick=menu;$('#pause-control').onclick=pause;$('#pause-resume').onclick=resume;$('#pause-lobby').onclick=menu;
 $('#offset').oninput=e=>{state.offset=Number(e.target.value)/1000;$('#offsetText').textContent=e.target.value+'ms'};
 const keyCodes=['KeyD','KeyF','KeyJ','KeyK'];

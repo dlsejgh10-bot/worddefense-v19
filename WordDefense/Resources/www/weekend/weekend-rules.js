@@ -1,6 +1,7 @@
 (function(root){'use strict';
 const DAY=86400000,KST=32400000,LIMIT=3,MAX=6;
-function calendar(now){const day=Math.floor((now+KST)/DAY),weekday=(day+4)%7;return{day,weekday,open:weekday===5||weekday===6||weekday===0,season:Math.floor((day-1)/7),nextReset:(day+1)*DAY-KST};}
+const LAUNCH_START=Date.parse('2026-11-23T00:00:00+09:00'),LAUNCH_END=Date.parse('2026-11-30T00:00:00+09:00');
+function calendar(now){const day=Math.floor((now+KST)/DAY),weekday=(day+4)%7;return{day,weekday,launchWeek:now>=LAUNCH_START&&now<LAUNCH_END,open:(now>=LAUNCH_START&&now<LAUNCH_END)||weekday===5||weekday===6||weekday===0,season:Math.floor((day-1)/7),nextReset:(day+1)*DAY-KST};}
 function normalize(raw,now){const c=calendar(now);let s=raw&&typeof raw==='object'?{...raw,claimed:Array.isArray(raw.claimed)?[...raw.claimed]:[],finished:Array.isArray(raw.finished)?[...raw.finished]:[]}:{};
  if(s.season!==c.season)s={season:c.season,plays:0,claimed:[],finished:[]};
  if(s.day!==c.day){s.day=c.day;s.entries=0;}

@@ -41,18 +41,32 @@ const {chromium}=require('playwright');
  assert.ok(await page.locator('#ranking-retry').isHidden());assert.equal(await page.locator('#my-ranking-place').textContent(),'38위');
  await page.evaluate(()=>RankUI.refreshVisible());await page.waitForTimeout(120);assert.equal(await page.locator('.ranking-row').count(),1);
  const before=await page.evaluate(()=>fixtureCalls);await page.locator('#ranking-list').evaluate(el=>el.dispatchEvent(new Event('scroll')));await page.waitForTimeout(80);assert.equal(await page.evaluate(()=>fixtureCalls),before,'A short list must not refetch and append itself');
- await page.locator('#my-ranking-card').click();await page.waitForFunction(()=>document.querySelector('.ranking-row')?.dataset.uid==='isolated-own');assert.equal(await page.locator('#ranking-list .ranking-place').textContent(),'38');
- await page.evaluate(()=>{fixtureRank=40;return RankUI.refreshVisible()});await page.waitForFunction(()=>document.querySelector('#my-ranking-place').textContent==='40위');assert.equal(await page.locator('#my-ranking-change').textContent(),'▼ 2');
- await page.locator('#my-ranking-card').click();await page.waitForFunction(()=>document.querySelector('.ranking-row')?.dataset.uid==='isolated-top');
+ const pinned=await page.locator('#my-ranking-card').evaluate(el=>({tag:el.tagName,onclick:el.onclick,text:el.textContent}));assert.equal(pinned.tag,'DIV');assert.equal(pinned.onclick,null);assert.ok(!pinned.text.includes('보기'));assert.equal(await page.locator('#my-ranking-action,#my-ranking-change').count(),0);
+ await page.evaluate(()=>{fixtureRank=40;return RankUI.refreshVisible()});await page.waitForFunction(()=>document.querySelector('#my-ranking-place').textContent==='40위');
  await page.evaluate(()=>{fixtureFail=true;RankUI.open()});await page.waitForFunction(()=>!document.querySelector('#ranking-retry').hidden);
  await page.evaluate(()=>{fixtureFail=false});await page.locator('#ranking-retry').click();await page.waitForFunction(()=>document.querySelectorAll('.ranking-row').length===1&&document.querySelector('#ranking-retry').hidden);
  for(let i=0;i<3;i++){await page.evaluate(()=>RankUI.open());await page.waitForTimeout(80);assert.equal(await page.locator('.ranking-row').count(),1)}
  await page.evaluate(()=>{window.RhythmLeaderboard=savedLeaderboard;RankUI.open()});await page.waitForTimeout(180);
- assert.equal(await page.locator('#my-ranking-place').textContent(),'—');assert.ok(await page.locator('#my-ranking-card').isDisabled());
+ assert.equal(await page.locator('#my-ranking-place').textContent(),'—');assert.equal(await page.locator('#my-ranking-card').evaluate(e=>e.tagName),'DIV');
  const buttonArt=await page.evaluate(()=>[...document.querySelectorAll('.game-image-button')].map(b=>({loaded:b.querySelector('img').naturalWidth>0,padding:getComputedStyle(b).padding,ratio:b.querySelector('img').getBoundingClientRect().width/b.querySelector('img').getBoundingClientRect().height})));
  assert.ok(buttonArt.every(b=>b.loaded&&b.padding==='0px'));await page.screenshot({path:'ui-checks/ranking-applied-v61.png'});
 
  await page.locator('#ranking-back').click();assert.equal(await page.locator('#result-score').textContent(),'18,650');assert.deepEqual(errors,[]);
- fs.writeFileSync('ui-checks/report.json',JSON.stringify({passed:true,uniqueUidRows:true,shortListDoesNotReload:true,retryResetsRows:true,myRankOutsideFirstPage:true,rankMovement:true,nearbyRankingToggle:true,imageButtons:true,globalMetricOnly:true,taps,pause,home,audio,result,ranking,errors},null,2));console.log('PASS pause/resume/lobby, four empty pads, +2dB key1, result/ranking navigation, no fake leaderboard rows');
+ await page.goto('http://127.0.0.1:8766/index.html?song=random');await page.waitForFunction(()=>window.gameReady&&document.querySelector('#home-frame').contentWindow.compositionReady);
+ const songIds=[];await page.evaluate(()=>window.lobbyIdentity='same-loaded-page');
+ for(let i=0;i<9;i++){
+  const hf=page.frames().find(f=>f.url().includes('/home/index.html'));
+  const target=await hf.evaluate(()=>{const r=canvas.getBoundingClientRect();return{x:(layout.button.x+layout.button.w/2)*r.width/1080,y:(layout.button.y+layout.button.h/2)*r.height/canvas.height}});
+  await hf.locator('canvas').click({position:target});await page.waitForFunction(()=>rhythmGame.state.mode==='playing');
+  const current=await page.evaluate(()=>({id:SONG_CHART.id,beat:rhythmGame.constants.beat,duration:rhythmGame.constants.endTime,expectedBeat:SONG_CHART.beat,expectedDuration:SONG_CHART.duration,approach:GameLayout.approach,expectedApproach:SONG_CHART.approachSeconds||1}));
+  songIds.push(current.id);assert.equal(current.beat,current.expectedBeat);assert.equal(current.duration,current.expectedDuration);assert.equal(current.approach,current.expectedApproach);
+  await page.evaluate(()=>{Object.assign(rhythmGame.state,{score:100,perfect:1});rhythmGame.finish(false)});
+  await page.locator('#return').click();await page.waitForFunction(()=>GameHome.visible&&rhythmGame.state.mode==='ready');
+  assert.equal(await page.evaluate(()=>window.lobbyIdentity),'same-loaded-page','Lobby return must not reload the game');
+  assert.ok(await page.locator('#results').isHidden());const t=await hf.evaluate(()=>({n:effects.frames,time:effects.time}));await page.waitForTimeout(130);assert.ok(await hf.evaluate(n=>effects.frames>n,t.n),'Lobby animations keep advancing');
+ }
+ assert.equal(new Set(songIds).size,9,'Random rotation must not repeat within a cycle');assert.deepEqual(errors,[]);
+ await page.screenshot({path:'ui-checks/lobby-after-nine-games-v63.png'});
+ fs.writeFileSync('ui-checks/report.json',JSON.stringify({passed:true,lobbyReturnWithoutReload:true,nineRandomGamesReentered:true,noRepeatInCycle:true,songIds,uniqueUidRows:true,shortListDoesNotReload:true,retryResetsRows:true,myRankOutsideFirstPage:true,pinnedRankIsNotAButton:true,imageButtons:true,globalMetricOnly:true,taps,pause,home,audio,result,ranking,errors},null,2));console.log('PASS pause/resume/lobby, four empty pads, +2dB key1, result/ranking navigation, no fake leaderboard rows');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

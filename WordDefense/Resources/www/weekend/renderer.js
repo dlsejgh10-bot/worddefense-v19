@@ -2,9 +2,9 @@
 
 const L=window.GameLayout={W:852,H:1846,left:36,laneWidth:195,centers:[133.5,328.5,523.5,718.5],colors:['#35edec','#ff67a5','#ffd14b','#579cff'],hitY:1568,spawnY:650,laneTop:620,approach:(window.SONG_CHART.approachSeconds||1.00),touchTop:1508,touchBottom:1815,keyY:1665,keyW:176,keyH:116};
 
-const B=window.SONG_CHART.beat,clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 
-const musicalBeat=t=>(t-window.SONG_CHART.firstBeat)/B,beatPhase=t=>((musicalBeat(t)%1)+1)%1;
+const musicalBeat=t=>(t-window.SONG_CHART.firstBeat)/window.SONG_CHART.beat,beatPhase=t=>((musicalBeat(t)%1)+1)%1;
 
 const moves=[{name:'엉덩이춤',frames:[1,2,3,4,5,4,3,2,1],beats:4},{name:'디스코 포인트',frames:[1,0,7,0,1],beats:2},{name:'발차기',frames:[1,6,7,6,1],beats:2},{name:'비보잉',frames:[8,9,10,11,11,12,13,14,15,1],beats:4}];
 
@@ -234,7 +234,7 @@ function draw(g,im,poses,s,pads,clock){const t=s.mode==='ready'?clock*.7:s.time,
 
   box(g,x-91,L.keyY-44,182,112,22,'#050b12','#243b54',3);
 
-  if(active){g.save();g.globalAlpha=.22+.12*Math.sin(t*Math.PI*2/B);g.shadowColor='#ffc94d';g.shadowBlur=23;box(g,x-87,L.keyY-37,174,100,18,'#ffc335');g.restore()}
+  if(active){g.save();g.globalAlpha=.22+.12*Math.sin(t*Math.PI*2/window.SONG_CHART.beat);g.shadowColor='#ffc94d';g.shadowBlur=23;box(g,x-87,L.keyY-37,174,100,18,'#ffc335');g.restore()}
 
   const press=clamp(p.y/11),dy=press*13,capH=L.keyH*(1-press*.13);
 
