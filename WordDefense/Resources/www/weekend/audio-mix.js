@@ -1,7 +1,7 @@
 (()=>{'use strict';
-// Both sources measured before the shared settings bus, using BS.1770 gating.
-const musicTrim=10**((-35.24+18)/20);
-const sfxTrim=10**(-2/20);
+// Preserve track normalization. Keep a moderate trim for event music.
+const musicTrim=10**(-9/20);
+const sfxTrim=10**(-6/20);
 function musicLevel(settings,src,kind,levels){
  const entry=Object.entries(levels||{}).find(([path])=>src.endsWith(path));
  const normalized=entry?.[1].gain??(kind==='home'?.508405:1);

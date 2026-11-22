@@ -110,7 +110,7 @@ function litPad(g,img,meta,press){
   const tile=document.createElement('canvas');tile.width=236;tile.height=180;
   const ctx=tile.getContext('2d');ctx.shadowColor=g.shadowColor;
   ctx.shadowBlur=press?10:12;ctx.shadowOffsetY=press?2:7;
-  cap(ctx,img,meta,30,30,L.keyW,L.keyH);frames[key]=tile;
+  cap(ctx,img,meta,30+L.keyW/2,30+L.keyH/2,L.keyW,L.keyH);frames[key]=tile;
  }
  return frames[key];
 }

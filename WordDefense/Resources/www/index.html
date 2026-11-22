@@ -8678,7 +8678,7 @@ window.addEventListener('contextmenu', e => e.preventDefault());
 /* ---------- loop ---------- */
 let last = 0, fpsAcc = 0, fpsN = 0;
 let LOBBY_EL = null;
-function gameFrozen() { return !!(window.__wdIntro || window.__wdOMPause || (G && G.wbPause && !G.wb)); }   /* 명시 일시정지·인트로만 멈춤. 탭 숨김은 안 멈춤 */
+function gameFrozen() { return !!(window.__wdWeekendAudioActive || window.__wdIntro || window.__wdOMPause || (G && G.wbPause && !G.wb)); }   /* 명시 일시정지·인트로만 멈춤. 탭 숨김은 안 멈춤 */
 let timeOwe = 0;
 function catchUp(ts) {   /* b154: 숨김·백그라운드에서도 실제 시계로 진행. 한 번에 크게 점프하지 않고 0.05초씩 따라잡음. 월보는 기존 실시계 따라잡기 유지 */
   if (!last) last = ts;
