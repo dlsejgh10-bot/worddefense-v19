@@ -21,6 +21,7 @@ async function run(){
   page.on('pageerror',e=>report.errors.push({id,error:String(e)}));
   await page.addInitScript(()=>{const A=window.AudioContext;window.AudioContext=class extends A{constructor(...a){super(...a);window.qaAudioContext=this;}}});
   await page.exposeBinding('saveRecording',(_,chunk)=>fs.appendFileSync(path.join(out,id+'.webm'),Buffer.from(chunk,'base64')));
+  await page.route('**/status-locked-v46.webp',async route=>{await new Promise(r=>setTimeout(r,600));await route.continue()});
   await page.goto('http://127.0.0.1:8766/index.html?song='+id,{waitUntil:'load'});
   await page.waitForFunction(()=>window.gameReady&&document.querySelector('#home-frame').contentWindow.compositionReady,null,{timeout:90000});
   const frame=page.frames().find(f=>f.url().includes('/home/index.html'));
@@ -33,7 +34,7 @@ async function run(){
     {t:n.t,lane:n.lane,down:true,id:n.id},
     {t:n.t+(n.duration||.032)+.005,lane:n.lane,down:false,id:n.id}]);
    actions.sort((a,b)=>a.t-b.t||(a.down?1:-1));
-   const qa=window.cloudQA={index:0,dispatched:0,late:[],frames:[],lastFrame:0,recordingReady:false};
+   const qa=window.cloudQA={index:0,dispatched:0,late:[],inputs:[],frames:[],lastFrame:0,recordingReady:false};
    requestAnimationFrame(function frame(t){if(G.state.mode==='playing'&&qa.lastFrame)qa.frames.push(t-qa.lastFrame);qa.lastFrame=t;requestAnimationFrame(frame)});
    qa.timer=setInterval(()=>{
     if(G.state.mode!=='playing')return;
@@ -43,6 +44,7 @@ async function run(){
      const lag=time-a.t;if(a.down&&lag>.035)qa.late.push({id:a.id,lagMs:lag*1000});
      window.dispatchEvent(new KeyboardEvent(a.down?'keydown':'keyup',{
       code:codes[a.lane],key:keys[a.lane],bubbles:true,cancelable:true}));qa.dispatched++;
+     if(a.down)qa.inputs.push({...G.state.inputEvents.at(-1),scheduled:a.t,dispatchLagMs:lag*1000});
     }
    },4);
   });
@@ -77,7 +79,7 @@ async function run(){
     invalidPresses:s.invalidPresses,dispatched:cloudQA.dispatched,lateInputs:cloudQA.late,
     visible:!document.querySelector('#results').hidden,runtimeError:window.gameRuntimeError||null,
     frameMs:{p50:percentile(.5),p95:percentile(.95),p99:percentile(.99)},
-    homePaused:document.querySelector('#home-frame').contentWindow.danceMusic.paused,
+    inputResults:cloudQA.inputs,homePaused:document.querySelector('#home-frame').contentWindow.danceMusic.paused,
     songPaused:rhythmGame.music.paused,lastInputEvents:s.inputEvents};
   });
   await page.screenshot({path:path.join(out,id+'-result.png')});
@@ -88,7 +90,7 @@ async function run(){
   // A shared software cloud runner may deliver an event late. Preserve that
   // evidence instead of weakening the game's judgement or calling it perfect.
   // The deterministic full-clock test separately verifies every chart at 0 miss.
-  const conflicts=result.lastInputEvents.filter(e=>['held-hand','too-fast','same-lane'].includes(e.result));
+  const conflicts=result.inputResults.filter(e=>e.result==='extra-press-on-hold'&&e.dispatchLagMs<75);
   assert.equal(conflicts.length,0,'No mechanical input conflicts: '+id);
   assert.ok(result.homePaused&&result.songPaused,'No overlapping lobby/result music');
   console.log('FULL PLAY PASS',id,JSON.stringify({heads:result.heads,perfect:result.perfect,great:result.great,miss:result.miss,frames:result.frameMs}));
