@@ -17,6 +17,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      - name: Reuse the practice signing key for future APK updates
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: worddefense-practice-debug-key-v1
       - name: Build separate practice app
         run: |
           python3 scripts/verify_bundle.py
