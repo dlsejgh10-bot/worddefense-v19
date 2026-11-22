@@ -76,6 +76,21 @@ function stageLight(g,t,fever){const beatPulse=Math.exp(-beatPhase(t)*6),rotatio
 
  const glow=g.createRadialGradient(426,437,1,426,437,110+20*beatPulse);glow.addColorStop(0,'#ffe5a36b');glow.addColorStop(1,'#ffd06c00');g.globalAlpha=.7;g.fillStyle=glow;g.fillRect(280,310,292,145);g.restore();window.stageLightInfo={coded:true,rotation,intensity:beatPulse,time:t};}
 
+function drawMissFragments(g,images,state){
+ for(const burst of state.noteMissBursts||[]){
+  const progress=clamp(burst.age/.26),img=images['note-'+(burst.gold?2:burst.lane)];
+  if(!img)continue;
+  const scale=Math.min(154/img.width,72/img.height),width=img.width*scale,height=img.height*scale;
+  g.save();g.translate(L.centers[burst.lane],burst.y);g.globalAlpha=.72*(1-progress)**1.4;
+  for(let row=0;row<2;row++)for(let col=0;col<3;col++){
+   const dx=(col-1)*progress*12,dy=(row-.5)*progress*10+progress*progress*5;
+   g.drawImage(img,col*img.width/3,row*img.height/2,img.width/3,img.height/2,
+    -width/2+col*width/3+dx,-height/2+row*height/2+dy,width/3,height/2);
+  }
+  g.restore();
+ }
+}
+
 function drawBoard(g,img){const sy=img.height/1846,bottom=271,middle=L.H-bottom-600;g.drawImage(img,0,0,img.width,600*sy,0,0,L.W,600);g.drawImage(img,0,600*sy,img.width,975*sy,0,600,L.W,middle);g.drawImage(img,0,1575*sy,img.width,bottom*sy,0,L.H-bottom,L.W,bottom);}
 
 // Rasterize the cabinet at its display resolution once per viewport.
@@ -190,7 +205,7 @@ function draw(g,im,poses,s,pads,clock){const t=s.mode==='ready'?clock*.7:s.time,
 
  }
 
- ng.restore();ng.save();ng.globalCompositeOperation='destination-in';const spawnMask=ng.createLinearGradient(0,L.spawnY-50,0,L.spawnY+90);spawnMask.addColorStop(0,'#ffffff00');spawnMask.addColorStop(.2,'#ffffff00');spawnMask.addColorStop(1,'#ffffffff');ng.fillStyle=spawnMask;ng.fillRect(0,0,L.W,L.H);ng.restore();g.drawImage(noteLayer,0,0,L.W,L.H);combo(g,s,t);
+ ng.restore();ng.save();ng.globalCompositeOperation='destination-in';const spawnMask=ng.createLinearGradient(0,L.spawnY-50,0,L.spawnY+90);spawnMask.addColorStop(0,'#ffffff00');spawnMask.addColorStop(.2,'#ffffff00');spawnMask.addColorStop(1,'#ffffffff');ng.fillStyle=spawnMask;ng.fillRect(0,0,L.W,L.H);ng.restore();g.drawImage(noteLayer,0,0,L.W,L.H);drawMissFragments(g,im,s);combo(g,s,t);
 
  g.restore();
 

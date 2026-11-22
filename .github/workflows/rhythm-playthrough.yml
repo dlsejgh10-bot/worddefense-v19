@@ -1,0 +1,38 @@
+name: Rhythm full playthrough
+on:
+  push:
+    branches: [ios]
+    paths: ['scripts/cloud-playthrough-v58.cjs', '.github/workflows/rhythm-playthrough.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        songs: ['beside,flex,seventy', 'rain,grandpa,friday', 'emotional,duet,youth']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Play every song in real time with normal inputs and record audio/video
+        env:
+          WD_SONGS: ${{ matrix.songs }}
+        run: |
+          python3 -m http.server 8766 --directory WordDefense/Resources/www/weekend > /tmp/rhythm-http.log 2>&1 &
+          node scripts/cloud-playthrough-v58.cjs
+      - name: Save playback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playthrough-${{ matrix.songs }}
+          path: cloud-playthrough/
+          retention-days: 7

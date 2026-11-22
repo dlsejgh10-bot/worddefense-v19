@@ -24,7 +24,11 @@ function burst(lane,power=1){state.pulses[lane]=1;pads[lane].flash=1;const color
  for(let i=0;i<(state.feverActive?26:12)*power;i++)state.particles.push({x:L.centers[lane],y:L.hitY,vx:(Math.random()-.5)*(state.feverActive?650:420),vy:-100-Math.random()*(state.feverActive?600:370),life:.3+Math.random()*.2,max:.5,color,r:1.5+Math.random()*3});
 }
 function award(n,grade,inputTime){const feverWas=state.feverActive;grade=R.award(state,grade);n.status=n.duration?'holding':'hit';n.grade=grade;n.tickIndex=0;if(!feverWas&&state.feverActive)feverSound();window.CabinetRenderer.onHit(state);state.judge=grade;state.judgeTime=state.time;burst(n.lane,grade==='PERFECT'?1.3:1);headSound(n,inputTime);if(n.duration){n.holdStart=music.currentTime-state.offset;n.startTick=true;holdFeedback(n,grade);state.holdStarts=(state.holdStarts||0)+1;}}
-function miss(n){if(n.status==='miss'||n.status==='hit')return;if(n.status==='holding'&&n.grade)state[n.grade.toLowerCase()]--;n.status='miss';R.miss(state);window.CabinetRenderer.onMiss(state);state.judge='MISS';state.judgeTime=state.time;tone(n.lane,false)}
+function miss(n){if(n.status==='miss'||n.status==='hit')return;
+ const speed=(L.hitY-(L.spawnY||650))/L.approach;
+ const y=n.status==='holding'?L.hitY:Math.max(L.spawnY||650,Math.min(L.hitY,L.hitY+(state.time-n.t)*speed));
+ (state.noteMissBursts??=[]).push({lane:n.lane,y,age:0,gold:state.feverActive});
+if(n.status==='holding'&&n.grade)state[n.grade.toLowerCase()]--;n.status='miss';R.miss(state);window.CabinetRenderer.onMiss(state);state.judge='MISS';state.judgeTime=state.time;tone(n.lane,false)}
 function eventTime(e){let stamp=Number(e.timeStamp);if(stamp>1e12)stamp-=performance.timeOrigin;const lag=Number.isFinite(stamp)?Math.max(0,Math.min(.1,(performance.now()-stamp)/1000)):0;return music.currentTime-lag*music.playbackRate-state.offset;}
 function traceInput(lane,token,result,t,n){const log=state.inputEvents??=[];log.push({lane,token,result,time:t,note:n?.id,errorMs:n?(t-n.t)*1000:null});if(log.length>160)log.shift();}
 function rejectPress(lane,token,reason,t,n){state.invalidPresses=(state.invalidPresses||0)+1;traceInput(lane,token,reason,t,n);}
@@ -48,7 +52,7 @@ function up(lane,token='keyboard',inputTime){const p=pads[lane];if(!p.pointers.h
  for(const n of state.notes)if(n.lane===lane&&n.status==='holding'&&state.mode==='playing'){tickHold(n,inputTime??music.currentTime-state.offset);if((inputTime??music.currentTime-state.offset)<n.t+n.duration-.08)miss(n);else completeHold(n)}
 }
 function clearPads(preserveMiss=false){window.NoteAudio?.stopAll?.(preserveMiss);pads.forEach(p=>{p.down=false;p.pointers.clear()});state.lastPressByLane=[-Infinity,-Infinity,-Infinity,-Infinity];state.lastPressByHand=[-Infinity,-Infinity];}
-async function start(){if(!state.ready||state.mode==='starting')return;const practice=$('#auto').checked;if(window.WeekendClient&&!practice){const token=window.WeekendClient.begin();if(!token)return;state.weekendRunId=token;}else state.weekendRunId=null;window.GameHome?.hide();window.ResultPresentation.stop();clearPads();R.reset(state);state.notes=chart();Object.assign(state,{displayScore:0,time:0,particles:[],rings:[],pulses:[0,0,0,0],judge:'',judgeTime:-10,dance:null,danceHistory:[],pose:1,mirrored:false,poseTime:-10,feverAudioEntries:0,judgeSerial:0,holdCompletions:0,holdStarts:0,chordCount:0,chordTime:-10,lastHeadSound:null,inputEvents:[],hitSoundCount:0,missSoundCount:0,holdBursts:[],holdCompleteTime:-10,failStart:0,seekPractice:false,holdGraceUntil:0});state.auto=$('#auto').checked;state.mode='starting';$('#overlay').classList.add('hidden');$('#results').hidden=true;
+async function start(){if(!state.ready||state.mode==='starting')return;const practice=$('#auto').checked;if(window.WeekendClient&&!practice){const token=window.WeekendClient.begin();if(!token)return;state.weekendRunId=token;}else state.weekendRunId=null;window.GameHome?.hide();window.ResultPresentation.stop();clearPads();R.reset(state);state.notes=chart();Object.assign(state,{displayScore:0,time:0,particles:[],rings:[],pulses:[0,0,0,0],judge:'',judgeTime:-10,dance:null,danceHistory:[],pose:1,mirrored:false,poseTime:-10,feverAudioEntries:0,judgeSerial:0,holdCompletions:0,holdStarts:0,chordCount:0,chordTime:-10,lastHeadSound:null,inputEvents:[],hitSoundCount:0,missSoundCount:0,holdBursts:[],noteMissBursts:[],holdCompleteTime:-10,failStart:0,seekPractice:false,holdGraceUntil:0});state.auto=$('#auto').checked;state.mode='starting';$('#overlay').classList.add('hidden');$('#results').hidden=true;
  try{audio??=new(window.AudioContext||window.webkitAudioContext)();await audio.resume();await loadHitSound();window.AudioReactive.connect(audio,music);window.AudioReactive.reset();music.currentTime=0;await music.play();state.mode='playing';$('#overlay').classList.add('hidden');$('#results').hidden=true;$('#pause-control').hidden=false}
  catch(e){state.mode='ready';if(state.weekendRunId){window.WeekendClient?.refund(state.weekendRunId);state.weekendRunId=null;}$('#description').textContent='음악을 재생하지 못했어요. 다시 눌러 주세요.';console.error(e)}
 }
@@ -57,7 +61,7 @@ async function seekTo(seconds,play=true){if(!state.ready)return;window.GameHome?
  audio??=new(window.AudioContext||window.webkitAudioContext)();await audio.resume();await loadHitSound();window.AudioReactive.connect(audio,music);window.AudioReactive.reset();
  if(!Number.isFinite(music.duration))await new Promise((resolve,reject)=>{music.addEventListener('loadedmetadata',resolve,{once:true});music.addEventListener('error',reject,{once:true});music.load()});
  music.currentTime=target;if(music.seeking)await new Promise(resolve=>music.addEventListener('seeked',resolve,{once:true}));if(generation!==seekGeneration)return;
- R.reset(state);const t=music.currentTime-state.offset;Object.assign(state,{time:t,displayScore:0,notes:chart().map(n=>({...n,status:n.t<t?'skipped':'pending'})),particles:[],rings:[],pulses:[0,0,0,0],judge:'',judgeTime:-10,danceHistory:[],pose:1,mirrored:false,poseTime:-10,chordCount:0,chordTime:-10,lastHeadSound:null,holdStarts:0,holdCompletions:0,holdBursts:[],holdCompleteTime:-10,hitSoundCount:0,inputEvents:[],seekPractice:true,holdGraceUntil:t+.2});
+ R.reset(state);const t=music.currentTime-state.offset;Object.assign(state,{time:t,displayScore:0,notes:chart().map(n=>({...n,status:n.t<t?'skipped':'pending'})),particles:[],rings:[],pulses:[0,0,0,0],judge:'',judgeTime:-10,danceHistory:[],pose:1,mirrored:false,poseTime:-10,chordCount:0,chordTime:-10,lastHeadSound:null,holdStarts:0,holdCompletions:0,holdBursts:[],noteMissBursts:[],holdCompleteTime:-10,hitSoundCount:0,inputEvents:[],seekPractice:true,holdGraceUntil:t+.2});
  $('#results').hidden=true;$('#pause-control').hidden=false;
  if(play){await music.play();state.mode='playing';$('#overlay').classList.add('hidden')}else{state.mode='paused';show('구간 연습', '이 위치부터 다시 박자를 타세요.','계속하기',true)}
 }
@@ -100,6 +104,7 @@ function update(dt){state.audioReaction=window.AudioReactive.sample(dt,state.mod
  state.displayScore+=(state.score-state.displayScore)*Math.min(1,dt*17);
  pads.forEach((p,i)=>{const target=p.down?11:0;p.v+=((target-p.y)*560-p.v*25)*dt;p.y+=p.v*dt;p.flash*=Math.exp(-dt*8);state.pulses[i]*=Math.exp(-dt*7)});
  for(const p of state.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=750*dt}state.particles=state.particles.filter(p=>p.life>0);
+ for(const fragment of state.noteMissBursts??[])fragment.age+=dt;state.noteMissBursts=(state.noteMissBursts??[]).filter(fragment=>fragment.age<.26);
  for(const h of state.holdBursts??[])h.age+=dt;state.holdBursts=(state.holdBursts??[]).filter(h=>h.age<.6);
  for(const ring of state.rings)ring.age+=dt;state.rings=state.rings.filter(r=>r.age<.38);
 }
