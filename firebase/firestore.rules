@@ -1,0 +1,347 @@
+rules_version = '2';
+// 단어 디펜스 v19 — word-defense-adbf8
+// 게임 코드가 실제로 쓰는 경로:
+//   saves/{uid}            구글/Apple 계정 세이브 (본인만, google.com·apple.com 로그인만 쓰기, delAt/delReq = 삭제 7일 유예)
+//   bug_reports/{rid}      버그 제보 생성 (게스트 익명 포함)
+//   report_limits/{uid}    제보 일일 횟수
+//   error_logs/{lid}       자동 에러 로그
+//   log_limits/{uid}       에러 로그 분당 횟수
+//   mail_grants/{gid}      관리자 보상 우편 (본인은 읽기 + claimed 표시만)
+//   wb_scores/{season}/entries/{uid}  월드 보스 기수별 누적 피해 순위 (로그인한 누구나 읽기, 본인만 쓰기)
+//   wb_claims/{uid}_s{season}         월드 보스 시즌 보상 수령 표시 (본인만, 1번만)
+//   vip_binds/{key}        유료 VIP 구독 → 처음 받은 uid (b146)
+//   trial_grants/{uid}     첫 가입 기념 VIP 3일 받음 기록 (b146)
+//   stats/{uid}            11/21 b157 접속 통계 (플랫폼·빌드·처음/마지막 접속, 하루 1번, 본인만 쓰기, 관리자만 읽기)
+//   nicknames/{n_닉네임}    11/22 b158 닉네임 중복 막기 (없을 때만 본인 uid 로 만들기, 본인 것만 지우기, 로그인하면 1개씩 확인 가능)
+//   nick_owner/{uid}       11/22 b158 내가 가진 닉네임 키 1개 (바꿀 때 옛 닉네임을 같은 요청에서 놓아야 함)
+// 관리자(isAdmin)는 관리 페이지 숫자 세기용으로 users·saves·trial_grants·stats 읽기 가능 (11/21 추가).
+// users/{uid} 는 요청된 본인 전용 문서(게임 코드는 아직 사용하지 않음).
+// 그 밖의 경로는 전부 거부.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['dlsejgh10@gmail.com', 'kkb5768@gmail.com'];
+    }
+    function kstDay() { return int((request.time.toMillis() + 32400000) / 86400000); }
+    function utcMin() { return int(request.time.toMillis() / 60000); }
+    function str(v, lo, hi) { return v is string && v.size() >= lo && v.size() <= hi; }
+    function optStr(d, k, hi) { return !(k in d) || str(d[k], 0, hi); }
+
+    match /users/{uid} {
+      allow read, create, update, delete: if signedIn() && uid == request.auth.uid;
+      allow read: if isAdmin();   // 11/21 관리 페이지 (숫자 세기)
+    }
+
+    match /bug_reports/{rid} {
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin()
+        && resource.data.status == 'new'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'adoptedAt', 'reward'])
+        && request.resource.data.status == 'adopted'
+        && request.resource.data.adoptedAt == request.time;
+      allow create: if signedIn() && validReport(request.resource.data)
+        && getAfter(/databases/$(database)/documents/report_limits/$(request.auth.uid)).data.last == rid
+        && getAfter(/databases/$(database)/documents/report_limits/$(request.auth.uid)).data.day == kstDay();
+    }
+    function validReport(d) {
+      return d.keys().hasAll(['uid', 'pid', 'text', 'ts', 'status'])
+        && d.keys().hasOnly(['uid', 'pid', 'nick', 'text', 'ver', 'build', 'ua', 'scr', 'ts', 'errs', 'status'])
+        && d.uid == request.auth.uid
+        && d.status == 'new'
+        && d.ts == request.time
+        && str(d.text, 10, 1000)
+        && str(d.pid, 1, 64)
+        && optStr(d, 'nick', 40) && optStr(d, 'ver', 40) && optStr(d, 'build', 60)
+        && optStr(d, 'ua', 400) && optStr(d, 'scr', 40)
+        && (!('errs' in d) || (d.errs is list && d.errs.size() <= 10));
+    }
+
+    match /saves/{uid} {
+      allow read, delete: if signedIn() && uid == request.auth.uid;
+      allow read: if isAdmin();   // 11/21 관리 페이지 (숫자 세기)
+      // 11/17 계정 삭제 7일 유예: 본인이 delAt/delReq 만 바꾸기(삭제 예정 표시·복구)
+      allow update: if signedIn() && uid == request.auth.uid
+        && request.auth.token.firebase.sign_in_provider in ['google.com', 'apple.com']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['delAt', 'delReq'])
+        && (!('delAt' in request.resource.data) || request.resource.data.delAt is int)
+        && (!('delReq' in request.resource.data) || request.resource.data.delReq is int);
+      allow create, update: if signedIn() && uid == request.auth.uid
+        && request.auth.token.firebase.sign_in_provider in ['google.com', 'apple.com']
+        && request.resource.data.keys().hasOnly(['d', 'h', 't', 'nick', 'v', 'at'])
+        && request.resource.data.d is string && request.resource.data.d.size() <= 900000
+        && str(request.resource.data.h, 1, 40) && request.resource.data.t is int
+        && optStr(request.resource.data, 'nick', 40)
+        && request.resource.data.at == request.time;
+    }
+
+    match /report_limits/{uid} {
+      allow read: if isAdmin() || (signedIn() && uid == request.auth.uid);
+      allow delete: if signedIn() && uid == request.auth.uid;
+      allow create, update: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['day', 'n', 'last'])
+        && request.resource.data.day == kstDay()
+        && request.resource.data.n is int
+        && request.resource.data.n == ((resource != null && resource.data.day == kstDay()) ? resource.data.n + 1 : 1)
+        && request.resource.data.n <= 3
+        && str(request.resource.data.last, 1, 128)
+        && getAfter(/databases/$(database)/documents/bug_reports/$(request.resource.data.last)).data.ts == request.time
+        && getAfter(/databases/$(database)/documents/bug_reports/$(request.resource.data.last)).data.uid == request.auth.uid;
+    }
+
+    match /error_logs/{lid} {
+      allow read, delete: if isAdmin();
+      allow create: if signedIn()
+        && lid == request.auth.uid + '_' + request.resource.data.h
+        && request.resource.data.keys().hasAll(['uid', 'h', 'kind', 'msg', 'count', 'first', 'last'])
+        && request.resource.data.keys().hasOnly(['uid', 'pid', 'h', 'kind', 'msg', 'stack', 'ver', 'build', 'ua', 'count', 'first', 'last'])
+        && request.resource.data.uid == request.auth.uid
+        && str(request.resource.data.h, 1, 40) && str(request.resource.data.kind, 1, 40)
+        && str(request.resource.data.msg, 1, 500)
+        && optStr(request.resource.data, 'stack', 2000) && optStr(request.resource.data, 'pid', 64)
+        && optStr(request.resource.data, 'ver', 40) && optStr(request.resource.data, 'build', 60) && optStr(request.resource.data, 'ua', 400)
+        && request.resource.data.count is int && request.resource.data.count >= 1 && request.resource.data.count <= 1000
+        && request.resource.data.first == request.time && request.resource.data.last == request.time
+        && logLimited(lid);
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count', 'last'])
+        && request.resource.data.count is int
+        && request.resource.data.count > resource.data.count
+        && request.resource.data.count <= resource.data.count + 1000
+        && request.resource.data.last == request.time
+        && logLimited(lid);
+    }
+    function logLimited(lid) {
+      return getAfter(/databases/$(database)/documents/log_limits/$(request.auth.uid)).data.last == lid
+        && getAfter(/databases/$(database)/documents/log_limits/$(request.auth.uid)).data.at == request.time;
+    }
+    match /log_limits/{uid} {
+      allow delete: if signedIn() && uid == request.auth.uid;
+      allow read: if isAdmin() || (signedIn() && uid == request.auth.uid);
+      allow create, update: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['min', 'n', 'last', 'at'])
+        && request.resource.data.min == utcMin()
+        && request.resource.data.at == request.time
+        && request.resource.data.n is int
+        && request.resource.data.n == ((resource != null && resource.data.min == utcMin()) ? resource.data.n + 1 : 1)
+        && request.resource.data.n <= 10
+        && str(request.resource.data.last, 1, 200)
+        && getAfter(/databases/$(database)/documents/error_logs/$(request.resource.data.last)).data.last == request.time
+        && getAfter(/databases/$(database)/documents/error_logs/$(request.resource.data.last)).data.uid == request.auth.uid;
+    }
+
+    // ---------- 11/18 b146 VIP ----------
+    // vip_binds/{key}: 유료 VIP 구독 1건(ios_<originalTransactionId> / play_<purchaseToken 해시>) = 처음 받은 게임 계정 uid 에 묶음.
+    //   본인 것만 읽기 (없는 문서 = 404 → 새로 묶을 수 있음, 남의 것 = 거부). 만들기만 (바꾸기·지우기 없음).
+    match /vip_binds/{key} {
+      allow get: if signedIn() && (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && key.matches('(ios|play)_[A-Za-z0-9_-]{4,80}')
+        && request.resource.data.keys().hasOnly(['uid', 'plat', 'at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.plat in ['ios', 'play']
+        && request.resource.data.at == request.time;
+    }
+    // trial_grants/{uid}: 첫 가입 기념 VIP 3일은 게임 계정(uid)당 1번. 데이터 초기화해도 다시 안 옴. 만들기만.
+    match /trial_grants/{uid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow read: if isAdmin();   // 11/21 관리 페이지 (숫자 세기)
+      allow create: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['k', 'at'])
+        && request.resource.data.k == 'vip3'
+        && request.resource.data.at == request.time;
+    }
+
+    match /mail_grants/{gid} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['uid', 'pid', 'rw', 'title', 'claimed', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'pid', 'rw', 'title', 'body', 'reportId', 'claimed', 'createdAt', 'by'])
+        && str(request.resource.data.uid, 1, 128) && str(request.resource.data.pid, 1, 64)
+        && str(request.resource.data.title, 1, 40) && optStr(request.resource.data, 'body', 200)
+        && request.resource.data.claimed == false
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.rw is map
+        && request.resource.data.rw.keys().hasOnly(['gem', 'gold', 'key', 'stone'])
+        && request.resource.data.rw.size() >= 1
+        && (!('gem' in request.resource.data.rw) || (request.resource.data.rw.gem is int && request.resource.data.rw.gem > 0 && request.resource.data.rw.gem <= 100000))
+        && (!('gold' in request.resource.data.rw) || (request.resource.data.rw.gold is int && request.resource.data.rw.gold > 0 && request.resource.data.rw.gold <= 10000000))
+        && (!('key' in request.resource.data.rw) || (request.resource.data.rw.key is int && request.resource.data.rw.key > 0 && request.resource.data.rw.key <= 1000))
+        && (!('stone' in request.resource.data.rw) || (request.resource.data.rw.stone is int && request.resource.data.rw.stone > 0 && request.resource.data.rw.stone <= 1000));
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && resource.data.claimed == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimed', 'claimedAt'])
+        && request.resource.data.claimed == true
+        && request.resource.data.claimedAt == request.time;
+    }
+
+    // ---------- 11/18 월드 보스 순위: wb_scores/s{기수}/entries/{uid} (본인 문서만, 피해량은 정수·올라가기만·1번에 1억 이하 (= 월보 1판 최대 1억)) ----------
+    match /wb_scores/{season}/entries/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && uid == request.auth.uid
+        && season.matches('s[0-9]{1,5}')
+        && validWb(request.resource.data)
+        && request.resource.data.dmg <= 100000000;
+      allow update: if signedIn() && uid == request.auth.uid
+        && validWb(request.resource.data)
+        && request.resource.data.dmg >= resource.data.dmg
+        && request.resource.data.dmg <= resource.data.dmg + 100000000;
+      allow delete: if isAdmin() || (signedIn() && uid == request.auth.uid);
+    }
+    function validWb(d) {
+      return d.keys().hasAll(['uid', 'nick', 'av', 'fr', 'dmg', 'updatedAt'])
+        && d.keys().hasOnly(['uid', 'nick', 'av', 'fr', 'dmg', 'best', 'updatedAt'])
+        && d.uid == request.auth.uid
+        && str(d.nick, 1, 20)
+        && d.av is int && d.av >= 0 && d.av < 1000
+        && d.fr is int && d.fr >= 0 && d.fr < 1000
+        && d.dmg is int && d.dmg > 0 && d.dmg <= 2000000000
+        && (!('best' in d) || (d.best is int && d.best >= 0 && d.best <= d.dmg && d.best <= 100000000))
+        && d.updatedAt == request.time;
+    }
+
+    // ---------- 11/18 월드 보스 시즌 보상 1번만: wb_claims/{uid}_s{기수} (본인만 만들기, 바꾸기 불가) ----------
+    match /wb_claims/{cid} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'k', 'at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.k is string && request.resource.data.k.matches('s[0-9]{1,5}')
+        && cid == request.auth.uid + '_' + request.resource.data.k
+        && request.resource.data.at == request.time;
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // ---------- 11/21 b157 접속 통계: stats/{uid} (본인 문서만 쓰기, 한국 날짜 하루 1번만 갱신, 읽기는 관리자만) ----------
+    match /stats/{uid} {
+      allow read: if isAdmin();
+      allow get: if signedIn() && uid == request.auth.uid;   // 본인 것만 (오늘 기록했는지 확인)
+      allow delete: if isAdmin() || (signedIn() && uid == request.auth.uid);
+      allow create: if signedIn() && uid == request.auth.uid
+        && validStat(request.resource.data)
+        && request.resource.data.first == request.time
+        && request.resource.data.firstDay == kstDay();
+      allow update: if signedIn() && uid == request.auth.uid
+        && validStat(request.resource.data)
+        && resource.data.day < kstDay()
+        && request.resource.data.first == resource.data.first
+        && request.resource.data.firstDay == resource.data.firstDay;
+    }
+    function validStat(d) {
+      return d.keys().hasAll(['plat', 'build', 'day', 'firstDay', 'first', 'last'])
+        && d.keys().hasOnly(['plat', 'build', 'day', 'firstDay', 'first', 'last'])
+        && d.plat in ['ios', 'android', 'web']
+        && str(d.build, 0, 60)
+        && d.day == kstDay()
+        && d.firstDay is int
+        && d.last == request.time;
+    }
+
+    // ---------- 11/22 b158 닉네임 중복 막기 ----------
+    // nicknames/n_{닉네임(앞뒤 공백 제거·연속 공백 1개·영문 소문자)} = { uid, at }. saves 쓰기와는 무관 (옛 앱 저장은 그대로 됨)
+    match /nicknames/{key} {
+      allow get: if signedIn();
+      allow read: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn()
+        && key.matches('n_[가-힣ㄱ-ㅎㅏ-ㅣa-z0-9_ ]{2,10}')
+        && request.resource.data.keys().hasOnly(['uid', 'at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && getAfter(/databases/$(database)/documents/nick_owner/$(request.auth.uid)).data.k == key;
+    }
+    // nick_owner/{uid} = { k, at }: 1명 = 닉네임 1개. 다른 닉으로 바꾸려면 옛 닉 문서를 같은 요청에서 지워야 함
+    match /nick_owner/{uid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow read: if isAdmin();
+      allow create, update: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['k', 'at'])
+        && request.resource.data.k is string && request.resource.data.k.matches('n_[가-힣ㄱ-ㅎㅏ-ㅣa-z0-9_ ]{2,10}')
+        && request.resource.data.at == request.time
+        && getAfter(/databases/$(database)/documents/nicknames/$(request.resource.data.k)).data.uid == request.auth.uid
+        && (resource == null || resource.data.k == request.resource.data.k || nickFreed(resource.data.k));
+      allow delete: if isAdmin() || (signedIn() && uid == request.auth.uid && nickFreed(resource.data.k));
+    }
+    function nickFreed(k) {
+      return !existsAfter(/databases/$(database)/documents/nicknames/$(k))
+        || getAfter(/databases/$(database)/documents/nicknames/$(k)).data.uid != request.auth.uid;
+    }
+
+    // Rhythm leaderboard: public game identities, immutable completed attempts,
+    // and one monotonically improving best score per song/account.
+    function rhythmSong(song) {
+      return song in ['beside','flex','seventy','rain','grandpa','friday','emotional','duet','youth'];
+    }
+    match /rhythm_profiles/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['uid','nick','avatar','frame','updatedAt'])
+        && request.resource.data.keys().hasOnly(['uid','nick','avatar','frame','updatedAt'])
+        && request.resource.data.uid == uid
+        && str(request.resource.data.nick, 2, 10)
+        && get(/databases/$(database)/documents/nick_owner/$(uid)).data.k == 'n_' + request.resource.data.nick.lower()
+        && request.resource.data.avatar is int && request.resource.data.avatar >= 0 && request.resource.data.avatar <= 1000
+        && request.resource.data.frame is int && request.resource.data.frame >= 0 && request.resource.data.frame <= 1000
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+    function rhythmRun(d, song) {
+      return rhythmSong(song)
+        && d.keys().hasAll(['uid','song','token','version','startedAt','ended','clearedCount','score','accuracy','maxCombo'])
+        && d.keys().hasOnly(['uid','song','token','version','startedAt','ended','clearedCount','score','accuracy','maxCombo','finishedAt'])
+        && d.uid == request.auth.uid && d.song == song
+        && d.token is string && d.token.matches('[0-9a-f]{32}')
+        && d.version is int && d.version >= 1 && d.version < 1000000
+        && d.ended is bool && d.clearedCount is int && d.clearedCount in [0,1]
+        && d.score is int && d.score >= 0 && d.score <= 2500000
+        && (d.accuracy is int || d.accuracy is float) && d.accuracy >= 0 && d.accuracy <= 100
+        && d.maxCombo is int && d.maxCombo >= 0 && d.maxCombo <= 100000;
+    }
+    match /rhythm_songs/{song}/runs/{runId} {
+      allow read: if signedIn() && rhythmSong(song);
+      allow create: if signedIn() && rhythmRun(request.resource.data,song)
+        && runId == request.auth.uid + '_' + request.resource.data.token
+        && request.resource.data.startedAt == request.time
+        && request.resource.data.ended == false && !('finishedAt' in request.resource.data)
+        && request.resource.data.clearedCount == 0 && request.resource.data.score == 0
+        && request.resource.data.accuracy == 0 && request.resource.data.maxCombo == 0;
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && rhythmRun(request.resource.data,song) && resource.data.ended == false
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.song == resource.data.song
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.version == resource.data.version
+        && request.resource.data.startedAt == resource.data.startedAt
+        && request.resource.data.ended == true && request.resource.data.finishedAt == request.time;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+    function rhythmBest(d, song) {
+      let run = getAfter(/databases/$(database)/documents/rhythm_songs/$(song)/runs/$(d.runId)).data;
+      return rhythmSong(song)
+        && d.keys().hasAll(['uid','song','runId','score','accuracy','maxCombo','cleared','at'])
+        && d.keys().hasOnly(['uid','song','runId','score','accuracy','maxCombo','cleared','at'])
+        && d.uid == request.auth.uid && d.song == song
+        && run.uid == request.auth.uid && run.ended == true
+        && d.score == run.score && d.accuracy == run.accuracy && d.maxCombo == run.maxCombo
+        && d.cleared == (run.clearedCount == 1) && d.at == request.time
+        && existsAfter(/databases/$(database)/documents/rhythm_profiles/$(request.auth.uid));
+    }
+    match /rhythm_songs/{song}/scores/{uid} {
+      allow read: if signedIn() && rhythmSong(song);
+      allow create: if signedIn() && uid == request.auth.uid && rhythmBest(request.resource.data,song);
+      allow update: if signedIn() && uid == request.auth.uid && rhythmBest(request.resource.data,song)
+        && (request.resource.data.score > resource.data.score
+          || (request.resource.data.score == resource.data.score && request.resource.data.accuracy >= resource.data.accuracy));
+      allow delete: if signedIn() && uid == request.auth.uid;
+    }
+
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
