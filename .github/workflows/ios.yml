@@ -3,6 +3,7 @@ name: iOS
 on:
   push:
     branches: [ios]
+    paths-ignore: ['scripts/cloud-playthrough-v58.cjs', '.github/workflows/rhythm-playthrough.yml']
   pull_request:
     branches: [ios]
   workflow_dispatch:
