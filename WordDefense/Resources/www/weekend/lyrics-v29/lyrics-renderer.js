@@ -1,0 +1,8 @@
+(()=>{'use strict';
+function cueAt(t){const cues=window.SONG_LYRICS?.cues||[];let lo=0,hi=cues.length-1,index=-1;while(lo<=hi){const mid=(lo+hi)>>1;if(cues[mid].start<=t){index=mid;lo=mid+1}else hi=mid-1}const cue=cues[index];return cue&&t<cue.end?{cue,index}:null;}
+function draw(g,s){const hit=cueAt(s.time),bounds={x:63,y:487,w:726,h:80};if(!hit){window.lyricsRenderInfo={visible:false,text:'',bounds};return;}const {cue,index}=hit,cy=531;g.save();let size=39;g.font=`${size}px Game`;while(g.measureText(cue.text).width>bounds.w-18&&size>25){size--;g.font=`${size}px Game`;}const width=g.measureText(cue.text).width,x=426-width/2;g.textAlign='left';g.textBaseline='middle';g.lineJoin='round';g.lineWidth=5;g.strokeStyle='#020d18';g.strokeText(cue.text,x,cy);g.fillStyle='#ffffff';g.fillText(cue.text,x,cy);
+ let done=0;const times=cue.characterTimes||[];for(let i=0;i<times.length;i++){const next=times[i+1]??cue.end;if(s.time>=next)done=i+1;else if(s.time>=times[i]){done=i+Math.min(1,(s.time-times[i])/Math.max(.025,next-times[i]));break;}else break;}
+ const count=Math.floor(done),fraction=done-count,prefix=cue.text.slice(0,count),advance=g.measureText(prefix).width+(fraction&&count<cue.text.length?g.measureText(cue.text[count]).width*fraction:0);g.beginPath();g.rect(x-3,cy-32,advance+3,64);g.clip();g.shadowColor='#00dbe4';g.shadowBlur=7;g.fillStyle='#39edf4';g.fillText(cue.text,x,cy);g.restore();window.lyricsRenderInfo={visible:true,text:cue.text,index,fontSize:size,progress:times.length?done/times.length:0,bounds,measuredWidth:width,source:'embedded-song-lyrics-local-audio-alignment'};
+}
+window.GameLyrics={draw,cueAt};
+})();

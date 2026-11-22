@@ -1,0 +1,3 @@
+최종 뒤로가기는 back-chevron-v48.png와 무손실 WebP입니다. built-in image_gen으로 생성했습니다. 사용자가 선택한 상태 버튼 시안의 파란 잠금 버튼을 참고했으며 생성 원본 PNG를 보존합니다.
+
+최종 프롬프트: Copy the muted slate-blue face, soft light-blue rim, thick black border, rounded edges and subtle highlight of the reference blue 잠금 button. Make a compact rounded square. Replace lock/text with one bold white < chevron with black outline. Only two diagonal strokes, no shaft, no filled arrowhead. Match the friendly cartoon game surface. No neon/lime corner accents, futuristic clipped corners, door, house, or text. Genuine transparent background, all edges visible.

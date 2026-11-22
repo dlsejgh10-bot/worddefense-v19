@@ -1,0 +1,28 @@
+{
+  "generatedSourceSize": [
+    934,
+    1684
+  ],
+  "logicalWidth": 852,
+  "baseLogicalHeight": 1846,
+  "topFixedHeight": 600,
+  "bottomFixedHeight": 271,
+  "middle": "fills remaining viewport height",
+  "lyricTextBounds": {
+    "x": 63,
+    "y": 487,
+    "width": 726,
+    "height": 80
+  },
+  "laneTop": 620,
+  "spawnY": 650,
+  "hitY": "logicalHeight - 278",
+  "keyY": "logicalHeight - 181",
+  "laneCenters": [
+    133.5,
+    328.5,
+    523.5,
+    718.5
+  ],
+  "generationTool": "built-in image_gen"
+}

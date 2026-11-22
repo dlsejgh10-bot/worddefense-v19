@@ -1,0 +1,34 @@
+(()=>{'use strict';
+const $=s=>document.querySelector(s),rankMeta=window.RESULT_RANKS;
+const resultRoot=$('#results');if(document.body&&resultRoot&&resultRoot.parentNode!==document.body)document.body.append(resultRoot);
+const sources=[...Object.values(rankMeta).map(m=>m.src),...[...document.querySelectorAll('#result-title img')].map(i=>i.getAttribute('src'))];
+const ready=Promise.all(sources.map(src=>new Promise((resolve,reject)=>{const i=new Image();i.onload=resolve;i.onerror=()=>reject(Error('결과 이미지 로드 실패: '+src));i.src=src;})));
+let frame=0,run=0,voices=new Set(),animations=[];
+function cancel(){run++;cancelAnimationFrame(frame);frame=0;for(const a of animations)a.cancel();animations=[];for(const s of voices){try{s.stop()}catch{}}voices.clear();}
+function synth(ctx,kind,index=0){if(!ctx||ctx.state!=='running')return;const t=ctx.currentTime;window.resultAnimationInfo?.sounds?.push({kind,index,time:Math.round(performance.now()-window.resultAnimationInfo.started)});
+function tone(type,from,to,duration,gain,delay=0){const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.setValueAtTime(from,t+delay);o.frequency.exponentialRampToValueAtTime(to,t+delay+duration);g.gain.setValueAtTime(.0001,t+delay);g.gain.exponentialRampToValueAtTime(gain,t+delay+.003);g.gain.exponentialRampToValueAtTime(.0001,t+delay+duration);o.connect(g).connect(window.GameAudio?.output(ctx)||ctx.destination);voices.add(o);o.onended=()=>{voices.delete(o);o.disconnect();g.disconnect()};o.start(t+delay);o.stop(t+delay+duration+.01);}
+if(kind==='count'){const f=[784,988,1175,1568][index%4]*Math.pow(1.014,index);tone('sine',f,f*1.01,.055,.035);}
+if(kind==='rank'){tone('triangle',190,48,.21,.22);tone('sine',784,784,.23,.07,.025);tone('sine',1175,1175,.18,.04,.035);}
+if(kind==='reward'){tone('triangle',240+index*30,95+index*20,.11,.14);tone('sine',[880,1109,1320,1568][index%4],[1047,1320,1568,1976][index%4],.15,.075,.015);}
+if(kind==='reward-count'){const notes=[659,784,880,1047,1175,1319,1568,1760,2093,2349],f=notes[Math.min(notes.length-1,index)];tone('sine',f,f*1.006,.09,.028);}
+if(kind==='reward-done'){tone('sine',1319,1319,.16,.045);tone('sine',2093,2093,.22,.032,.055);}
+}
+function animate(el,keyframes,options){const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;if(reduced){el.style.opacity='1';return;}const a=el.animate(keyframes,options);animations.push(a);return a;}
+function selectRank(rank){const m=rankMeta[rank]||rankMeta.F,[sw,sh]=m.size,[x,y,w,h]=m.visibleBounds,holder=$('.rank-art'),image=$('#result-rank-image');holder.style.aspectRatio=w+'/'+h;image.style.width=(sw/w*100)+'%';image.style.left=(-x/w*100)+'%';image.style.top=(-y/h*100)+'%';image.src=m.src;image.alt=rank+' 등급';$('#result-rank').setAttribute('aria-label',rank+' 등급');$('#result-rank').dataset.rank=rank;}
+function play({score,rank,audioContext}){cancel();const ticket=run,panel=$('.result-panel'),badge=$('#result-rank'),scoreEl=$('#result-score'),rewards=[...document.querySelectorAll('.reward')],counts=rewards.map(el=>{const amount=el.querySelector('[data-reward-amount]'),target=Math.max(0,Number(amount?.dataset.rewardAmount)||0);if(amount)amount.textContent='0';return{amount,target,displayed:0};});selectRank(rank);badge.style.opacity='0';rewards.forEach(e=>e.style.opacity='0');scoreEl.textContent='0';
+const start=performance.now(),events=[],seen=new Set();let lastChime=-1,lastRewardChime=-1;
+window.resultAnimationInfo={phase:'counting',target:score,rank,displayed:0,rewardCounts:counts.map(c=>({target:c.target,displayed:0})),events,sounds:[],started:start,cancelled:false};
+function mark(kind,index=0){const key=kind+index;if(seen.has(key))return false;seen.add(key);events.push({kind,index,time:Math.round(performance.now()-start)});if(kind!=='reward-finished')synth(audioContext,kind,index);return true;}
+function step(now){if(ticket!==run||$('#results').hidden)return;const age=(now-start)/1000,p=Math.max(0,Math.min(1,(age-.14)/.78)),eased=1-Math.pow(1-p,2);scoreEl.textContent=Math.floor(score*eased).toLocaleString();window.resultAnimationInfo.displayed=Math.floor(score*eased);
+if(p>0&&p<1&&score>0){const n=Math.floor(p*13);if(n!==lastChime){lastChime=n;synth(audioContext,'count',n);}}
+if(age>=.94&&mark('rank')){scoreEl.textContent=score.toLocaleString();window.resultAnimationInfo.phase='rank';badge.style.opacity='1';animate(badge,[{transform:'translateY(-18px) scale(1.9) rotate(-9deg)',opacity:0,filter:'brightness(2.5)'},{transform:'translateY(3px) scale(.87) rotate(2deg)',opacity:1,filter:'brightness(1.4)',offset:.55},{transform:'translateY(-2px) scale(1.06) rotate(-1deg)',opacity:1,filter:'brightness(1.15)',offset:.78},{transform:'none',opacity:1,filter:'brightness(1)'}],{duration:360,easing:'cubic-bezier(.18,.75,.25,1)'});animate(panel,[{transform:'translateY(0)'},{transform:'translateY(3px)',offset:.25},{transform:'translateY(-2px)',offset:.5},{transform:'none'}],{duration:150});}
+for(let i=0;i<rewards.length;i++)if(age>=1.22+i*.19&&mark('reward',i)){window.resultAnimationInfo.phase='rewards';const el=rewards[i];el.style.opacity='1';animate(el,[{transform:'translateY(-12px) scale(1.2)',opacity:0,filter:'brightness(2)'},{transform:'translateY(3px) scale(.93)',opacity:1,filter:'brightness(1.5)',offset:.55},{transform:'translateY(-1px) scale(1.04)',opacity:1,filter:'brightness(1.1)',offset:.8},{transform:'none',opacity:1,filter:'brightness(1)'}],{duration:280,easing:'cubic-bezier(.12,.8,.24,1)'});}
+let countingReward=false;for(let i=0;i<counts.length;i++){const c=counts[i];if(!c.amount)continue;const p=Math.max(0,Math.min(1,(age-(1.3+i*.19))/.7));c.displayed=p===1?c.target:Math.floor(c.target*(1-Math.pow(1-p,2)));c.amount.textContent=c.displayed.toLocaleString();window.resultAnimationInfo.rewardCounts[i].displayed=c.displayed;if(p>0&&p<1&&c.target>1)countingReward=true;if(p===1&&mark('reward-finished',i))animate(c.amount,[{transform:'scale(1.13)',filter:'brightness(1.6)'},{transform:'none',filter:'brightness(1)'}],{duration:170,easing:'ease-out'});}
+// One shared chime stream keeps four simultaneous counters from stacking loud sounds.
+const rewardChime=Math.floor((age-1.3)/.08);if(countingReward&&rewardChime!==lastRewardChime){lastRewardChime=rewardChime;synth(audioContext,'reward-count',Math.min(9,Math.max(0,Math.floor((age-1.3)/Math.max(.7,.7+(counts.length-1)*.19)*10))));}
+const end=Math.max(1.95,2.06+Math.max(0,rewards.length-1)*.19);if(age<end)frame=requestAnimationFrame(step);else{if(counts.some(c=>c.amount))mark('reward-done');scoreEl.textContent=score.toLocaleString();window.resultAnimationInfo.displayed=score;window.resultAnimationInfo.phase='done';frame=0;}}
+frame=requestAnimationFrame(step);
+}
+function stop(){cancel();if(window.resultAnimationInfo)window.resultAnimationInfo.cancelled=true;}
+window.ResultPresentation={ready,play,stop,selectRank};
+})();

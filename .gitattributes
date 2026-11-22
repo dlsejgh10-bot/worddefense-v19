@@ -1,0 +1,7 @@
+# Web snapshot hashes must remain identical on Windows and macOS.
+WordDefense/Resources/www/** -text
+scripts/*.sh text eol=lf
+scripts/*.py text eol=lf
+scripts/*.json text eol=lf
+*.yml text eol=lf
+.github/workflows/*.yml text eol=lf

@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       upload_appstore:
-        description: "Sign with automatic signing and upload to App Store Connect (needs ASC_* secrets). Leave off unless you are ready to submit."
+        description: "Sign the bundled game and upload this build for TestFlight (needs existing signing secrets)."
         type: boolean
         default: false
-      html_ref:
-        description: "Branch of this repo whose index.html is bundled (default main = GitHub Pages)"
+      build_number:
+        description: "New iOS build number, greater than the last uploaded build"
         type: string
-        default: main
+        default: "40"
 
 # Only the ios branch is listed above, so pushes to main (GitHub Pages) do not run this workflow.
 permissions:
@@ -29,13 +29,20 @@ jobs:
       - name: Check out iOS branch
         uses: actions/checkout@v4
 
-      - name: Fetch game HTML from main (GitHub Pages) branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.html_ref || 'main' }}
-          sparse-checkout: index.html
-          sparse-checkout-cone-mode: false
-          path: _gamehtml
+      - name: Set upload build number
+        env:
+          WD_BUILD_NUMBER: ${{ inputs.build_number || '40' }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re
+          number = os.environ['WD_BUILD_NUMBER']
+          if not number.isdigit() or int(number) < 40:
+              raise SystemExit('Use an unused build number of 40 or greater')
+          path = pathlib.Path('project.yml')
+          text, count = re.subn(r'CURRENT_PROJECT_VERSION: [0-9]+', 'CURRENT_PROJECT_VERSION: ' + number, path.read_text())
+          assert count == 2
+          path.write_text(text)
+          PY
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -43,7 +50,6 @@ jobs:
       - name: Sync HTML and generate the Xcode project
         run: |
           set -euo pipefail
-          export WORD_DEFENSE_HTML="$GITHUB_WORKSPACE/_gamehtml/index.html"
           ./scripts/sync_html.sh
           test -s WordDefense/Resources/www/index.html
           xcodegen generate
@@ -148,6 +154,21 @@ jobs:
       - name: Check out iOS branch
         uses: actions/checkout@v4
 
+      - name: Set upload build number
+        env:
+          WD_BUILD_NUMBER: ${{ inputs.build_number || '40' }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re
+          number = os.environ['WD_BUILD_NUMBER']
+          if not number.isdigit() or int(number) < 40:
+              raise SystemExit('Use an unused build number of 40 or greater')
+          path = pathlib.Path('project.yml')
+          text, count = re.subn(r'CURRENT_PROJECT_VERSION: [0-9]+', 'CURRENT_PROJECT_VERSION: ' + number, path.read_text())
+          assert count == 2
+          path.write_text(text)
+          PY
+
       - name: Select Xcode 26 (App Store needs the iOS 26 SDK)
         run: |
           ls -d /Applications/Xcode*.app
@@ -155,14 +176,6 @@ jobs:
           [ -n "$X" ] || X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
           sudo xcode-select -s "$X/Contents/Developer"
           xcodebuild -version
-
-      - name: Fetch game HTML from main (GitHub Pages) branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.html_ref || 'main' }}
-          sparse-checkout: index.html
-          sparse-checkout-cone-mode: false
-          path: _gamehtml
 
       - name: Require App Store Connect API secrets
         env:
@@ -173,7 +186,7 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 ASC_TEAM_ID; do
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 ASC_TEAM_ID IOS_DIST_P12_B64 IOS_DIST_P12_PASSWORD IOS_PROFILE_B64; do
             if [ -z "${!v}" ]; then
               echo "missing secret: $v"
               missing=1
@@ -216,7 +229,6 @@ jobs:
           ASC_TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
         run: |
           set -euo pipefail
-          export WORD_DEFENSE_HTML="$GITHUB_WORKSPACE/_gamehtml/index.html"
           ./scripts/sync_html.sh
           python3 - <<'PY'
           import os
