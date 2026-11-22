@@ -14,7 +14,7 @@ on:
       build_number:
         description: "New iOS build number, greater than the last uploaded build"
         type: string
-        default: "40"
+        default: "41"
 
 # Only the ios branch is listed above, so pushes to main (GitHub Pages) do not run this workflow.
 permissions:
@@ -31,7 +31,7 @@ jobs:
 
       - name: Set upload build number
         env:
-          WD_BUILD_NUMBER: ${{ inputs.build_number || '40' }}
+          WD_BUILD_NUMBER: ${{ inputs.build_number || '41' }}
         run: |
           python3 - <<'PY'
           import os, pathlib, re
@@ -156,7 +156,7 @@ jobs:
 
       - name: Set upload build number
         env:
-          WD_BUILD_NUMBER: ${{ inputs.build_number || '40' }}
+          WD_BUILD_NUMBER: ${{ inputs.build_number || '41' }}
         run: |
           python3 - <<'PY'
           import os, pathlib, re
@@ -297,7 +297,7 @@ jobs:
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          WD_BUILD_NUMBER: ${{ inputs.build_number || '40' }}
+          WD_BUILD_NUMBER: ${{ inputs.build_number || '41' }}
         run: python3 scripts/testflight_status.py
 
       - name: Save TestFlight upload result
