@@ -48,6 +48,7 @@ const {chromium}=require('playwright');
  await page.evaluate(()=>{fixtureFail=false});await page.locator('#ranking-retry').click();await page.waitForFunction(()=>document.querySelectorAll('.ranking-row').length===1&&document.querySelector('#ranking-retry').hidden);
  for(let i=0;i<3;i++){await page.evaluate(()=>RankUI.open());await page.waitForTimeout(80);assert.equal(await page.locator('.ranking-row').count(),1)}
  await page.evaluate(()=>{window.RhythmLeaderboard=savedLeaderboard;RankUI.open()});await page.waitForTimeout(180);
+ assert.equal(await page.locator('#my-ranking-place').textContent(),'—');assert.ok(await page.locator('#my-ranking-card').isDisabled());
  const buttonArt=await page.evaluate(()=>[...document.querySelectorAll('.game-image-button')].map(b=>({loaded:b.querySelector('img').naturalWidth>0,padding:getComputedStyle(b).padding,ratio:b.querySelector('img').getBoundingClientRect().width/b.querySelector('img').getBoundingClientRect().height})));
  assert.ok(buttonArt.every(b=>b.loaded&&b.padding==='0px'));await page.screenshot({path:'ui-checks/ranking-applied-v61.png'});
 

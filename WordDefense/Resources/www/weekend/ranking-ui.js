@@ -50,6 +50,7 @@ async function load({reset=false,near=false,quiet=false}={}){
 function ensureTimer(){if(!timer)timer=setInterval(()=>{if(!document.hidden&&!$('#results').hidden)refreshVisible();},10000);}
 function open(){
  generation++;rows=0;cursor=null;busy=false;exhausted=false;around=false;lastMineRank=null;shownUsers.clear();
+ meCard(null);$('#ranking-more').hidden=true;$('#ranking-retry').hidden=true;
  $('.result-panel:not(.song-ranking-panel)').hidden=true;$('#song-ranking-panel').hidden=false;$('#ranking-song').textContent=window.SONG_CHART.title;
  $('#ranking-list').replaceChildren();$('#ranking-list').scrollTop=0;$('#ranking-back').focus({preventScroll:true});ensureTimer();load({reset:true});
 }
@@ -75,7 +76,7 @@ function present(score){
 }
 function stop(){generation++;busy=false;clearInterval(timer);timer=0;resultToken=null;lastMineRank=null;}
 $('#show-song-ranking').onclick=open;$('#ranking-back').onclick=close;$('#ranking-more').onclick=()=>load();$('#ranking-retry').onclick=()=>{if(!busy)open();};
-$('#my-ranking-card').onclick=()=>{if(!busy){generation++;load({reset:true,near:!around});}};
+$('#my-ranking-card').onclick=()=>{if(!busy){generation++;$('#ranking-list').scrollTop=0;load({reset:true,near:!around});}};
 $('#ranking-list').addEventListener('scroll',e=>{const el=e.currentTarget;if(!around&&el.scrollHeight>el.clientHeight+2&&el.scrollTop+el.clientHeight>=el.scrollHeight-60)load();});
 addEventListener('rhythm-record-saved',e=>{if(e.detail.token===resultToken&&e.detail.song===window.SONG_CHART.id)recordNote(e.detail.info);});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!$('#results').hidden)refreshVisible();});
