@@ -12,7 +12,8 @@ async function run(){
  const browser=await chromium.launch({headless:true,args:['--autoplay-policy=no-user-gesture-required','--disable-dev-shm-usage']});
  try{for(const id of ids){
   const song=db.songs.find(s=>s.id===id);assert.ok(song);
-  const context=await browser.newContext({viewport:{width:393,height:852},deviceScaleFactor:1});
+  const context=await browser.newContext({viewport:{width:393,height:852},deviceScaleFactor:1,
+   userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',hasTouch:true,isMobile:true});
   const page=await context.newPage();
   page.on('pageerror',e=>report.errors.push({id,error:String(e)}));
   await page.addInitScript(()=>{const A=window.AudioContext;window.AudioContext=class extends A{constructor(...a){super(...a);window.qaAudioContext=this;}}});
@@ -45,11 +46,18 @@ async function run(){
   await frame.locator('canvas').click({position:click});
   await page.waitForFunction(()=>rhythmGame.state.mode==='playing',null,{timeout:60000});
   await page.evaluate(async()=>{
-   const ctx=qaAudioContext,stream=document.querySelector('#screen').captureStream(30),dest=ctx.createMediaStreamDestination();
+   const ctx=qaAudioContext,canvas=document.querySelector('#screen'),preview=document.createElement('canvas');
+   preview.width=393;preview.height=Math.round(canvas.height/canvas.width*393);
+   const pg=preview.getContext('2d'),qa=cloudQA;
+   // Encode at the displayed phone size. Encoding the 852x1846 source in a
+   // software-only cloud VM starved the main thread and was not a valid phone
+   // playability test. Keep real rendering, real time, and normal judgement.
+   qa.captureTimer=setInterval(()=>pg.drawImage(canvas,0,0,preview.width,preview.height),1000/20);
+   const stream=preview.captureStream(20),dest=ctx.createMediaStreamDestination();
    rhythmGame.music.weekendGainNode.connect(dest);GameAudio.output(ctx).connect(dest);
    for(const track of dest.stream.getAudioTracks())stream.addTrack(track);
-   const recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8,opus',videoBitsPerSecond:900000,audioBitsPerSecond:128000});
-   const qa=cloudQA;qa.uploads=[];qa.recorder=recorder;qa.destination=dest;
+   const recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8,opus',videoBitsPerSecond:550000,audioBitsPerSecond:128000});
+   qa.uploads=[];qa.recorder=recorder;qa.destination=dest;
    recorder.ondataavailable=event=>{if(!event.data.size)return;qa.uploads.push((async()=>{
     const bytes=new Uint8Array(await event.data.arrayBuffer());let str='';
     for(let i=0;i<bytes.length;i+=8192)str+=String.fromCharCode(...bytes.subarray(i,i+8192));
@@ -57,7 +65,7 @@ async function run(){
    recorder.start(3000);qa.recordingReady=true;
   });
   await page.waitForFunction(()=>rhythmGame.state.mode==='result',null,{timeout:(song.audio.durationSeconds+40)*1000,polling:250});
-  await page.evaluate(async()=>{clearInterval(cloudQA.timer);await new Promise(r=>{cloudQA.recorder.onstop=r;cloudQA.recorder.stop()});await Promise.all(cloudQA.uploads)});
+  await page.evaluate(async()=>{clearInterval(cloudQA.timer);clearInterval(cloudQA.captureTimer);await new Promise(r=>{cloudQA.recorder.onstop=r;cloudQA.recorder.stop()});await Promise.all(cloudQA.uploads)});
   await page.waitForTimeout(1200);
   const result=await page.evaluate(()=>{
    const s=rhythmGame.state,frames=cloudQA.frames.sort((a,b)=>a-b),percentile=q=>frames[Math.min(frames.length-1,Math.floor(frames.length*q))];

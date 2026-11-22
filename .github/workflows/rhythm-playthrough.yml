@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        songs: ['beside,flex,seventy', 'rain,grandpa,friday', 'emotional,duet,youth']
+        songs: ['beside', 'flex', 'seventy', 'rain', 'grandpa', 'friday', 'emotional', 'duet', 'youth']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
