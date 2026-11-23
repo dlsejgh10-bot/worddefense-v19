@@ -3216,10 +3216,20 @@ const wbNet = () => { const N = window.WDNet; return N && N._ && N.on && N.on() 
 const wbSid = p => 's' + Math.max(0, p | 0);
 const wbField = () => Math.max(1, (WB_SRV.ok && WB_SRV.cnt) | 0);
 const wbAggN = r => { const x = Array.isArray(r) ? r.find(y => y && y.result) : r; const f = x && x.result && x.result.aggregateFields; return f && f.n ? +(f.n.integerValue || 0) : 0; };
+const WB_NK = {};
+async function wbNickFor(N, a, nick) {   /* 11/23: 순위에 올릴 이름. 서버 닉네임(nicknames) 주인이 다른 계정이면 그 이름 안 씀 → '모험가' (다른 계정이 같은 닉으로 여러 줄 뜨는 것 막기) */
+  const k = nickKey(nick), id = a.uid + ':' + k;
+  try { if (localStorage.getItem(NICK_OK) === id) return nick; } catch (e) {}
+  if (WB_NK[id]) return WB_NK[id];
+  let o = null; try { o = await nickOwner(N, k); } catch (e) { return nick; }
+  if (!o) return nick;   /* 아직 주인 없음 = 접속 9초 뒤 내 것으로 잡음 */
+  let ok = o === a.uid; if (!ok && N._.anonTok) { try { const t = await N._.anonTok(); ok = !!(t && t.uid === o); } catch (e) {} }
+  return (WB_NK[id] = ok ? nick : '모험가');
+}
 async function wbPost(p, dmg, best) {   /* 내 점수 올리기 (같은 값·같은 프로필이면 안 보냄) */
   const N = wbNet(); if (!N || S.wbTest) return false;
   dmg = Math.max(0, dmg | 0); if (dmg <= 0) return false;
-  const w = wbS(), nick = String(wbMyNick()).slice(0, 20), av = PORT[S.avatar] ? S.avatar | 0 : 4, fr = Math.max(0, S.frame | 0), a = await N._.token();
+  const w = wbS(), av = PORT[S.avatar] ? S.avatar | 0 : 4, fr = Math.max(0, S.frame | 0), a = await N._.token(), nick = await wbNickFor(N, a, String(wbMyNick()).slice(0, 20));
   const sp = w.sp || {}; if (sp.p === p && sp.uid === a.uid && sp.dmg >= dmg && sp.n === nick && sp.a === av && sp.f === fr) return true;
   const path = `/wb_scores/${wbSid(p)}/entries/${a.uid}`, name = N._.dn(`wb_scores/${wbSid(p)}/entries`, a.uid);
   const send = d => N._.call(':commit', { writes: [{ update: { name, fields: N._.encF({ uid: a.uid, nick, av, fr, dmg: d, best: Math.min(d, WB_RUN_MAX, Math.max(0, best | 0)) }) }, updateTransforms: [N._.REQ('updatedAt')] }] });
