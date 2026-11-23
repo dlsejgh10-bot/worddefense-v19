@@ -37,21 +37,27 @@ const report={method:'Offline cloud Chromium; actual game engine with automated 
    const rec=window.promoRecorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8,opus',videoBitsPerSecond:2200000,audioBitsPerSecond:128000});
    window.promoUploads=[];rec.ondataavailable=e=>{if(!e.data.size)return;window.promoUploads.push((async()=>{const b=new Uint8Array(await e.data.arrayBuffer());let s='';for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode(...b.subarray(i,i+8192));await savePromo(btoa(s));})());};rec.start(2000);
   });
-  const start=Date.now();let lastMade=-1,nextShot=0,loggedHand=false;
-  while(Date.now()-start<65000){
-   const state=await page.evaluate(()=>{const a=window.__wd,g=a.G;return{t:g.t,wave:g.wave,made:g.made,over:g.over,tileT:g.tileT,sel:g.sel,tiles:g.tiles.filter(t=>t.state==='hand').map(t=>({id:t.id,ch:t.ch,wild:t.wild})),allTileStates:g.tiles.map(t=>t.state),words:Object.keys(a.DICT),towers:g.towers.length,kills:g.kills}});
+  const start=Date.now();let lastMade=-1,nextShot=0,loggedHand=false,lastReroll=0;
+  while(Date.now()-start<420000){
+   const state=await page.evaluate(()=>{const a=window.__wd,g=a.G;return{t:g.t,wave:g.wave,made:g.made,over:g.over,tileT:g.tileT,sel:g.sel,tiles:g.tiles.filter(t=>t.state==='hand').map(t=>({id:t.id,ch:t.ch,wild:t.wild})),allTileStates:g.tiles.map(t=>t.state),words:Object.keys(a.DICT),towers:g.towers.length,kills:g.kills,gold:g.gold,rerollCost:a.rerollCost(),rerollN:g.rerollN,units:g.towers.map(t=>({word:t.word,len:t.len,side:t.side,role:t.role})),mobs:g.mobs.length}});
    if(!loggedHand&&state.t>2){console.log('HAND',JSON.stringify({tileT:state.tileT,tiles:state.tiles,allTileStates:state.allTileStates,words:state.words.length}));loggedHand=true;}
-   if(state.made!==lastMade){console.log('STATE',JSON.stringify({t:state.t,wave:state.wave,made:state.made,kills:state.kills,towers:state.towers}));lastMade=state.made;}
-   if(Date.now()-start>=nextShot){await page.screenshot({path:path.join(out,'frame-'+Math.round(nextShot/1000)+'.png')});nextShot+=10000;}
+   if(state.made!==lastMade){const entry={recordingSeconds:(Date.now()-start)/1000,t:state.t,wave:state.wave,made:state.made,kills:state.kills,towers:state.towers,mobs:state.mobs,units:state.units};console.log('STATE',JSON.stringify(entry));report.events.push(entry);lastMade=state.made;}
+   if(state.units.some(t=>t.side==='me'&&t.len===6))throw new Error('Six-character player unit must not appear');
+   if(Date.now()-start>=nextShot){await page.screenshot({path:path.join(out,'frame-'+Math.round(nextShot/1000)+'.png')});nextShot+=30000;}
    if(state.over)break;
    if(!state.sel.length&&state.tileT>0){
-    let candidates=state.words.filter(w=>{if(w.length<2||w.length>4)return false;const hand=state.tiles.slice();for(const ch of w){let i=hand.findIndex(t=>t.ch===ch);if(i<0)i=hand.findIndex(t=>t.wild);if(i<0)return false;hand.splice(i,1);}return true;}).sort((a,b)=>a.length-b.length);
+    let candidates=state.words.filter(w=>{if(w.length<2||w.length>5)return false;const hand=state.tiles.slice();for(const ch of w){let i=hand.findIndex(t=>t.ch===ch);if(i<0)i=hand.findIndex(t=>t.wild);if(i<0)return false;hand.splice(i,1);}return true;}).sort((a,b)=>b.length-a.length);
     const word=candidates[0];
     if(word){
      report.events.push({recordingSeconds:(Date.now()-start)/1000,word,wave:state.wave});console.log('WORD',word);
      for(const ch of word){await page.evaluate(ch=>{const a=window.__wd,t=a.G.tiles.find(t=>t.state==='hand'&&t.ch===ch)||a.G.tiles.find(t=>t.state==='hand'&&t.wild);if(t)a.tapHand(t);},ch);await page.waitForTimeout(135);}
      await page.waitForTimeout(1500);
-    }else await page.waitForTimeout(150);
+    }else if(state.tiles.length&&state.rerollN<5&&state.gold>=state.rerollCost&&Date.now()-lastReroll>3000){
+     await page.evaluate(()=>__wd.reroll());lastReroll=Date.now();report.events.push({recordingSeconds:(Date.now()-start)/1000,action:'paid-normal-reroll',cost:state.rerollCost});await page.waitForTimeout(1000);
+    }else{
+     if(state.made>=6)await page.evaluate(()=>{const a=__wd,g=a.G;for(let i=0;i<g.upg.length;i++)if(g.gold>=a.upgCost(i)&&g.upg[i]<2){a.buyUpg(i);break;}});
+     await page.waitForTimeout(250);
+    }
    }else await page.waitForTimeout(150);
   }
   await page.evaluate(async()=>{await new Promise(r=>{promoRecorder.onstop=r;promoRecorder.stop();});await Promise.all(promoUploads);});
