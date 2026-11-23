@@ -3102,7 +3102,7 @@ const WORLD_BOSS_PREVIEW = {
 /* 월보 일정 (11/10 확정): 보스는 최대 13일 생존 + 하루 휴식기 = 14일 주기. 1기 시작 = 2026-11-10 00:00 KST.
    실패(13일 안에 못 잡음) -> 메인 월드보스 칸 '공략실패', 다음 월보 기간 동안 그 성은 불탄성(도전 불가).
    서버 없음: 보스 남은 체력 = 미리보기 체력 - 이번 기간 내 내 누적 피해 (로컬 저장 S.wb). */
-const WB_EPOCH = Date.UTC(2026, 10, 9, 15, 0, 0), WB_CYCLE = 14, WB_LIVE = 13, WB_SETTLE = 600e3;
+const WB_EPOCH = Date.UTC(2026, 10, 9, 15, 0, 0), WB_CYCLE = 14, WB_LIVE = 14, WB_SETTLE = 600e3;
 /* 11/12: 설정용 시계. S.wbTest = { mode, off, idx(실제 기간), snap(이전 S.wb) }. 실제 기간이 바뀌면 자동 해제 */
 function wbTestExpire() { const T = S.wbTest; if (!T) return; const real = Math.floor(Math.floor((Date.now() - WB_EPOCH) / 864e5) / WB_CYCLE); if (real !== T.idx) { S.wb = T.snap ? JSON.parse(T.snap) : {}; delete S.wbTest; save(true); } }
 const wbNow = () => { wbTestExpire(); return Date.now() + ((S.wbTest && +S.wbTest.off) || 0); };
