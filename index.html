@@ -11172,7 +11172,7 @@ const EMO_IMG = {}; for (const k of EMO_KEYS) { const im = new Image(); im.src =
 const EMO_BTN = { x: SPD_BTN.x - 8, y: SPD_BTN.y - 92, w: SPD_BTN.w + 16, h: 66 };   /* 11/17: x2 와 같은 크기 x1.2, 가운데 x 같음, 간격 벌림 (보이는 판 사이 약 12) */   /* x2 바로 위 (일반전). 월보에선 안 그림 */
 const EMO = { open: false, cd: 0, bub: { me: null, partner: null } };
 const EMO_CD = 2000, EMO_LIFE = 2000;
-function emoPanel() { const cell = 54, g = 6, pad = 8, w = pad * 2 + cell * 3 + g * 2, h = pad * 2 + cell * 2 + g; return { x: EMO_BTN.x + EMO_BTN.w - w, y: EMO_BTN.y - 12 - h, w, h, cell, g, pad }; }
+function emoPanel() { const cell = 54 * 1.4, g = 6 * 1.4, pad = 8 * 1.4, w = pad * 2 + cell * 3 + g * 2, h = pad * 2 + cell * 2 + g; return { x: Math.round((W - w) / 2), y: Math.round((H - h) / 2), w, h, cell, g, pad }; }   /* 11/23: 선택 창만 화면 가운데, 약 1.4배 */
 function emoCell(i) { const P = emoPanel(); return { x: P.x + P.pad + (i % 3) * (P.cell + P.g), y: P.y + P.pad + Math.floor(i / 3) * (P.cell + P.g), w: P.cell, h: P.cell }; }
 function emoImg(k, cx, cy, s) { const im = EMO_IMG[k]; if (im && im.complete && im.naturalWidth) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(im, cx - s / 2, cy - s / 2, s, s); } }
 function emoBlocked() { return !G || G.over || G.settingsOpen || G.merge || G.choice || G.upgOpen || G.boxOpen || G.boxAnim || G.elOpen || G.bPop || G.iqOpen; }
@@ -11196,8 +11196,8 @@ function drawEmotePanel() {
   if (!EMO.open) return; if (emoBlocked()) { EMO.open = false; return; }
   const P = emoPanel(), px = EMO_BTN.x + EMO_BTN.w / 2, pb = P.y + P.h;
   ctx.save(); ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-  rr(P.x, P.y, P.w, P.h, 16); ctx.fillStyle = '#fff4df'; ctx.fill(); ctx.lineWidth = 3.5; ctx.strokeStyle = KIT.ink; ctx.stroke();
-  EMO_KEYS.forEach((k, i) => { const c = emoCell(i); rr(c.x, c.y, c.w, c.h, 10); ctx.fillStyle = '#f3e2c0'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#8e6b49'; ctx.stroke(); emoImg(k, c.x + c.w / 2, c.y + c.h / 2, 42); });
+  rr(P.x, P.y, P.w, P.h, 16 * 1.4); ctx.fillStyle = '#fff4df'; ctx.fill(); ctx.lineWidth = 3.5 * 1.4; ctx.strokeStyle = KIT.ink; ctx.stroke();
+  EMO_KEYS.forEach((k, i) => { const c = emoCell(i); rr(c.x, c.y, c.w, c.h, 10 * 1.4); ctx.fillStyle = '#f3e2c0'; ctx.fill(); ctx.lineWidth = 2.5 * 1.4; ctx.strokeStyle = '#8e6b49'; ctx.stroke(); emoImg(k, c.x + c.w / 2, c.y + c.h / 2, 42 * 1.4); });
   ctx.restore();
 }
 /* v23: bubble body + tail as ONE closed path -> a single outline, the tail joins the border with no seam lines */
