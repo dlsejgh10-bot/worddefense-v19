@@ -1,5 +1,5 @@
 {
-  "index.html": "b7a9b637163d63a2fbffc52629c9539fea552a5ddbb0fdcd44e50cdee87aa7f6",
+  "index.html": "0a8534b20667e261e35d50b8b3b4b3e962ab5831ad28effa364dfb2b41ea290f",
   "weekend/assets/board-lyrics-v29-layout.json": "ea12c23316b702f40e9c1245171843bc76ba97bf940eb7bedd83f0c2bb10280c",
   "weekend/assets/board-lyrics-v29-prompt.txt": "29b91a62f7276ceea791cb0f90bf7897ec6039c5eb32f4b2f575548914cd4e91",
   "weekend/assets/board-lyrics-v29.png": "e03425a5d76df1f3669e55d43868bd5b7c5c85086bace2362c8213a3a0c2a1c2",
@@ -238,7 +238,7 @@
   "weekend/home-audio.js": "14a6285091e847191f719814a397c023e5d63864a207fc0d7efca6cd4d9a2886",
   "weekend/home.js": "4ccbc0df865ea520855c9457b99df29a898659840249d92a871272fef49566c9",
   "weekend/index-template.html": "f7c25ed246b18f85eec1a71b57a6704bb70515201e8a3e5593d1776d3cddc1a8",
-  "weekend/index.html": "d9ebb92065475bc02f3c4e422acae36714d1d9dd0533be2ff651df8467663c09",
+  "weekend/index.html": "37df2694e259fc829a07836554f5840fe3a914d700089536ab2121646f4321ba",
   "weekend/lyrics-v29/asr-tail-word-times.json": "d6172e165371bb810b5ecb79b24bdda5411bca99b1d3880ff7ed75b26beed04c",
   "weekend/lyrics-v29/asr-word-times.json": "6bc83bda302a96bb3309ed95ff5cedce629e1c1146d93087774495c2a300e221",
   "weekend/lyrics-v29/lyrics-data.js": "d6ae888e63cd74c2f93d7a1c75f109b84b728ae104fee5b4828ca1aefe75b9b7",
@@ -266,7 +266,7 @@
   "weekend/weekend-client.js": "f1bc96e04d8fcb73c522bd5aab23ed6f5914854cb7cf1ca98ee9aed39b7395e5",
   "weekend/weekend-rewards.js": "eabf56ea89b3791fece0419bdc6d2944ea2fe9ca20ddf0a6677a5af17ca31949",
   "weekend/weekend-rewards.json": "397abbe6dc87d5ff10996493a51ffdb5e29592f84de0b429f5e1b189dba5035d",
-  "weekend/weekend-rules.js": "e740b157a03f66855e69c767493b65c13b21773eccb4f1b00c1a1542681c6f7d",
+  "weekend/weekend-rules.js": "9046a396663b8ec66be81223a36410b340a13ee77047ffbde2046240bb910b00",
   "weekend-host.js": "956ea4edcbfa0e03c3b05f3fd9d76552c0b953e6fe2f0e3bc5e3f32538c98855",
   "weekend/wd-ads.js": "6d0cdcab0187bf9d3eb509d1dda5d31a91bbb6a6a52f62809e3a5b10288a1b21"
 }
