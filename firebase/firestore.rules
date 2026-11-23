@@ -340,6 +340,13 @@ service cloud.firestore {
     }
 
 
+    // b174: 앱 원격 설정 (강제 업데이트 최소 빌드 minBuildAndroid/minBuildIOS, 광고 스위치 ads.enabled + 광고 단위 ID).
+    // 로그인 전에도 읽어야 해서 누구나 읽기, 쓰기는 콘솔(관리자 SDK)만.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

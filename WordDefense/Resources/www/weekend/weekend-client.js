@@ -1,6 +1,6 @@
 (()=>{'use strict';const R=window.WeekendRules,KEY='rhythm-weekend-v44';let host=null,runToken=null,definitions=[],noticeTimer;
 try{if(parent!==window&&parent.WDWeekendHost)host=parent.WDWeekendHost;}catch{}
-const testUnlimited=host?!!host.testUnlimited:/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname||'');let lastReceipt=null,adGranted=false,adBusy=false;
+const testUnlimited=false;   /* b174 store release */let lastReceipt=null,adGranted=false,adBusy=false;
 function read(){if(host)return host.read();try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return{}}}
 function write(s){if(host)host.write(s);else localStorage.setItem(KEY,JSON.stringify(s));}
 function now(){return host?.now?.()??Date.now();}

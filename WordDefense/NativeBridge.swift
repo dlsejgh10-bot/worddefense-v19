@@ -11,8 +11,10 @@ import WebKit
 /// iOS injects a shim that provides both, and talks to this handler over `webkit.messageHandlers.WDNative`.
 final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     weak var viewController: UIViewController?
-    weak var webView: WKWebView? { didSet { store.webView = webView } }
+    weak var webView: WKWebView? { didSet { store.webView = webView; ads.webView = webView } }
+    weak var hostViewController: UIViewController? { didSet { ads.viewController = hostViewController } }
     lazy var store: StoreBridge = StoreBridge()
+    lazy var ads: AdsBridge = AdsBridge()   // b174 AdMob (off unless the remote switch is on)
 
     static let handlerName = "WDNative"
 
@@ -103,6 +105,10 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, ASAuthorizationContr
             store.subStatus()
         case "iapSync":
             store.syncRestore()
+        case "adsInit":
+            ads.start()
+        case "adsShowRewarded":
+            ads.showRewarded(id: id, unit: body["unit"] as? String ?? "")
         default:
             callback(id: id, result: nil, err: "unknown-method")
         }

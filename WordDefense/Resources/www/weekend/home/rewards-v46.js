@@ -59,7 +59,7 @@ drawUi=function(){const previous=ctx;ctx=uiCanvas.getContext('2d');ctx.clearRect
  const bg=ctx.createLinearGradient(0,head.y,0,geometry.H);bg.addColorStop(0,'#05143400');bg.addColorStop(.11,'#051331');bg.addColorStop(1,'#04112e');ctx.fillStyle=bg;ctx.fillRect(0,head.y-20,1080,geometry.H-head.y+20);
  if(art.header){ctx.drawImage(art.header,head.x,head.y,head.w,head.h);text('주말 보상',head.x+head.w*.58,head.y+head.h*.52,56*geometry.footerScale,'#fff','center');}
  const c=layout.carousel;ctx.save();ctx.beginPath();ctx.rect(c.x,c.y-18,c.w,c.h+36);ctx.clip();if(art.card&&art.ready)rewards.forEach(rewardCard);ctx.restore();if(art.progress)progress();
- text(info.testUnlimited?'테스트 · 입장 무제한':`오늘 남은 입장 ${Math.max(0,info.entriesLeft??info.entryLimit??2)} / ${info.entryLimit??2}`,540,geometry.remainingY,35*geometry.footerScale,'#fff','center',false);
+ text(`오늘 남은 입장 ${Math.max(0,info.entriesLeft??info.entryLimit??2)} / ${info.entryLimit??2}`,540,geometry.remainingY,35*geometry.footerScale,'#fff','center',false);
  const b=layout.button;ctx.save();const adOffer=!!info.open&&!info.testUnlimited&&info.entriesLeft<=0&&info.adPlaysLeft>0,label=adOffer?'광고보고 한판 더':'댄스 시작';let size=80*geometry.footerScale;if(adOffer){ctx.font=`400 ${size}px Game,sans-serif`;const w=ctx.measureText(label).width;if(w>b.w*.8)size*=b.w*.8/w;}ctx.globalAlpha=info.open&&(info.testUnlimited||info.entriesLeft>0||adOffer)?1:.55;if(art.start){ctx.drawImage(art.start,b.x,b.y+(state.press?5:0),b.w,b.h);text(label,b.x+b.w/2,b.y+b.h*.48+(state.press?5:0),size,'#fff','center');}ctx.restore();ctx=previous;uiDirty=false;
 };
 window.setRewardOffset=value=>{cancelRewardSlide();setRewardOffset(value);};

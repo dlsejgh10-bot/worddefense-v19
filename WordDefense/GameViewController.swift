@@ -93,13 +93,10 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         let user = config.userContentController
         user.add(bridge, name: NativeBridge.handlerName)
         user.addUserScript(WKUserScript(source: NativeBridge.shimJS, injectionTime: .atDocumentStart, forMainFrameOnly: false))
-        // Sandbox receipts identify TestFlight installs; the store app keeps normal limits.
-        #if DEBUG
-        let testInstall = true
-        #else
-        let testInstall = Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
-        #endif
-        user.addUserScript(WKUserScript(source: "window.__wdTestFlight = \(testInstall ? "true" : "false");", injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        // b174: app platform/build for the remote minimum-version check (Firestore config/app minBuildIOS)
+        let appBuild = Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0
+        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        user.addUserScript(WKUserScript(source: "window.WD_APP = { platform: 'ios', build: \(appBuild), version: '\(appVersion)' };", injectionTime: .atDocumentStart, forMainFrameOnly: false))
 
         let web = WKWebView(frame: .zero, configuration: config)
         web.translatesAutoresizingMaskIntoConstraints = false
@@ -144,6 +141,7 @@ final class GameViewController: UIViewController, WKNavigationDelegate, WKUIDele
         webView = web
         bridge.webView = web
         bridge.viewController = self
+        bridge.hostViewController = self
     }
 
     private func loadGameIfNeeded(force: Bool = false) {
