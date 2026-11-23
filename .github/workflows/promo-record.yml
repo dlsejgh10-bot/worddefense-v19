@@ -1,0 +1,29 @@
+name: Record main game promo
+on:
+  push:
+    branches: ['promo/**']
+    paths: ['scripts/promo-record.cjs', '.github/workflows/promo-record.yml']
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Record offline real engine with automated card input
+        run: |
+          python3 -m http.server 8766 --directory WordDefense/Resources/www > /tmp/promo-http.log 2>&1 &
+          node scripts/promo-record.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: main-game-promo
+          path: promo-capture/
+          retention-days: 7
