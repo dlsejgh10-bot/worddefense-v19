@@ -1,9 +1,9 @@
 (function(root){'use strict';
-const DAY=86400000,KST=32400000,LIMIT=2,AD_LIMIT=2,MAX=6;
+const DAY=86400000,KST=32400000,GRACE=1800000,LIMIT=2,AD_LIMIT=2,MAX=6;
 const LAUNCH_START=Date.parse('2026-11-23T00:00:00+09:00'),LAUNCH_END=Date.parse('2026-11-30T00:00:00+09:00');
 function calendar(now){const day=Math.floor((now+KST)/DAY),weekday=(day+4)%7;return{day,weekday,launchWeek:now>=LAUNCH_START&&now<LAUNCH_END,open:(now>=LAUNCH_START&&now<LAUNCH_END)||weekday===5||weekday===6||weekday===0,season:Math.floor((day-1)/7),nextReset:(day+1)*DAY-KST};}
 function normalize(raw,now){const c=calendar(now);let s=raw&&typeof raw==='object'?{...raw,claimed:Array.isArray(raw.claimed)?[...raw.claimed]:[],finished:Array.isArray(raw.finished)?[...raw.finished]:[]}:{};
- if(s.season!==c.season)s={season:c.season,plays:0,claimed:[],finished:[]};
+ if(s.season!==c.season){const a=s.active,keep=a&&a.token&&a.season===c.season-1&&now>=(+a.at||0)&&now-(+a.at||0)<=GRACE;s={season:c.season,plays:0,claimed:[],finished:[]};if(keep)s.active=a;}   /* b174e: 목→금 자정을 넘긴 판(시작 30분 이내)은 이어서 완료 */
  if(s.day!==c.day){s.day=c.day;s.entries=0;s.adPlays=0;}
  s.entries=Math.max(0,Math.min(LIMIT,s.entries|0));s.adPlays=Math.max(0,Math.min(AD_LIMIT,s.adPlays|0));s.plays=Math.max(0,Math.min(MAX,s.plays|0));s.claimed=Array.isArray(s.claimed)?[...new Set(s.claimed.filter(n=>Number.isInteger(n)&&n>=1&&n<=MAX))]:[];s.finished=Array.isArray(s.finished)?s.finished.slice(-12):[];return s;
 }
