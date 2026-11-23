@@ -3801,6 +3801,7 @@ function build(r) { try { imgBlobs(); } catch (e) {} return V[r](); }
 function go(r, o) {
   o = o || {};
   if (r === route && !o.force) { if (cur) cur.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  try { if (r !== route && window.WDWeekendHost && window.WDWeekendHost.isOpen && window.WDWeekendHost.isOpen()) window.WDWeekendHost.exitToLobby(); } catch (e) {}   /* b174: 다른 화면으로 가면 불타는 주말 로비 BGM 정지 */
   const pi = TABS.findIndex(t => t[0] === route), ni = TABS.findIndex(t => t[0] === r);
   let dir = pi < 0 || ni < 0 ? (SUBS.includes(r) ? 1 : -1) : (Math.sign(ni - pi) || 1);
   const old = cur; route = r; app.dataset.route = r;
@@ -11756,7 +11757,7 @@ coinIcon = function (x, y, r) { if (_coinImg4.complete && _coinImg4.naturalWidth
   window.__wdTap1 = { get g() { return g; }, log };
 })();
 </script>
-<script src="weekend/weekend-rules.js?v=73"></script><script src="weekend/weekend-rewards.js?v=44"></script><script src="weekend/rank-rewards.js?v=55"></script><script src="weekend/audio-levels-v48.js?v=53"></script><script src="weekend/audio-mix.js?v=57"></script><script src="weekend-host.js?v=73"></script></body>
+<script src="weekend/weekend-rules.js?v=73"></script><script src="weekend/weekend-rewards.js?v=44"></script><script src="weekend/rank-rewards.js?v=55"></script><script src="weekend/audio-levels-v48.js?v=53"></script><script src="weekend/audio-mix.js?v=57"></script><script src="weekend-host.js?v=74"></script></body>
 
 <style id="wd-v17-ui">
 #wdl .sc-buy .sc-pr.stock-out:disabled{
@@ -23362,7 +23363,9 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
 /* 11/17c 뒤로가기(앱) · Esc(PC): 맨 위 창이 바깥 터치로 닫히는 창이면 닫음 → true. 아니면 false (앱은 원래대로 종료 확인) */
 window.__wdBack = function () {
   const bs = [...document.querySelectorAll('#wdl-ov > .mback')].filter(b => !b.classList.contains('out') && !b._closing);
-  const b = bs[bs.length - 1]; if (!b || !b._dismiss) return false;
+  const b = bs[bs.length - 1];
+  if (!b) { try { const H = window.WDWeekendHost; if (H && H.isOpen && H.isOpen() && !H.inGame()) { H.close(); return true; } } catch (e) {} }   /* b174: 뒤로가기 = 불타는 주말 닫기 (BGM 정지) */
+  if (!b || !b._dismiss) return false;
   try { b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); } catch (e) { return false; }
   return true;
 };
