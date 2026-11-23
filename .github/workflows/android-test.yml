@@ -23,8 +23,16 @@ jobs:
         with:
           path: ~/.android/debug.keystore
           key: worddefense-practice-debug-key-v1
+      - name: Make sure the practice signing key exists where Gradle reads it (so the cache can keep it)
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" >/dev/null
+          fi
       - name: Build separate practice app
         run: |
+          export ANDROID_USER_HOME="$HOME/.android"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android | grep -i 'SHA-256' || true
           python3 scripts/verify_bundle.py
           cp -r WordDefense/Resources/www android-test/app/src/main/assets
           # b169: no practice test flag; the practice app follows production event rules
