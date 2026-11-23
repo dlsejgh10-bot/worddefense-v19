@@ -1,0 +1,10 @@
+{
+  "linearMultiplier": 0.5,
+  "decibels": -6.0206,
+  "tap": 0.335,
+  "fever": 0.335,
+  "chord": 0.375,
+  "hold": 0.085,
+  "release": 0.21,
+  "bgm": 0.5
+}

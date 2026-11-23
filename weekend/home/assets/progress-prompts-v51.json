@@ -1,0 +1,19 @@
+{
+  "mode": "built-in image_gen",
+  "reference": "codex-clipboard-69964703-a494-4640-b104-622a591275a4.png",
+  "assets": [
+    {
+      "name": "mint",
+      "prompt": "Precise UI asset extraction from the supplied reference. Focus ONLY on the bottom 1회 2회 3회 4회 5회 6회 progress strip. Match this exact friendly mobile game style and geometry; no reinterpretation, no new decorations. Genuine transparent background. No lettering or numbers anywhere. No diagonal stripes. No neon glow haze. Padding outside asset, edges fully visible. Extract ONE single completed MINT ticket cell like the first/second cell in that strip. Horizontal 2.05:1 body. Soft bright mint-green face, gentle top highlight, dark ink outline, small rounded inward circular notches at its FOUR CORNERS for interlocking with adjacent ticket cells. No writing. ONE mint ticket only."
+    },
+    {
+      "name": "navy",
+      "prompt": "Precise UI asset extraction from the supplied reference. Focus ONLY on the bottom 1회 2회 3회 4회 5회 6회 progress strip. Match this exact friendly mobile game style and geometry; no reinterpretation, no new decorations. Genuine transparent background. No lettering or numbers anywhere. No diagonal stripes. No neon glow haze. Padding outside asset, edges fully visible. Extract ONE single uncompleted DARK NAVY ticket cell like the third/fourth cell. Horizontal 2.05:1 body. Deep navy blue face, subtle blue edge bevel, light cyan fine outline, small rounded inward circular notches at its FOUR CORNERS for interlocking with adjacent ticket cells. No writing. ONE navy ticket only."
+    },
+    {
+      "name": "frame",
+      "prompt": "Precise UI asset extraction from the supplied reference. Focus ONLY on the bottom 1회 2회 3회 4회 5회 6회 progress strip. Match this exact friendly mobile game style and geometry; no reinterpretation, no new decorations. Genuine transparent background. No lettering or numbers anywhere. No diagonal stripes. No neon glow haze. Padding outside asset, edges fully visible. Extract ONLY the outer long dark-blue frame surrounding the entire six-cell strip, aspect ratio 8.7:1. Clipped outer corners, muted blue thick outline, deep navy center. Center EMPTY with no cell divisions at all, no inner tickets, no lettering, no progress fills. One long narrow backing frame only."
+    }
+  ],
+  "finalMintPrompt": "Edit ONLY the mint ticket sprite. Preserve its exact transparent silhouette, black outline and rounded inward corner notches. Change the face to the original reference's almost flat bright mint green: solid base RGB(63,250,173), hex #3FFAAD. At most a very soft top highlight. REMOVE the dark teal center, cloud texture, strong gradient, wide glossy highlight stripe and bevel. This is the plain flat mint completed ticket in the 1회/2회 strip of the second reference. No text, no numbers. Do not change the external contour. Genuine transparency outside. One mint ticket sprite."
+}

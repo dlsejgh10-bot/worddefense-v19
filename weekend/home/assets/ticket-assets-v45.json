@@ -1,0 +1,42 @@
+{
+  "header": {
+    "png": "ticket-header-v45.png",
+    "webp": "ticket-header-v45.webp",
+    "crop": {
+      "left": 119,
+      "top": 112,
+      "width": 1946,
+      "height": 488
+    }
+  },
+  "card": {
+    "png": "ticket-card-v45.png",
+    "webp": "ticket-card-v45.webp",
+    "crop": {
+      "left": 91,
+      "top": 83,
+      "width": 888,
+      "height": 1306
+    }
+  },
+  "progress": {
+    "png": "ticket-progress-v45.png",
+    "webp": "ticket-progress-v45.webp",
+    "crop": {
+      "left": 47,
+      "top": 205,
+      "width": 2079,
+      "height": 312
+    }
+  },
+  "start": {
+    "png": "ticket-start-v45.png",
+    "webp": "ticket-start-v45.webp",
+    "crop": {
+      "left": 35,
+      "top": 210,
+      "width": 1789,
+      "height": 495
+    }
+  }
+}

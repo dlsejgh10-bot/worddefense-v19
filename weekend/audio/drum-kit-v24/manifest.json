@@ -1,0 +1,14 @@
+{
+  "selection": "G / ABCD drum kit",
+  "lanes": [
+    "kick",
+    "snare",
+    "clap",
+    "808-tom"
+  ],
+  "double": "dedicated kick/snare/clap/tom slam",
+  "pairAudioWindowSeconds": 0.05,
+  "sources": "original synthesized A/B/C/D",
+  "singleGain": 0.67,
+  "doubleGain": 0.75
+}

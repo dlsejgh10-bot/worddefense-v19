@@ -1,0 +1,1 @@
+(()=>{'use strict';function play(ctx,lanes,fever){const info=window.NoteAudio.play(ctx,'chord',lanes[0],false,fever);window.audioDiagnostics={...info,variant:'double-drum-slam',lanes:[...lanes],fever:!!fever};}window.ChordSound={play};})();

@@ -1,0 +1,18 @@
+{
+  "mode": "built-in image_gen",
+  "reference": "codex-clipboard-0720d93c-d7de-4e48-97a3-be3a9d041834.png",
+  "prompts": [
+    [
+      "header",
+      "Use the supplied selected UI as a precise visual style reference. Production-ready separate game UI asset. Navy/ink-blue base, crisp cyan/mint luminous outline, tiny lime diagonal graphic accents, clean playful Korean mobile hip-hop game finish. No metal, screws, armor. GENUINE TRANSPARENT BACKGROUND, generous clear padding and no cropped glow. NO LETTERING, NO NUMBERS, NO currency icons or button labels. Do not generate a full screen or a poster. Make ONE wide header plaque only, ratio about 5.2:1, matching the top '주말 보상' plaque. Preserve the black vinyl disc with cyan center and lime ring attached at its LEFT, and the elongated clipped-corner navy banner with cyan rim and small lime diagonal stripes at right. Keep the entire middle of the banner blank for dynamic text. Disc is the only icon. One asset only."
+    ],
+    [
+      "card",
+      "Use the supplied selected UI as a precise visual style reference. Production-ready separate game UI asset. Navy/ink-blue base, crisp cyan/mint luminous outline, tiny lime diagonal graphic accents, clean playful Korean mobile hip-hop game finish. No metal, screws, armor. GENUINE TRANSPARENT BACKGROUND, generous clear padding and no cropped glow. NO LETTERING, NO NUMBERS, NO currency icons or button labels. Do not generate a full screen or a poster. Make ONE empty vertical reward ticket CARD frame only, ratio width:height about 0.73:1. Exactly the selected reward card's clipped corners, thin cyan/mint outline, dark-blue face, quiet diagonal teal accents on upper-left and lower-right, thin horizontal header divider at about 22% height. The whole inside is empty; no item, no text, NO status button. Single fully visible card silhouette."
+    ],
+    [
+      "progress",
+      "Use the supplied selected UI as a precise visual style reference. Production-ready separate game UI asset. Navy/ink-blue base, crisp cyan/mint luminous outline, tiny lime diagonal graphic accents, clean playful Korean mobile hip-hop game finish. No metal, screws, armor. GENUINE TRANSPARENT BACKGROUND, generous clear padding and no cropped glow. NO LETTERING, NO NUMBERS, NO currency icons or button labels. Do not generate a full screen or a poster. Make ONE wide horizontal SIX-CELL progress ticket strip only, ratio about 10.8:1. Dark navy six equal empty ticket cells joined together, subtle cyan separators with small inward ticket notches at top and bottom, restrained dark blue outer border. ALL SIX cells empty and dark, no completion fills, text or numbers. Exactly six cells, no seventh. Single wide usable progress bar asset."
+    ]
+  ]
+}

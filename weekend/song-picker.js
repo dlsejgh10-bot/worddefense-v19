@@ -1,0 +1,1 @@
+(()=>{'use strict';function update(){const current=window.SongDB.current;document.title='불타는 주말';document.querySelector('#result-song').textContent=current.title;document.querySelector('#screen').setAttribute('aria-label',current.title+' 4레인 리듬게임. D F J K 또는 하단 버튼을 누르세요.');}window.GameSongPicker={update};update();})();

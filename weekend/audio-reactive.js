@@ -1,0 +1,10 @@
+(()=>{'use strict';let source,analyser,data,lastBass=0,lastMid=0,attack=0,bassFloor=0,musicRef;
+const clamp=x=>Math.max(0,Math.min(1,x));
+function connect(ctx,music){musicRef=music;if(analyser)return true;if(location.protocol==='file:')return false;try{source=ctx.createMediaElementSource(music);analyser=ctx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.28;data=new Uint8Array(analyser.frequencyBinCount);source.connect(analyser);const mix=window.WeekendAudioMix;mix.connect(music,ctx,analyser,mix.musicLevel(window.GameAudio.settings(),music.src,'song',window.AudioLevels));return true}catch(e){if(source&&!analyser)source.connect(ctx.destination);return false;}}
+function impactAt(time){const list=window.MUSIC_IMPACTS||[];let lo=0,hi=list.length;while(lo<hi){const mid=(lo+hi)>>1;if(list[mid].t<=time)lo=mid+1;else hi=mid}let impact=0;for(let i=lo-1;i>=0&&time-list[i].t<.42;i--){const age=Math.max(0,time-list[i].t);impact=Math.max(impact,list[i].strength*Math.exp(-age/.085))}return impact;}
+function sample(dt,playing){if(!playing){attack*=Math.exp(-dt*12);return{source:analyser?'live-analyser':'inactive',bass:0,mid:0,attack,impact:0,level:0}}if(!analyser)return{source:'measured-attacks',bass:0,mid:0,attack:0,impact:impactAt(musicRef?.currentTime||0),level:0};analyser.getByteFrequencyData(data);const hz=analyser.context.sampleRate/analyser.fftSize;
+function band(lo,hi){let total=0,count=0;for(let i=Math.max(1,Math.floor(lo/hz));i<=Math.min(data.length-1,Math.ceil(hi/hz));i++){total+=data[i]/255;count++}return total/Math.max(1,count)}
+const bass=band(40,190),mid=band(190,3000),level=band(40,7000);bassFloor+=(bass-bassFloor)*Math.min(1,dt*2);const onset=clamp(Math.max(0,bass-lastBass)*12+Math.max(0,mid-lastMid)*9+Math.max(0,bass-bassFloor)*1.7);attack=Math.max(onset,attack*Math.exp(-dt*15));lastBass=bass;lastMid=mid;return{source:'live-analyser',bass,mid,attack,impact:impactAt(musicRef.currentTime),level,time:musicRef.currentTime};}
+function reset(){lastBass=lastMid=attack=bassFloor=0;}
+window.AudioReactive={connect,sample,reset};
+})();
