@@ -1,46 +1,42 @@
 (()=>{
  'use strict';
- // A neutral displacement map refracts the existing scene pixels; it draws no rings.
- const ns='http://www.w3.org/2000/svg',w=430,h=510,steps=24;
- const svg=document.createElementNS(ns,'svg');svg.setAttribute('width','0');svg.setAttribute('height','0');svg.style.position='absolute';
- const defs=document.createElementNS(ns,'defs');svg.append(defs);document.body.append(svg);
- const maps=[];
- for(let frame=0;frame<steps;frame++){
-  const c=document.createElement('canvas');c.width=96;c.height=112;
-  const p=c.getContext('2d'),pixels=p.createImageData(c.width,c.height);
-  for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
-   const dx=(x/(c.width-1)-.5)*2,dy=(y/(c.height-1)-.5)*2,r=Math.hypot(dx,dy),i=(y*c.width+x)*4;
-   const envelope=Math.pow(Math.max(0,1-r*r),2),wave=Math.sin(r*14-frame/steps*Math.PI*2)*envelope;
-   pixels.data[i]=128+Math.round(108*wave*dx/Math.max(.08,r));
-   pixels.data[i+1]=128+Math.round(108*wave*dy/Math.max(.08,r));pixels.data[i+2]=128;pixels.data[i+3]=255;
-  }
-  p.putImageData(pixels,0,0);maps.push(c.toDataURL());
+ // b174: same radial "air pressure" refraction as the old SVG feDisplacementMap version,
+ // drawn as concentric elliptical rings with plain drawImage scaling (no SVG filter per frame).
+ // Old: offset = scale*(108/255)*sin(14r - 2πphase)*(1-r²)² along the radius, feathered with a radial mask.
+ const w=430,h=510,rings=10,inner=.5,k=108/255,half=(w+h)/4;   // r<.5 sits fully behind the speaker art drawn on top, so only the visible outer band is refracted
+ let mask=null,maskScale=0;
+ const units=[0,1].map(()=>{const buffer=document.createElement('canvas');return {buffer,painter:buffer.getContext('2d')};});
+ function featherMask(s){
+  if(mask&&maskScale===s)return mask;
+  mask=document.createElement('canvas');mask.width=Math.round(w*s);mask.height=Math.round(h*s);maskScale=s;
+  const p=mask.getContext('2d');p.setTransform(s*w*.5,0,0,s*h*.5,s*w*.5,s*h*.5);
+  const g=p.createRadialGradient(0,0,.45,0,0,1);g.addColorStop(0,'#fff');g.addColorStop(1,'#fff0');p.fillStyle=g;p.fillRect(-1,-1,2,2);
+  return mask;
  }
- const units=[0,1].map(index=>{
-  const filter=document.createElementNS(ns,'filter');filter.id='speaker-air-'+index;
-  for(const [key,value] of Object.entries({x:'0',y:'0',width:'1',height:'1','color-interpolation-filters':'sRGB',primitiveUnits:'userSpaceOnUse'}))filter.setAttribute(key,value);
-  const map=document.createElementNS(ns,'feImage');map.setAttribute('result','pressure');map.setAttribute('width',w);map.setAttribute('height',h);map.setAttribute('preserveAspectRatio','none');map.setAttribute('href',maps[0]);
-  const displacement=document.createElementNS(ns,'feDisplacementMap');
-  for(const [key,value] of Object.entries({in:'SourceGraphic',in2:'pressure',scale:'26',xChannelSelector:'R',yChannelSelector:'G'}))displacement.setAttribute(key,value);
-  filter.append(map,displacement);defs.append(filter);
-  const buffer=document.createElement('canvas');buffer.width=w;buffer.height=h;
-  return {map,displacement,buffer,painter:buffer.getContext('2d'),filter:filter.id};
- });
  function draw(context,source,speakers,beat,strength=1){
-  const phase=beat-Math.floor(beat),frame=Math.floor(phase*steps)%steps;
+  const phase=beat-Math.floor(beat),frame=Math.floor(phase*24)%24,wavePhase=frame/24*Math.PI*2;
   const amplitude=(8+23*Math.exp(-phase*5))*strength;
-  const info=[];
+  const ss=source.width/1080,s=ss*.55,m=featherMask(s),info=[];   // refraction band is soft (feathered, blurred wall behind) -> half-res buffer
   speakers.forEach((speaker,index)=>{
    const unit=units[index],cx=speaker.x+speaker.w*.5,cy=speaker.y+speaker.h*.5;
-   const x=cx-w*.5,y=cy-h*.5;
-   unit.map.setAttribute('href',maps[frame]);unit.displacement.setAttribute('scale',String(amplitude));
-   const p=unit.painter;p.clearRect(0,0,w,h);p.filter='url(#'+unit.filter+')';
-   p.drawImage(source,x,y,w,h,0,0,w,h);p.filter='none';
-   // Feather the region so the unchanged pixels join without a rectangular edge.
-   p.globalCompositeOperation='destination-in';p.save();p.translate(w*.5,h*.5);p.scale(w*.5,h*.5);
-   const mask=p.createRadialGradient(0,0,.45,0,0,1);mask.addColorStop(0,'#fff');mask.addColorStop(1,'#fff0');
-   p.fillStyle=mask;p.fillRect(-1,-1,2,2);p.restore();p.globalCompositeOperation='source-over';
-   context.drawImage(unit.buffer,x,y);info.push({x,y,width:w,height:h,frame,amplitude});
+   const x=cx-w*.5,y=cy-h*.5,bw=Math.round(w*s),bh=Math.round(h*s);
+   if(unit.buffer.width!==bw||unit.buffer.height!==bh){unit.buffer.width=bw;unit.buffer.height=bh;}
+   const p=unit.painter;p.setTransform(1,0,0,1,0,0);p.globalCompositeOperation='source-over';p.clearRect(0,0,bw,bh);
+   // unchanged base (outer ring area), then each ring sampled from its displaced radius
+   p.drawImage(source,x*ss,y*ss,w*ss,h*ss,0,0,bw,bh);
+   for(let i=0;i<rings;i++){
+    const r0=inner+(1-inner)*i/rings,r1=inner+(1-inner)*(i+1)/rings,r=(r0+r1)*.5;
+    const env=Math.pow(Math.max(0,1-r*r),2),wave=Math.sin(r*14-wavePhase)*env;
+    const d=amplitude*k*wave*Math.min(1,r/.08);           // px along the radius (center clamp like the old map)
+    const zoom=r/(r+d/half);                               // sample at r+d -> draw source scaled by r/(r+d)
+    if(Math.abs(zoom-1)<.002)continue;
+    p.save();p.setTransform(s,0,0,s,0,0);
+    p.beginPath();p.ellipse(w*.5,h*.5,w*.5*r1,h*.5*r1,0,0,Math.PI*2);p.ellipse(w*.5,h*.5,w*.5*r0,h*.5*r0,0,0,Math.PI*2,true);p.clip();
+    p.translate(w*.5,h*.5);p.scale(zoom,zoom);p.translate(-w*.5,-h*.5);
+    p.drawImage(source,x*ss,y*ss,w*ss,h*ss,0,0,w,h);p.restore();
+   }
+   p.globalCompositeOperation='destination-in';p.drawImage(m,0,0);p.globalCompositeOperation='source-over';
+   context.drawImage(unit.buffer,x,y,w,h);info.push({x,y,width:w,height:h,frame,amplitude});
   });
   window.speakerAirFrameInfo=info;
  }

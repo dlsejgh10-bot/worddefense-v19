@@ -34,7 +34,7 @@ function focusClaimableReward(){
 window.focusClaimableReward=focusClaimableReward;
 function fit(){const width=typeof innerWidth==='number'?innerWidth:1080,height=typeof innerHeight==='number'?innerHeight:2340;
  geometry=window.WeekendLayout.compute(width,height,embedded,art.header?art.header.width/art.header.height:undefined,art.start?art.start.width/art.start.height:undefined);
- canvas.height=geometry.H;uiCanvas.height=geometry.H;Object.assign(layout.carousel,geometry.carousel);Object.assign(layout.button,geometry.button);
+ window.setHomeRenderHeight(geometry.H);Object.assign(layout.carousel,geometry.carousel);Object.assign(layout.button,geometry.button);
  sceneBase.forEach((item,i)=>Object.assign(layout.scene[i],item));
  document.documentElement.style.overflow='hidden';document.body.style.overflow='hidden';
  Object.assign(layout.title,{x:115,y:310,w:850,h:850*187/868});Object.assign(layout.schedule,{x:375,y:482,w:330,h:330*83/402});

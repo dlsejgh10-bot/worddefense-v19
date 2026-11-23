@@ -47,6 +47,16 @@ let uiDirty=true,animationId=0,lastFrame=0,clockStart=performance.now(),clockOff
 const floorCache=[];
 const worldCanvas=document.createElement('canvas');worldCanvas.width=1080;worldCanvas.height=2340;
 const worldContext=worldCanvas.getContext('2d',{alpha:false});
+/* b174: render at device resolution (<= 2x CSS px) instead of the 1080-wide art size; drawing code keeps 1080 logical units */
+let RS=1,logicalH=2340;
+function computeHomeRS(){const cssW=Math.max(1,Math.min((typeof innerWidth==='number'&&innerWidth)||1080,(window.screen&&screen.width)||1e9)),dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));return Math.min(1,cssW*dpr/1080);}
+window.setHomeRenderHeight=function(h){logicalH=h||logicalH;RS=computeHomeRS();const W=Math.round(1080*RS),Hs=Math.round(logicalH*RS);
+ if(canvas.width!==W)canvas.width=W;if(canvas.height!==Hs)canvas.height=Hs;screenContext.setTransform(RS,0,0,RS,0,0);
+ uiCanvas.width=W;uiCanvas.height=Hs;uiCanvas.getContext('2d').setTransform(RS,0,0,RS,0,0);
+ worldCanvas.width=W;worldCanvas.height=Math.round(2340*RS);worldContext.setTransform(RS,0,0,RS,0,0);
+ window.homeRenderInfo={scale:RS,logical:[1080,logicalH],backing:[W,Hs]};uiDirty=true;};
+window.homeRenderScale=()=>RS;
+window.setHomeRenderHeight(2340);
 const beamCache={};
 const lamps=[
  {image:'spotlight-new-cyan',x:30,y:509.618,w:150,h:175.575,pivot:[105,550],emitter:[104.547,649.066],color:'68,220,255',amplitude:.16,phase:0,split:.19},
@@ -186,7 +196,7 @@ function renderScene(time){
   const beat=time*effects.bpm/60;const phase=beat%1;const kick=Math.exp(-phase*6.2)*(.88+.12*Math.cos(phase*Math.PI*4));
   animatedFloor(beat);
   layer(layout.scene[1]);
-  ctx=screenContext;ctx.drawImage(worldCanvas,0,0);
+  ctx=screenContext;ctx.drawImage(worldCanvas,0,0,1080,2340);
   if(effects.speakerAir&&window.SpeakerAir)window.SpeakerAir.draw(ctx,worldCanvas,layout.scene.filter(item=>item.image.startsWith('speaker-')),beat,effects.speakerStrength);
   window.dancerFrameInfo=[];
   for(const item of layout.scene.slice(2)){
@@ -194,7 +204,7 @@ function renderScene(time){
     else if(item.image.startsWith('unit-hip-')&&window.DanceAnimation){window.dancerFrameInfo.push(window.DanceAnimation.draw(ctx,item,time,effects.bpm))}
     else layer(item);
   }
-  if(uiDirty||window.weekendUiAnimated)drawUi();ctx.drawImage(uiCanvas,0,0);
+  if(uiDirty||window.weekendUiAnimated)drawUi();ctx.drawImage(uiCanvas,0,0,1080,logicalH);
   if(!music.paused){const phase=(music.currentTime*124/60)%1,pulse=Math.pow((1+Math.cos(phase*Math.PI*2))*.5,1.4),opacity=.14+.24*pulse;softGlow(0,1170,95+20*pulse,1570,'36,217,237',opacity);softGlow(1080,1170,95+20*pulse,1570,'233,95,174',opacity);softGlow(540,0,740,95+18*pulse,'36,217,237',opacity*.8);softGlow(540,2340,740,110+18*pulse,'233,95,174',opacity*.85);window.homeBorderInfo={source:'original-124bpm-drum-sequence',musicTime:music.currentTime,pulse,opacity,style:'smooth-breath'};}
   effects.frames++;
 }
@@ -210,7 +220,7 @@ window.setEffectsBpm=bpm=>{effects.bpm=clamp(Number(bpm)||108,50,180);renderScen
 window.renderComposition=draw;
 window.setButtonVariant=variant=>{if(['a','b','c'].includes(variant)){state.variant=variant;draw()}};
 window.setRewardOffset=value=>{state.rewardOffset=Math.max(0,Math.min(144,value));draw()};
-function canvasPoint(event){const r=canvas.getBoundingClientRect();return {x:(event.clientX-r.left)*1080/r.width,y:(event.clientY-r.top)*canvas.height/r.height}}
+function canvasPoint(event){const r=canvas.getBoundingClientRect();return {x:(event.clientX-r.left)*1080/r.width,y:(event.clientY-r.top)*logicalH/r.height}}
 let drag=null;
 canvas.addEventListener('pointerdown',event=>{const p=canvasPoint(event),c=layout.carousel,b=layout.button;if(p.y>=c.y&&p.y<=c.y+c.h){drag={x:p.x,offset:state.rewardOffset};canvas.setPointerCapture(event.pointerId)}else if(p.y>=b.y&&p.y<=b.y+b.h&&p.x>=b.x&&p.x<=b.x+b.w){state.press=true;canvas.setPointerCapture(event.pointerId);draw()}});
 canvas.addEventListener('pointermove',event=>{if(drag){const p=canvasPoint(event);window.setRewardOffset(drag.offset+drag.x-p.x)}});
