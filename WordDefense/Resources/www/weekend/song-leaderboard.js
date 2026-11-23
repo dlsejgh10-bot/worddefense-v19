@@ -53,5 +53,7 @@ async function page(cursor){const c=await account();await flush(c);const query={
  let myRank=null;if(own)myRank=await rankFor(c,own.score);
  const last=docs.at(-1);return{entries,me:own?{uid:c.auth.uid,score:own.score,rank:myRank,profile:p(c.auth.uid)}:{uid:c.auth.uid,profile:c.profile},cursor:docs.length===30?{score:last.score,doc:last._doc.name,offset:offset+docs.length,previousScore:last.score,previousRank:rank}:null};
 }
+// b170: the parent game updated rhythm_profiles (nickname/portrait/frame change) -> drop cached profiles and refresh a visible ranking now.
+addEventListener('wd-rhythm-profile-changed',()=>{profileCache.clear();try{window.RankUI?.refreshVisible?.()}catch{}});
 window.RhythmLeaderboard={begin,finish,abandon,stats,page,mine,aroundMe,currentToken:()=>attempt?.token};
 })();
