@@ -1,6 +1,6 @@
 (()=>{'use strict';
 window.weekendUiReady=false;
-let info={plays:0,entriesLeft:3,open:true,claimed:[],rewards:[]},art={};
+let info={plays:0,entriesLeft:2,entryLimit:2,open:true,claimed:[],rewards:[]},art={};
 let embedded=false;try{embedded=!!(window.parent.WeekendClient?.embedded||window.parent.parent?.WDWeekendHost)}catch{}
 Object.assign(layout.carousel,{x:32,y:1550,w:1016,h:400,cardWidth:292,gap:18});
 const fallback=[['gold',5000,'coin'],['gem',100,'gem'],['gold',5000,'coin'],['gem',300,'gem'],['key',1,'key'],['stone',1,'stone']];
@@ -27,7 +27,7 @@ progress=function(){const x=38,y=1980,w=1004,h=100;ctx.drawImage(art.progress,x,
 drawUi=function(){const previous=ctx;ctx=uiCanvas.getContext('2d');ctx.clearRect(0,0,1080,2340);layer(layout.title);layer(layout.schedule);hud();
  if(art.header){ctx.drawImage(art.header,110,1375,860,160);text('주말 보상',600,1456,65,'#fff','center');}
  const c=layout.carousel;ctx.save();ctx.beginPath();ctx.rect(c.x,c.y-18,c.w,c.h+36);ctx.clip();if(art.card)rewards.forEach(rewardCard);ctx.restore();if(art.progress)progress();
- text(`오늘 남은 입장 ${Math.max(0,info.entriesLeft??3)} / 3`,540,2116,32,'#fff','center',false);
+ text(`오늘 남은 입장 ${Math.max(0,info.entriesLeft??info.entryLimit??2)} / ${info.entryLimit??2}`,540,2116,32,'#fff','center',false);
  const b=layout.button;ctx.save();ctx.globalAlpha=info.open&&info.entriesLeft>0?1:.55;if(art.start){ctx.drawImage(art.start,b.x,b.y+(state.press?5:0),b.w,b.h);text('댄스 시작',b.x+b.w/2,b.y+b.h*.47+(state.press?5:0),87,'#fff','center');}ctx.restore();ctx=previous;uiDirty=false;
 };
 // The start button and hit target share the same rectangle, including its new offset.

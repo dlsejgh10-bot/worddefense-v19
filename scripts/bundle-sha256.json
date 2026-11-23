@@ -1,5 +1,5 @@
 {
-  "index.html": "897b5e35fb2f93f8b3a003339a1c82d19e2083b8d011a8ef2a8b975fd167bd3b",
+  "index.html": "1b3268f22516fccd325d7f412c75e0757651e207d235c652d8f2a2bdaabcd131",
   "weekend/assets/board-lyrics-v29-layout.json": "ea12c23316b702f40e9c1245171843bc76ba97bf940eb7bedd83f0c2bb10280c",
   "weekend/assets/board-lyrics-v29-prompt.txt": "29b91a62f7276ceea791cb0f90bf7897ec6039c5eb32f4b2f575548914cd4e91",
   "weekend/assets/board-lyrics-v29.png": "e03425a5d76df1f3669e55d43868bd5b7c5c85086bace2362c8213a3a0c2a1c2",
@@ -229,16 +229,16 @@
   "weekend/home/composition.js": "0f07bd4dfbedefdd3ddea55dc55181573d787fac09ae07fa5b98e7659e951702",
   "weekend/home/dance-playback.js": "0e95e9037d1dd9c88430c98f7f12d6353112ff38a42f21dc9b3114b307297344",
   "weekend/home/dance-pose-data.js": "1f091e17764a58b2330f09c8cbf9a697fd17552b44d1d3c01e8e133bd124f6fe",
-  "weekend/home/index.html": "c11ed74976d1f6ecf5d5fc4ab9f264d60584259d4c407008b56310cf7bae2dec",
-  "weekend/home/rewards-v44.js": "242629329eee979bfb374c65eb01c215aa36f44cff31a94d9ffb30ed607e9c14",
-  "weekend/home/rewards-v45.js": "a0caa5d586ac8940f40ef4f3bba3b6d1c8fdf3093d87627df7d614214d86e00d",
-  "weekend/home/rewards-v46.js": "138d0924f8216cd239ae2bf084db92df4f58e06d9b7d0449f084b704c4fe6b9e",
+  "weekend/home/index.html": "5e7f0b7acc97bc7348b04d1c5d327a46e71c685bfb10c7f63bbb65a2492ca61c",
+  "weekend/home/rewards-v44.js": "56d1ef69bfe5b20208d75223589f80a5a3053f4eefb6ba7b7713e57124090aaf",
+  "weekend/home/rewards-v45.js": "97775ffecfd63ed77a7d0f4d1503fd64fd0a34b97fdb2cacd305b229121d1a54",
+  "weekend/home/rewards-v46.js": "05a1a61a47bb6c3d8a6c08e8d2a8bb2e9a113eb5e853e5356164667b74958daf",
   "weekend/home/speaker-air.js": "ae871fb667256417a5e283bb7b31538e05c447a1bbbd5a6d7f697a523efaf877",
   "weekend/home/weekend-layout-v46.js": "b7fd101a0652599af311bc3fc7ce4ad018b73e59627a81563f3a5dd0e2c9a137",
   "weekend/home-audio.js": "14a6285091e847191f719814a397c023e5d63864a207fc0d7efca6cd4d9a2886",
   "weekend/home.js": "4ccbc0df865ea520855c9457b99df29a898659840249d92a871272fef49566c9",
   "weekend/index-template.html": "f7c25ed246b18f85eec1a71b57a6704bb70515201e8a3e5593d1776d3cddc1a8",
-  "weekend/index.html": "c5b00d08111676969b7426c7f630fffbdbd2125ffe0091268cd0751bea86b917",
+  "weekend/index.html": "688f106f1947cfc86f047e4dd2a04ebd6977f80faac08965e807b0445c293c5f",
   "weekend/lyrics-v29/asr-tail-word-times.json": "d6172e165371bb810b5ecb79b24bdda5411bca99b1d3880ff7ed75b26beed04c",
   "weekend/lyrics-v29/asr-word-times.json": "6bc83bda302a96bb3309ed95ff5cedce629e1c1146d93087774495c2a300e221",
   "weekend/lyrics-v29/lyrics-data.js": "d6ae888e63cd74c2f93d7a1c75f109b84b728ae104fee5b4828ca1aefe75b9b7",
@@ -266,6 +266,6 @@
   "weekend/weekend-client.js": "11288d257d1b24313c0c683a87f9c1b0e6669e7a49f052da052defcfeb6bbadb",
   "weekend/weekend-rewards.js": "eabf56ea89b3791fece0419bdc6d2944ea2fe9ca20ddf0a6677a5af17ca31949",
   "weekend/weekend-rewards.json": "397abbe6dc87d5ff10996493a51ffdb5e29592f84de0b429f5e1b189dba5035d",
-  "weekend/weekend-rules.js": "217e921e1a6dbcaf949016a9bc4e08bfc87f5922d796a98b5c9940a7e11fdcc1",
-  "weekend-host.js": "cfab630fdb58140ff7de4afbeed043044fd0deaca96864344bab4dda3e61e078"
+  "weekend/weekend-rules.js": "6743451287aca255d3d140a3a13ff5aed81ca27dd27108d09d2b41c86308a6bd",
+  "weekend-host.js": "b5099e3dd8633f932b228ab46125a75847392a7df6e86db3df3583e27e069f45"
 }

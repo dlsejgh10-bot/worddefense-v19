@@ -1,6 +1,6 @@
 (()=>{'use strict';
 window.weekendUiReady=false;
-let info={plays:0,entriesLeft:3,open:true,claimed:[],rewards:[]},selectedButton,buttonBox,readyPlate,lockedPlate;
+let info={plays:0,entriesLeft:2,entryLimit:2,open:true,claimed:[],rewards:[]},selectedButton,buttonBox,readyPlate,lockedPlate;
 const fallback=[['gold',5000,'coin'],['gem',100,'gem'],['gold',5000,'coin'],['gem',300,'gem'],['key',1,'key'],['stone',1,'stone']];
 function refresh(value){info=value||info;rewards.splice(0,rewards.length,...fallback.map(([type,amount,icon],i)=>{const def=info.rewards?.find(r=>r.stage===i+1);return{plays:i+1,type:def?.type||type,amount:(def?.amount??amount).toLocaleString(),image:({'coin':'wd-coin','gem':'wd-gem','key':'wd-key','stone':'wd-stone'})[def?.icon||icon],received:info.claimed?.includes(i+1),available:(info.plays||0)>=i+1&&!info.claimed?.includes(i+1)}}));layout.checkpoints.completed=Math.min(6,info.plays||0);uiDirty=true;if(assetsReady)draw();}
 window.setWeekendSnapshot=refresh;
@@ -9,7 +9,7 @@ hud=function(){if(!info.profile){originalHud();return}const p=info.profile;
  box(124,43,325,82,15,'#293248','#101322',4);image('profile-knight',22,37,96,89);text(p.nick||'모험가',142,84,34);
  box(462,47,206,76,13,'#111b2d',null);if(images['wd-coin'])ctx.drawImage(images['wd-coin'],469,63,45,45);text(Number(p.gold||0).toLocaleString(),523,85,32);
  box(680,47,188,76,13,'#111b2d',null);if(images['wd-gem'])ctx.drawImage(images['wd-gem'],685,63,45,45);text(Number(p.gems||0).toLocaleString(),737,85,32);
- box(880,47,180,76,13,'#111b2d',null);bolt(908,85,25);text(`${Math.max(0,info.entriesLeft)}/3`,936,85,33);
+ box(880,47,180,76,13,'#111b2d',null);bolt(908,85,25);text(`${Math.max(0,info.entriesLeft)}/${info.entryLimit??2}`,936,85,33);
  box(33,163,84,77,13,'#837367','#171923',5);ctx.strokeStyle='#fff';ctx.lineWidth=11;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(81,184);ctx.lineTo(61,201);ctx.lineTo(81,218);ctx.moveTo(63,201);ctx.lineTo(94,201);ctx.stroke();text('이벤트',146,202,51);
 };
 function tickMark(x,y,size=18){ctx.save();ctx.strokeStyle='#ffffff';ctx.lineWidth=4;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(x-size*.45,y);ctx.lineTo(x-size*.12,y+size*.32);ctx.lineTo(x+size*.5,y-size*.4);ctx.stroke();ctx.restore();}
@@ -37,7 +37,7 @@ drawUi=function(){const previous=ctx;ctx=uiCanvas.getContext('2d');ctx.clearRect
  const b=layout.button;ctx.save();ctx.globalAlpha=info.open&&info.entriesLeft>0?1:.55;
  if(selectedButton&&buttonBox){const [sx,sy,sw,sh]=buttonBox;ctx.drawImage(selectedButton,sx,sy,sw,sh,b.x,b.y+(state.press?5:0),b.w,b.h);text('댄스 시작',b.x+b.w*.625,b.y+b.h*.47+(state.press?5:0),87,'#ffffff','center');}
  else image('dance-start-'+state.variant,b.x,b.y+(state.press?5:0),b.w,b.h);ctx.restore();
- text(`오늘 남은 입장 ${Math.max(0,info.entriesLeft??3)} / 3`,540,2079,29,'#ffffff','center',false);ctx=previous;uiDirty=false;
+ text(`오늘 남은 입장 ${Math.max(0,info.entriesLeft??info.entryLimit??2)} / ${info.entryLimit??2}`,540,2079,29,'#ffffff','center',false);ctx=previous;uiDirty=false;
 };
 window.setRewardOffset=value=>{const c=layout.carousel,max=Math.max(0,rewards.length*(c.cardWidth+c.gap)-c.gap-c.w);state.rewardOffset=Math.max(0,Math.min(max,Number(value)||0));draw();};
 let touch;
