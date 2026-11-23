@@ -14,6 +14,8 @@ rules_version = '2';
 //   stats/{uid}            11/21 b157 접속 통계 (플랫폼·빌드·처음/마지막 접속, 하루 1번, 본인만 쓰기, 관리자만 읽기)
 //   nicknames/{n_닉네임}    11/22 b158 닉네임 중복 막기 (없을 때만 본인 uid 로 만들기, 본인 것만 지우기, 로그인하면 1개씩 확인 가능)
 //   nick_owner/{uid}       11/22 b158 내가 가진 닉네임 키 1개 (바꿀 때 옛 닉네임을 같은 요청에서 놓아야 함)
+//   user_snap/{uid}        11/23 b174d 재화·VIP·배틀패스 스냅샷 (게스트 포함, 본인만 쓰기·20초에 1번, 관리자만 읽기)
+//   purchase_log/{id}      11/23 b174d 앱 스토어 실결제 기록 (본인 uid 로 만들기만, 고치기·지우기 불가, 관리자만 읽기)
 // 관리자(isAdmin)는 관리 페이지 숫자 세기용으로 users·saves·trial_grants·stats 읽기 가능 (11/21 추가).
 // users/{uid} 는 요청된 본인 전용 문서(게임 코드는 아직 사용하지 않음).
 // 그 밖의 경로는 전부 거부.
@@ -339,6 +341,52 @@ service cloud.firestore {
       allow delete: if signedIn() && uid == request.auth.uid;
     }
 
+
+    // ---------- 11/23 b174d 관리 페이지: 유저 재화 스냅샷 · 결제 기록 ----------
+    function nat(v) { return v is int && v >= 0 && v <= 9000000000000000; }
+    function validSnap(d, uid) {
+      return d.keys().hasAll(['uid', 'pid', 'nick', 'gem', 'gold', 'key', 'stone', 'vip', 'build', 'plat', 'first', 'updatedAt'])
+        && d.keys().hasOnly(['uid', 'pid', 'nick', 'gem', 'gold', 'key', 'stone', 'vip', 'vipUntil', 'vipTrialUntil', 'bpPrem', 'bpExp', 'bpM', 'build', 'plat', 'ua', 'first', 'updatedAt'])
+        && d.uid == uid
+        && str(d.pid, 1, 64) && str(d.nick, 0, 40) && str(d.build, 0, 60)
+        && d.plat in ['ios', 'android', 'web']
+        && nat(d.gem) && nat(d.gold) && nat(d.key) && nat(d.stone)
+        && d.vip is bool
+        && (!('vipUntil' in d) || nat(d.vipUntil)) && (!('vipTrialUntil' in d) || nat(d.vipTrialUntil))
+        && (!('bpPrem' in d) || d.bpPrem is bool) && (!('bpExp' in d) || nat(d.bpExp)) && (!('bpM' in d) || nat(d.bpM))
+        && optStr(d, 'ua', 400)
+        && d.updatedAt == request.time;
+    }
+    match /user_snap/{uid} {
+      allow read: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && uid == request.auth.uid);
+      allow create: if signedIn() && uid == request.auth.uid
+        && validSnap(request.resource.data, uid)
+        && request.resource.data.first == request.time;
+      allow update: if signedIn() && uid == request.auth.uid
+        && validSnap(request.resource.data, uid)
+        && request.resource.data.first == resource.data.first
+        && request.time > resource.data.updatedAt + duration.value(20, 's');
+    }
+    function validBuy(d) {
+      return d.keys().hasAll(['uid', 'pid', 'oid', 'sku', 'plat', 'rw', 'createdAt'])
+        && d.keys().hasOnly(['uid', 'pid', 'nick', 'oid', 'token', 'sku', 'won', 'price', 'title', 'rw', 'plat', 'build', 'at', 'createdAt'])
+        && d.uid == request.auth.uid
+        && str(d.pid, 1, 64) && str(d.oid, 1, 300) && str(d.sku, 1, 60)
+        && d.plat in ['ios', 'android']
+        && optStr(d, 'nick', 40) && optStr(d, 'token', 1000) && optStr(d, 'price', 40) && optStr(d, 'title', 60) && optStr(d, 'build', 60)
+        && (!('won' in d) || (d.won is int && d.won >= 0 && d.won <= 10000000))
+        && (!('at' in d) || nat(d.at))
+        && d.rw is map && d.rw.keys().hasOnly(['gem', 'gold', 'key', 'stone', 'vip', 'bpp'])
+        && (!('gem' in d.rw) || nat(d.rw.gem)) && (!('gold' in d.rw) || nat(d.rw.gold)) && (!('key' in d.rw) || nat(d.rw.key))
+        && (!('stone' in d.rw) || nat(d.rw.stone)) && (!('vip' in d.rw) || nat(d.rw.vip)) && (!('bpp' in d.rw) || nat(d.rw.bpp))
+        && d.createdAt == request.time;
+    }
+    match /purchase_log/{lid} {
+      allow read: if isAdmin();
+      allow create: if signedIn() && lid.matches(request.auth.uid + '_[0-9a-z]{2,32}') && validBuy(request.resource.data);
+      allow update, delete: if false;
+    }
 
     // b174: 앱 원격 설정 (강제 업데이트 최소 빌드 minBuildAndroid/minBuildIOS, 광고 스위치 ads.enabled + 광고 단위 ID).
     // 로그인 전에도 읽어야 해서 누구나 읽기, 쓰기는 콘솔(관리자 SDK)만.
