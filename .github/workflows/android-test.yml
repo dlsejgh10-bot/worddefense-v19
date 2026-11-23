@@ -4,6 +4,11 @@ on:
     branches: [ios, merge-weekend-b169]
     paths: ['android-test/**', '.github/workflows/android-test.yml', 'WordDefense/Resources/www/**']
   workflow_dispatch:
+    inputs:
+      build_ref:
+        description: 'Branch/commit to build (the run stays on this branch so the cached practice signing key is reused)'
+        required: false
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -11,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.build_ref || github.ref }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
