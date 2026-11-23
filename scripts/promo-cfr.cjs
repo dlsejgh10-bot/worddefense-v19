@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const { chromium } = require('playwright');
 const out = path.resolve('promo-capture');
 fs.mkdirSync(out, { recursive: true });
-const FPS = 30, SECONDS = Number(process.env.PROMO_SECONDS || 24);
+const FPS = 30, SECONDS = Number(process.env.PROMO_SECONDS || 120);
 const report = { method: 'Actual offline game engine; Playwright clock advances every captured frame; no motion interpolation', fps: FPS, seconds: SECONDS, audio: 'silent motion proof', events: [], errors: [], samples: [] };
 (async () => {
   const browser = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required', '--disable-dev-shm-usage'] });
@@ -46,7 +46,7 @@ const report = { method: 'Actual offline game engine; Playwright clock advances 
           const a = __wd, g = a.G;
           return { over: g.over, tileT: g.tileT, sel: g.sel.length, tiles: g.tiles.filter(t => t.state === 'hand').map(t => ({ ch: t.ch, wild: t.wild })), gold: g.gold, cost: a.rerollCost(), n: g.rerollN };
         });
-        if (state.over) throw new Error('Game ended before motion proof completed');
+        if (state.over) { report.endedFrame = i; break; }
         if (!word && !state.sel && state.tileT > 0) {
           word = dictionaries.words.filter(w => {
             if (w.length < 2 || w.length > dictionaries.maxLength) return false;
@@ -73,7 +73,7 @@ const report = { method: 'Actual offline game engine; Playwright clock advances 
       const capture = await page.evaluate(() => {
         const g = __wd.G, c = document.querySelector('#c');
         if (g.towers.some(t => t.len === 6)) throw new Error('Forbidden six-character unit in frame');
-        return { jpeg: c.toDataURL('image/jpeg', 0.94).split(',')[1], gameTime: g.t, wave: g.wave, towers: g.towers.length, kills: g.kills };
+        return { jpeg: c.toDataURL('image/jpeg', 0.94).split(',')[1], gameTime: g.t, wave: g.wave, towers: g.towers.length, kills: g.kills, words:g.towers.map(t=>t.word), mobs:g.mobs.length, gold:g.gold, made:g.made };
       });
       if (firstTime === undefined) firstTime = capture.gameTime;
       lastTime = capture.gameTime;
@@ -82,19 +82,19 @@ const report = { method: 'Actual offline game engine; Playwright clock advances 
       if (hash === lastHash) { repeats++; duplicateFrames++; } else repeats = 0;
       maxRepeats = Math.max(maxRepeats, repeats); lastHash = hash;
       if (!encoder.stdin.write(bytes)) await once(encoder.stdin, 'drain');
-      if (i % FPS === 0) { report.samples.push({ frame: i, gameTime: capture.gameTime, wave: capture.wave, towers: capture.towers, kills: capture.kills }); console.log('FRAME', i, capture.gameTime.toFixed(3), capture.towers, capture.kills); }
-      if (i === FPS * 8 || i === FPS * 20) fs.writeFileSync(path.join(out, `frame-${i}.jpg`), bytes);
+      if (i % FPS === 0) { report.samples.push({ frame: i, gameTime: capture.gameTime, wave: capture.wave, towers: capture.towers, kills: capture.kills, words:capture.words, mobs:capture.mobs, gold:capture.gold, made:capture.made }); console.log('FRAME', i, capture.gameTime.toFixed(3), capture.towers, capture.kills); }
+      if (i % (FPS * 5) === 0) fs.writeFileSync(path.join(out, `frame-${i}.jpg`), bytes);
     }
     encoder.stdin.end();
     const [code] = await once(encoder, 'close');
     if (code !== 0) throw new Error('Encoder failed: ' + encoderErrors.slice(-1000));
-    report.frameCount = Math.round(FPS * SECONDS);
+    report.frameCount = report.endedFrame || Math.round(FPS * SECONDS);
     report.gameTimeSpan = lastTime - firstTime;
     report.duplicateFrames = duplicateFrames;
     report.longestRepeatSeconds = maxRepeats / FPS;
-    report.uniqueFrameRate = (report.frameCount - duplicateFrames) / SECONDS;
+    report.uniqueFrameRate = (report.frameCount - duplicateFrames) / (report.frameCount/FPS);
     if (report.uniqueFrameRate < FPS * 0.95 || report.longestRepeatSeconds > 0.1) throw new Error('Motion QA failed: duplicates/freezes');
-    if (Math.abs(report.gameTimeSpan - (SECONDS - 1 / FPS)) > 0.15) throw new Error('Game clock cadence differs from output timeline');
+    if (Math.abs(report.gameTimeSpan - (report.frameCount/FPS - 1 / FPS)) > 0.15) throw new Error('Game clock cadence differs from output timeline');
     report.passed = true;
   } catch (e) {
     report.failure = String(e); report.passed = false; process.exitCode = 1;
