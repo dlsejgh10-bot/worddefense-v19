@@ -1,8 +1,9 @@
 name: Android practice APK
 on:
   push:
-    branches: [ios]
+    branches: [ios, merge-weekend-b169]
     paths: ['android-test/**', '.github/workflows/android-test.yml', 'WordDefense/Resources/www/**']
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -26,7 +27,7 @@ jobs:
         run: |
           python3 scripts/verify_bundle.py
           cp -r WordDefense/Resources/www android-test/app/src/main/assets
-          sed -i '1i window.__wdAndroidPractice=true;' android-test/app/src/main/assets/weekend-host.js
+          # b169: no practice test flag; the practice app follows production event rules
           cd android-test
           gradle --no-daemon :app:assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../WordDefense-Practice.apk

@@ -90,11 +90,12 @@ let returningHome=false;
 function menu(){
  if(returningHome)return;returningHome=true;
  try{
-  const wasResult=state.mode==='result';window.RankUI?.stop();
+  const wasResult=state.mode==='result',wasPaused=state.mode==='paused';window.RankUI?.stop();
   if(state.mode==='paused'){window.RhythmLeaderboard?.abandon();if(state.weekendRunId){window.WeekendClient?.abandon?.(state.weekendRunId);state.weekendRunId=null;}}
   // Finish the transition before showing the lobby or requesting its music.
   window.ResultPresentation.stop();music.pause();clearPads();$('#pause-menu').hidden=true;$('#results').hidden=true;$('#pause-control').hidden=true;state.mode='ready';
   if(wasResult){try{window.WeekendClient?.collect?.()}catch(error){state.mode='result';$('#results').hidden=false;window.WeekendClient?.notice('보상 지급을 다시 시도해 주세요');console.error(error);return;}nextSong();}
+  else if(wasPaused)nextSong(); // b169: pause → lobby also advances to a new random song
   state.time=0;show(window.SONG_CHART.title,'4개의 버튼으로 박자를 타세요. 긴 노트는 끝까지 꾹!','댄스 시작');window.GameHome?.show();window.GameViewport?.fit();
  }catch(error){window.gameRuntimeError=String(error);window.GameDiagnostics?.error(error);if(state.mode==='ready')window.GameHome?.show();window.WeekendClient?.notice('로비로 이동을 다시 눌러 주세요');console.error(error);}
  finally{returningHome=false;}

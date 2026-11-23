@@ -1,5 +1,5 @@
 {
-  "index.html": "b71e90a3941506016b3ede297c7f5a23a58d411a446771555a3601ff37c7e511",
+  "index.html": "16c5e34dbf2b76f7a0d0ba66273ee998a153737ad696ce2cb14312344c871f29",
   "weekend/assets/board-lyrics-v29-layout.json": "ea12c23316b702f40e9c1245171843bc76ba97bf940eb7bedd83f0c2bb10280c",
   "weekend/assets/board-lyrics-v29-prompt.txt": "29b91a62f7276ceea791cb0f90bf7897ec6039c5eb32f4b2f575548914cd4e91",
   "weekend/assets/board-lyrics-v29.png": "e03425a5d76df1f3669e55d43868bd5b7c5c85086bace2362c8213a3a0c2a1c2",
@@ -109,7 +109,7 @@
   "weekend/data/song-db.json": "594d4ba3a07ae66b5d0b0d49e24e4a17ccb4d7c9fad61188a6705e1abd033a14",
   "weekend/diagnostics-v51.js": "af1fee292b3673aa4e3029424dba74c2d54188631c6c2361643ed11b8a6c8ff3",
   "weekend/game-audio.js": "1b603581676e9cc10261645a295ff714c7522b6c30da1062a9a5beba477daa04",
-  "weekend/game.js": "5d0299ce25c5afa4a4b22c45ad36769ed02c9ab38ffd197acf529a1159176e86",
+  "weekend/game.js": "e664d4e7359f8ad28469796468ca3d83548b3f3752af6e3f0a998e524eb80e37",
   "weekend/grandpa.js": "68666b50ba1f2410e9f6ee9cb33ec791111c852d02ea295253d1a81afdd7f0f0",
   "weekend/home/assets/back-chevron-v48.png": "783ad55e004b86966f5e88cdebd56eda4f33bf8ec536f5d442f9d81ddfe64f25",
   "weekend/home/assets/back-chevron-v48.webp": "57705f69adeb78a784c32805a1c3888e4c50274cff809f432301619b043b25aa",
@@ -238,7 +238,7 @@
   "weekend/home-audio.js": "14a6285091e847191f719814a397c023e5d63864a207fc0d7efca6cd4d9a2886",
   "weekend/home.js": "4ccbc0df865ea520855c9457b99df29a898659840249d92a871272fef49566c9",
   "weekend/index-template.html": "f7c25ed246b18f85eec1a71b57a6704bb70515201e8a3e5593d1776d3cddc1a8",
-  "weekend/index.html": "7b8ac740bb5a1710d6e5f8d317e9c0b3b4f2d06398a0804647d20bf05fde3441",
+  "weekend/index.html": "64d252e65db28c36d91dc70ebf73772139f58925c05bf8abceac96e4e9271389",
   "weekend/lyrics-v29/asr-tail-word-times.json": "d6172e165371bb810b5ecb79b24bdda5411bca99b1d3880ff7ed75b26beed04c",
   "weekend/lyrics-v29/asr-word-times.json": "6bc83bda302a96bb3309ed95ff5cedce629e1c1146d93087774495c2a300e221",
   "weekend/lyrics-v29/lyrics-data.js": "d6ae888e63cd74c2f93d7a1c75f109b84b728ae104fee5b4828ca1aefe75b9b7",
@@ -258,7 +258,7 @@
   "weekend/result-ranks.js": "83306c4ae03e6a76526ef87ed941131d61ff5a474c035eeb4c4bc53c39bbafd1",
   "weekend/result-ui.css": "16ecd1523e6ec9ade49b0d24ac5a240d3d03ee94c732788ecef2d9de1b37d9ea",
   "weekend/rules.js": "9af74852005d1e723f1d2d3e651d76ef07a6f833bc1686eb737789311b0af876",
-  "weekend/song-db.js": "7a7e6707c934216e1d061004deb9f49c020fffed041aa7b7c43c003b034c4ada",
+  "weekend/song-db.js": "cba421aaa47bd27598152411ef300e9b56481d12c01dac90585bfa4e3ea9f072",
   "weekend/song-leaderboard.js": "b46a07bd7b785fed99f0085021a994cbf98d0a6917b7c6eb555f0866470a42d5",
   "weekend/song-picker.js": "050af1adcced813866540beb2ba3aa71f7ba54cba99ede02921a950678d22bc6",
   "weekend/stick-drum-v41/b-stick-key-4.wav": "40ab486bb307fa3122cfdbdae987f7fbcff5f09a5d9f5feeb68e9d2ef09c7817",
@@ -267,5 +267,5 @@
   "weekend/weekend-rewards.js": "eabf56ea89b3791fece0419bdc6d2944ea2fe9ca20ddf0a6677a5af17ca31949",
   "weekend/weekend-rewards.json": "397abbe6dc87d5ff10996493a51ffdb5e29592f84de0b429f5e1b189dba5035d",
   "weekend/weekend-rules.js": "217e921e1a6dbcaf949016a9bc4e08bfc87f5922d796a98b5c9940a7e11fdcc1",
-  "weekend-host.js": "75176a2311980b8e141598a05e3696f5688dc1b8be851242e8366a67bab8afbf"
+  "weekend-host.js": "cfab630fdb58140ff7de4afbeed043044fd0deaca96864344bab4dda3e61e078"
 }

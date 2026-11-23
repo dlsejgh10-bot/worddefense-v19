@@ -4,10 +4,11 @@
  const byId=new Map(db.songs.map(s=>[s.id,s]));
  const requested=new URLSearchParams(location.search).get('song');let stored='';
  try{stored=localStorage.getItem('rhythm-selected-song')||localStorage.getItem('rhythm-selected-song-v36')||''}catch{}
- const randomMode=requested==='random',rotationKey='rhythm-song-rotation-v52';let seen=[];
- if(randomMode)try{const saved=JSON.parse(localStorage.getItem(rotationKey)||'[]');if(Array.isArray(saved))seen=[...new Set(saved.filter(id=>byId.has(id)))]}catch{}
+ // b169: every entry picks uniformly from all songs except the immediately previous one. Only the last song id is persisted.
+ const randomMode=requested==='random';
+ try{localStorage.removeItem('rhythm-song-rotation-v52')}catch{}
  const chartFor=s=>({...s.chart,id:s.id,title:s.title,audio:s.audio.src,duration:s.audio.durationSeconds,bpm:s.tempo.bpm,beat:s.tempo.secondsPerBeat,firstBeat:s.tempo.firstBeatSeconds,sourceSha256:s.audio.sha256});
- function chooseRandom(){let pool=db.songs.filter(s=>!seen.includes(s.id));if(!pool.length){seen=[];pool=db.songs;}if(pool.length>1)pool=pool.filter(s=>s.id!==stored);const a=new Uint32Array(1);let index;if(typeof crypto!=='undefined'&&crypto.getRandomValues){crypto.getRandomValues(a);index=a[0]%pool.length}else index=Math.floor(Math.random()*pool.length);const song=pool[index];stored=song.id;seen.push(song.id);try{localStorage.setItem('rhythm-selected-song',song.id);localStorage.setItem(rotationKey,JSON.stringify(seen))}catch{}return song;}
+ function chooseRandom(){let pool=db.songs;if(pool.length>1&&byId.has(stored))pool=pool.filter(s=>s.id!==stored);const a=new Uint32Array(1);let index;if(typeof crypto!=='undefined'&&crypto.getRandomValues){crypto.getRandomValues(a);index=a[0]%pool.length}else index=Math.floor(Math.random()*pool.length);const song=pool[index];stored=song.id;try{localStorage.setItem('rhythm-selected-song',song.id)}catch{}return song;}
  let current=randomMode?chooseRandom():byId.get(requested)||byId.get(stored)||byId.get(db.defaultSongId);
  function install(){window.SONG_CHART=chartFor(current);window.SONG_LYRICS={...current.lyrics,songTitle:current.title};window.MUSIC_IMPACTS=current.impacts;return current;}
  window.SongDB=Object.freeze({schemaVersion:db.schemaVersion,revision:db.revision,songs:db.songs,get current(){return current},randomMode,get:id=>byId.get(id),chartFor,
