@@ -31,7 +31,7 @@ const report = { method: 'Actual offline game engine; Playwright clock advances 
     page.on('pageerror', e => report.errors.push(String(e)));
     await page.goto('http://127.0.0.1:8766/index.html?nolobby=1&wdframe=1', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__wdLoaded && window.__wd?.G?.tiles?.length, null, { timeout: 120000 });
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 2000));
     const dictionaries = await page.evaluate(() => ({ words: Object.keys(__wd.DICT), maxLength: Math.min(5, __wd.CFG.MAX_ROW || 4) }));
     encoder = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'warning', '-y', '-f', 'image2pipe', '-framerate', String(FPS), '-vcodec', 'mjpeg', '-i', 'pipe:0', '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.join(out, 'main-game-cfr30.mp4')], { stdio: ['pipe', 'ignore', 'pipe'] });
     let encoderErrors = ''; encoder.stderr.on('data', d => encoderErrors += d);
