@@ -18,9 +18,9 @@
    if(window.parent.GameHome && !window.parent.GameHome.visible){setTimeout(warm,1000);return;}
    const batch=remaining.splice(0,4);
    await Promise.all(batch.map(path=>loadTexture(path).catch(error=>{window.danceAssetError=String(error)})));
-   if(remaining.length)setTimeout(warm,30);
+   if(remaining.length)setTimeout(warm,30);else window.danceWarmDone=true;
   }
-  setTimeout(warm,1500);
+  if(!remaining.length)window.danceWarmDone=true;else setTimeout(warm,1500);
  }
 
  function draw(ctx,item,seconds,bpm,options={}){

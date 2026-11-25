@@ -6,6 +6,7 @@
  const w=430,h=510,rings=10,inner=.5,k=108/255,half=(w+h)/4;   // r<.5 sits fully behind the speaker art drawn on top, so only the visible outer band is refracted
  let mask=null,maskScale=0;
  const units=[0,1].map(()=>{const buffer=document.createElement('canvas');return {buffer,painter:buffer.getContext('2d')};});
+ const frameCache=new Map();
  function featherMask(s){
   if(mask&&maskScale===s)return mask;
   mask=document.createElement('canvas');mask.width=Math.round(w*s);mask.height=Math.round(h*s);maskScale=s;
@@ -17,6 +18,17 @@
   const phase=beat-Math.floor(beat),frame=Math.floor(phase*24)%24,wavePhase=frame/24*Math.PI*2;
   const amplitude=(8+23*Math.exp(-phase*5))*strength;
   const ss=source.width/1080,s=ss*.55,m=featherMask(s),info=[];   // refraction band is soft (feathered, blurred wall behind) -> half-res buffer
+  const ck=source.width+'x'+source.height+'@'+frame+'@'+Math.round(strength*100);
+  const hit=frameCache.get(ck);
+  if(hit){
+   speakers.forEach((speaker,index)=>{
+    const baked=hit[index]; if(!baked)return;
+    const cx=speaker.x+speaker.w*.5,cy=speaker.y+speaker.h*.5;
+    context.drawImage(baked,cx-w*.5,cy-h*.5,w,h);
+   });
+   window.speakerAirFrameInfo=info;
+   return;
+  }
   speakers.forEach((speaker,index)=>{
    const unit=units[index],cx=speaker.x+speaker.w*.5,cy=speaker.y+speaker.h*.5;
    const x=cx-w*.5,y=cy-h*.5,bw=Math.round(w*s),bh=Math.round(h*s);
@@ -38,6 +50,8 @@
    p.globalCompositeOperation='destination-in';p.drawImage(m,0,0);p.globalCompositeOperation='source-over';
    context.drawImage(unit.buffer,x,y,w,h);info.push({x,y,width:w,height:h,frame,amplitude});
   });
+  if(frameCache.size>48)frameCache.clear();
+  frameCache.set(ck,units.map(u=>{const c=document.createElement('canvas');c.width=u.buffer.width;c.height=u.buffer.height;c.getContext('2d').drawImage(u.buffer,0,0);return c;}));
   window.speakerAirFrameInfo=info;
  }
  window.SpeakerAir={draw};

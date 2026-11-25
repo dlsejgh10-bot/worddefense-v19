@@ -62,7 +62,7 @@
     "peakDbfs": -0.647,
     "method": "BS.1770 stereo K-weighted 400ms/100ms absolute and relative gating"
   },
-  "audio/music.wav": {
+  "audio/music.mp3": {
     "measuredDb": -12.124,
     "targetDb": -18,
     "gain": 0.508405,

@@ -34,7 +34,7 @@ const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const effects={bpm:124,playing:query.get('capture')!=='1',time:0,glow:0,beamStrength:0,lampMotion:0,floorStrength:.45,speakerStrength:reducedMotion ? .35 : 1,speakerAir:true,frames:0};
 window.discoEffects=effects;
 let hostMusic=null;try{hostMusic=window.parent.parent.WDWeekendHost?.homeMusic?.()||null}catch{}
-const music=hostMusic||new Audio('../audio/music.wav');music.preload='auto';music.loop=true;if(!hostMusic)music.volume=.65;
+const music=hostMusic||new Audio('../audio/music.mp3');music.preload='auto';music.loop=true;if(!hostMusic)music.volume=.65;
 window.danceMusic=music;
 window.musicState={bpm:124,ready:false,playing:false,error:null};
 music.addEventListener('canplay',()=>{window.musicState.ready=true});
@@ -49,12 +49,22 @@ const worldCanvas=document.createElement('canvas');worldCanvas.width=1080;worldC
 const worldContext=worldCanvas.getContext('2d',{alpha:false});
 /* b174: render at device resolution (<= 2x CSS px) instead of the 1080-wide art size; drawing code keeps 1080 logical units */
 let RS=1,logicalH=2340;
-function computeHomeRS(){const cssW=Math.max(1,Math.min((typeof innerWidth==='number'&&innerWidth)||1080,(window.screen&&screen.width)||1e9)),dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));return Math.min(1,cssW*dpr/1080);}
+function computeHomeRS(){const cssW=Math.max(1,Math.min((typeof innerWidth==='number'&&innerWidth)||1080,(window.screen&&screen.width)||1e9)),dpr=Math.min(1.5,Math.max(1,window.devicePixelRatio||1));return Math.min(1,cssW*dpr/1080);}
+const staticWorld=document.createElement('canvas');let staticWorldOk=false;
+function buildStaticWorld(){if(!assetsReady||!images['background-wall-only-s25']||!images.floor||!images.mirrorball){staticWorldOk=false;return;}
+ const W=worldCanvas.width,H=worldCanvas.height;if(!W||!H){staticWorldOk=false;return;}
+ staticWorld.width=W;staticWorld.height=H;const s=staticWorld.getContext('2d',{alpha:false});s.setTransform(RS,0,0,RS,0,0);
+ s.drawImage(images['background-wall-only-s25'],0,0,1080,2340);
+ const f=layout.scene[0];s.drawImage(images.floor,f.x,f.y,f.w,f.h);
+ const b=layout.scene[1];s.drawImage(images.mirrorball,b.x,b.y,b.w,b.h);
+ staticWorldOk=true;}
 window.setHomeRenderHeight=function(h){logicalH=h||logicalH;RS=computeHomeRS();const W=Math.round(1080*RS),Hs=Math.round(logicalH*RS);
  if(canvas.width!==W)canvas.width=W;if(canvas.height!==Hs)canvas.height=Hs;screenContext.setTransform(RS,0,0,RS,0,0);
  uiCanvas.width=W;uiCanvas.height=Hs;uiCanvas.getContext('2d').setTransform(RS,0,0,RS,0,0);
- worldCanvas.width=W;worldCanvas.height=Math.round(2340*RS);worldContext.setTransform(RS,0,0,RS,0,0);
- window.homeRenderInfo={scale:RS,logical:[1080,logicalH],backing:[W,Hs]};uiDirty=true;};
+ const worldH=Math.min(2340,Math.max(1520,(layout.heading&&layout.heading.y||1410)+80,(layout.scene[0].y+layout.scene[0].h)+40));
+ worldCanvas.width=W;worldCanvas.height=Math.round(worldH*RS);worldContext.setTransform(RS,0,0,RS,0,0);
+ worldCanvas._logicalH=worldH;buildStaticWorld();
+ window.homeRenderInfo={scale:RS,logical:[1080,logicalH],backing:[W,Hs],worldH};uiDirty=true;};
 window.homeRenderScale=()=>RS;
 window.setHomeRenderHeight(2340);
 const beamCache={};
@@ -144,10 +154,11 @@ function buildFloorCache(){
     floorCache.push(surface);
   }
 }
+const glowTex={};
 function softGlow(x,y,rx,ry,color,opacity){
-  ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=opacity;ctx.translate(x,y);ctx.scale(rx,ry);
-  const gradient=ctx.createRadialGradient(0,0,0,0,0,1);gradient.addColorStop(0,`rgba(${color},.9)`);gradient.addColorStop(.35,`rgba(${color},.3)`);gradient.addColorStop(1,`rgba(${color},0)`);
-  ctx.fillStyle=gradient;ctx.fillRect(-1,-1,2,2);ctx.restore();
+  let tex=glowTex[color];
+  if(!tex){tex=document.createElement('canvas');tex.width=tex.height=128;const p=tex.getContext('2d');p.translate(64,64);p.scale(64,64);const g=p.createRadialGradient(0,0,0,0,0,1);g.addColorStop(0,`rgba(${color},.9)`);g.addColorStop(.35,`rgba(${color},.3)`);g.addColorStop(1,`rgba(${color},0)`);p.fillStyle=g;p.fillRect(-1,-1,2,2);glowTex[color]=tex;}
+  ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=opacity;ctx.drawImage(tex,x-rx,y-ry,rx*2,ry*2);ctx.restore();
 }
 function buildBeamCache(){
   for(const lamp of lamps){
@@ -171,7 +182,8 @@ function lights(time){
 function animatedFloor(beat){
   const local=beat%2;const checker=Math.floor(beat/2)%2;
   const light=(.22+.78*smooth(local/.16))*(1-smooth((local-1.50)/.45));
-  const f=layout.scene[0];image('floor',f.x,f.y,f.w,f.h);
+  const f=layout.scene[0];
+  if(!staticWorldOk)image('floor',f.x,f.y,f.w,f.h);
   ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=light*effects.floorStrength;ctx.drawImage(floorCache[checker+1],f.x,f.y,f.w,f.h);ctx.restore();
   window.discoFrameInfo={beat,checker,light,resting:local>1.93};
 }
@@ -192,11 +204,16 @@ function animatedSpeaker(item,kick){
 }
 function renderScene(time){
   if(!assetsReady)return;
-  effects.time=time;ctx=worldContext;ctx.clearRect(0,0,1080,2340);layer(layout.background);lights(time);
+  const __pt0=performance.now();
+  effects.time=time;ctx=worldContext;
+  const worldH=worldCanvas._logicalH||2340;
+  if(staticWorldOk){ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(staticWorld,0,0);ctx.setTransform(RS,0,0,RS,0,0);}
+  else{ctx.clearRect(0,0,1080,worldH);layer(layout.background);}
+  lights(time);
   const beat=time*effects.bpm/60;const phase=beat%1;const kick=Math.exp(-phase*6.2)*(.88+.12*Math.cos(phase*Math.PI*4));
   animatedFloor(beat);
-  layer(layout.scene[1]);
-  ctx=screenContext;ctx.drawImage(worldCanvas,0,0,1080,2340);
+  if(!staticWorldOk)layer(layout.scene[1]);
+  ctx=screenContext;ctx.drawImage(worldCanvas,0,0,1080,worldH);
   if(effects.speakerAir&&window.SpeakerAir)window.SpeakerAir.draw(ctx,worldCanvas,layout.scene.filter(item=>item.image.startsWith('speaker-')),beat,effects.speakerStrength);
   window.dancerFrameInfo=[];
   for(const item of layout.scene.slice(2)){
@@ -207,11 +224,12 @@ function renderScene(time){
   if(uiDirty||window.weekendUiAnimated)drawUi();ctx.drawImage(uiCanvas,0,0,1080,logicalH);
   if(!music.paused){const phase=(music.currentTime*124/60)%1,pulse=Math.pow((1+Math.cos(phase*Math.PI*2))*.5,1.4),opacity=.14+.24*pulse;softGlow(0,1170,95+20*pulse,1570,'36,217,237',opacity);softGlow(1080,1170,95+20*pulse,1570,'233,95,174',opacity);softGlow(540,0,740,95+18*pulse,'36,217,237',opacity*.8);softGlow(540,2340,740,110+18*pulse,'233,95,174',opacity*.85);window.homeBorderInfo={source:'original-124bpm-drum-sequence',musicTime:music.currentTime,pulse,opacity,style:'smooth-breath'};}
   effects.frames++;
+  if(window.__wdLobbyProfOn){const dt=performance.now()-__pt0;(window.__wdLobbyTimes||=[]).push(dt);if(window.__wdLobbyTimes.length>240)window.__wdLobbyTimes.shift();}
 }
 function draw(){uiDirty=true;renderScene(effects.time)}
 function animate(now){
   if(!effects.playing){animationId=0;return}
-  if(now-lastFrame>=1000/30){lastFrame=now;renderScene(!music.paused&&music.readyState>=2?music.currentTime:clockOffset+(now-clockStart)/1000)}
+  const cap=Math.max(15,Number(window.__lobbyFpsCap)||60);if(now-lastFrame>=1000/cap-2){lastFrame=now;renderScene(!music.paused&&music.readyState>=2?music.currentTime:clockOffset+(now-clockStart)/1000)}
   animationId=requestAnimationFrame(animate);
 }
 window.setEffectTime=seconds=>{effects.playing=false;cancelAnimationFrame(animationId);animationId=0;clockOffset=Math.max(0,Number(seconds)||0);renderScene(clockOffset)};
@@ -231,4 +249,4 @@ window.addEventListener('keydown',event=>{if(['1','2','3'].includes(event.key))w
 window.compositionReady=false;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&effects.playing){clockOffset=effects.time;clockStart=performance.now();lastFrame=0}});
 const pageReady=document.readyState==='loading'?new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true})):Promise.resolve();
-Promise.all([pageReady,pageReady.then(()=>window.weekendUiAssetsReady),document.fonts.load('40px Game'),...assetNames.map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{images[name]=img;resolve()};img.onerror=()=>reject(new Error('Missing asset: '+name));img.src=({'reward-coins':'assets/wd-coin.webp','reward-gem':'assets/wd-gem.webp','reward-chest':'assets/wd-chest.webp'})[name]||'assets/'+name+'.png'})),window.DanceAnimation.load()]).then(()=>{assetsReady=true;buildFloorCache();draw();window.compositionReady=true;document.getElementById('loading')?.remove();if(effects.playing){clockStart=performance.now();animationId=requestAnimationFrame(animate)}}).catch(error=>{window.compositionError=String(error);const status=document.getElementById('loading');if(status){status.textContent='이미지를 불러오지 못했어요. 눌러서 다시 시도';status.onclick=()=>location.reload()}console.error(error)});
+Promise.all([pageReady,pageReady.then(()=>window.weekendUiAssetsReady),document.fonts.load('40px Game'),...assetNames.map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{images[name]=img;resolve()};img.onerror=()=>reject(new Error('Missing asset: '+name));img.src=({'reward-coins':'assets/wd-coin.webp','reward-gem':'assets/wd-gem.webp','reward-chest':'assets/wd-chest.webp'})[name]||'assets/'+name+'.png'})),window.DanceAnimation.load()]).then(()=>{assetsReady=true;buildFloorCache();buildStaticWorld();draw();window.compositionReady=true;document.getElementById('loading')?.remove();if(effects.playing){clockStart=performance.now();animationId=requestAnimationFrame(animate)}}).catch(error=>{window.compositionError=String(error);const status=document.getElementById('loading');if(status){status.textContent='이미지를 불러오지 못했어요. 눌러서 다시 시도';status.onclick=()=>location.reload()}console.error(error)});
