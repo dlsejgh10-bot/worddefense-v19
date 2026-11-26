@@ -5609,7 +5609,7 @@ function heroDetail(k) {
   const P = heroPsOf(lv), sk = heroSkOf(k), hasA = heroHasAct(k), aOpen = heroActOpen();
   const d = heroDesc(k, sk, P) || {}, pn = d.pn || '패시브';
   const nb = HERO_BRK.find(x => x > lv), cu = heroStat(lv), nx = heroStat(Math.min(HERO_MAX, lv + 1));
-  const pas = `<div class="hr-sk"><div class="hr-skn"><b>${pn}</b></div><div class="hr-skb">${heroIco(k, 'p', pn)}<span class="hr-sklv">Lv.${P}</span></div><small class="hr-skh">패시브 · 4글자 이상 유닛</small><button class="hr-sbtn dt" data-act="heroPs" data-k="${k}" data-press>상세 ›</button></div>`;
+  const pas = `<div class="hr-sk"><div class="hr-skn"><b>${pn}</b></div><div class="hr-skb">${heroIco(k, 'p', pn)}<span class="hr-sklv">Lv.${P}</span></div><small class="hr-skh">패시브 · 4글자 이상 유닛</small><button class="hr-sbtn dt" data-act="heroPs" data-k="${k}" data-press><b>상세 ›</b></button></div>`;
   let act;
   if (!hasA) act = `<div class="hr-sk none"><div class="hr-skn"><b>액티브</b></div><p class="hr-none">액티브 스킬이 없어요</p></div>`;
   else {
@@ -24288,17 +24288,17 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 /* 상세 창 = 기존 남색 9-slice 틀 */
 #wdl .hr-pan{position:relative;margin:calc(2*var(--u)) calc(10*var(--u)) calc(22*var(--u));border-style:solid;border-color:transparent;border-width:calc(14*var(--u));border-image:var(--wd-pp-navy) 24 fill / calc(14*var(--u)) stretch;padding:calc(4*var(--u)) calc(4*var(--u)) calc(6*var(--u));color:#fff;font-family:var(--fd)}
 #wdl .hr-top{display:flex;align-items:center;gap:calc(8*var(--u));height:calc(42*var(--u));padding:0 calc(6*var(--u));margin-bottom:calc(7*var(--u));border-radius:calc(10*var(--u));background:linear-gradient(#22375a,#182844);box-shadow:inset 0 0 0 calc(2*var(--u)) #4f74ad,0 calc(2*var(--u)) 0 rgba(0,0,0,.35)}
-#wdl .hr-back{flex:none;display:grid;place-items:center;width:calc(36*var(--u));height:calc(34*var(--u));padding:0;border:0;border-radius:0;background:var(--hr-plsteel) 0 0 / 100% 100% no-repeat;cursor:pointer}
+#wdl .hr-back{position:relative;isolation:isolate;flex:none;display:grid;place-items:center;width:calc(48*var(--u));height:calc(34*var(--u));padding:0;border:0;border-radius:0;background:none;cursor:pointer}
 #wdl .hr-back .ic{width:calc(20*var(--u));height:calc(20*var(--u));--ic-f:#fff;--ink:#0f1828}
 #wdl .hr-title{flex:1;text-align:center;font-size:calc(24*var(--u));font-weight:400;color:#fff;-webkit-text-stroke:calc(5*var(--u)) #0f1828;paint-order:stroke fill;white-space:nowrap}
-#wdl .hr-tlv{flex:none;min-width:calc(56*var(--u));height:calc(30*var(--u));display:grid;place-items:center;padding:0 calc(8*var(--u));background:var(--hr-plblue) 0 0 / 100% 100% no-repeat;font-size:calc(15*var(--u));color:#fff;-webkit-text-stroke:calc(3.4*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-tlv{position:relative;isolation:isolate;flex:none;min-width:calc(56*var(--u));height:calc(30*var(--u));display:grid;place-items:center;padding:0 calc(8*var(--u));background:none;font-size:calc(15*var(--u));color:#fff;-webkit-text-stroke:calc(3.4*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-range{position:relative;aspect-ratio:780/290;border-radius:calc(10*var(--u));overflow:hidden;background:var(--hr-range) center 62% / cover no-repeat;box-shadow:inset 0 0 0 calc(2*var(--u)) #0f1828,0 calc(2*var(--u)) 0 rgba(0,0,0,.3)}
 #wdl .hr-range .hr-unit{position:absolute;left:30%;bottom:9%;height:70%;transform:translateX(-50%);filter:drop-shadow(0 calc(2*var(--u)) 0 rgba(0,0,0,.25))}
 #wdl .hr-range .hr-shadow{position:absolute;left:30%;bottom:6%;width:30%;height:9%;transform:translateX(-50%);border-radius:50%;background:rgba(60,35,10,.28)}
 /* 스킬 카드 = 베이지 (기존 크림 9-slice) + 파란 이름 띠 */
 #wdl .hr-sks{display:grid;grid-template-columns:1fr 1fr;gap:calc(8*var(--u));margin-top:calc(12*var(--u))}
 #wdl .hr-sk{position:relative;display:flex;flex-direction:column;align-items:center;gap:calc(4*var(--u));min-height:calc(118*var(--u));border-style:solid;border-color:transparent;border-width:calc(10*var(--u));border-image:var(--wd-pp-cream) 24 fill / calc(10*var(--u)) stretch;padding:calc(24*var(--u)) calc(2*var(--u)) calc(2*var(--u));color:#3b2a1d}
-#wdl .hr-skn{position:absolute;left:calc(-6*var(--u));right:calc(-6*var(--u));top:calc(-8*var(--u));height:calc(30*var(--u));display:grid;place-items:center;background:var(--hr-plblue) 0 0 / 100% 100% no-repeat}
+#wdl .hr-skn{position:absolute;isolation:isolate;left:calc(-6*var(--u));right:calc(-6*var(--u));top:calc(-8*var(--u));height:calc(30*var(--u));display:grid;place-items:center;background:none}
 #wdl .hr-skn b{font-weight:400;font-size:calc(17*var(--u));color:#fff;-webkit-text-stroke:calc(3.8*var(--u)) #0f1828;paint-order:stroke fill;white-space:nowrap}
 #wdl .hr-skb{display:flex;align-items:center;gap:calc(8*var(--u))}
 #wdl .hr-ico{flex:none;display:grid;place-items:center;width:calc(42*var(--u));height:calc(42*var(--u));border-radius:calc(9*var(--u));background:linear-gradient(#ffb441,#f07d1c);box-shadow:inset 0 0 0 calc(2.4*var(--u)) #3a2a1d,inset 0 calc(3*var(--u)) 0 rgba(255,255,255,.35);overflow:hidden}
@@ -24307,14 +24307,14 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 #wdl .hr-ico.empty i{font-style:normal;font-size:calc(22*var(--u));color:#8a7150}
 #wdl .hr-ico.sm{width:calc(26*var(--u));height:calc(26*var(--u));border-radius:calc(6*var(--u))}
 #wdl .hr-ico.sm i{font-size:calc(13*var(--u))}
-#wdl .hr-sklv{min-width:calc(54*var(--u));height:calc(28*var(--u));display:grid;place-items:center;padding:0 calc(6*var(--u));background:var(--hr-plblue) 0 0 / 100% 100% no-repeat;font-size:calc(15*var(--u));color:#fff;-webkit-text-stroke:calc(3.4*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-sklv{position:relative;isolation:isolate;min-width:calc(54*var(--u));height:calc(28*var(--u));display:grid;place-items:center;padding:0 calc(6*var(--u));background:none;font-size:calc(15*var(--u));color:#fff;-webkit-text-stroke:calc(3.4*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-skd{margin:0;min-height:calc(32*var(--u));display:flex;align-items:center;text-align:center;font-family:var(--ui-readable,var(--fd));font-size:calc(12.5*var(--u));line-height:1.3;color:#3b2a1d;word-break:keep-all}
 #wdl .hr-skh{font-size:calc(10.5*var(--u));color:#8a7150;font-family:var(--ui-readable,var(--fd))}
-#wdl .hr-sbtn,#wdl-ov .hr-sbtn{position:relative;margin-top:auto;width:100%;height:calc(38*var(--u));display:flex;align-items:center;justify-content:center;gap:calc(6*var(--u));padding:0 0 calc(2*var(--u));border:0;border-radius:0;cursor:pointer;font-family:var(--fd);color:#fff;background:transparent 0 0 / 100% 100% no-repeat}
+#wdl .hr-sbtn,#wdl-ov .hr-sbtn{position:relative;isolation:isolate;margin-top:auto;width:100%;height:calc(38*var(--u));display:flex;align-items:center;justify-content:center;gap:calc(6*var(--u));padding:0 0 calc(2*var(--u));border:0;border-radius:0;cursor:pointer;font-family:var(--fd);color:#fff;background:none}
 #wdl .hr-sbtn b,#wdl-ov .hr-sbtn b{font-weight:400;font-size:calc(16*var(--u));-webkit-text-stroke:calc(3.6*var(--u)) #0f1828;paint-order:stroke fill;white-space:nowrap}
-#wdl .hr-sbtn.dt,#wdl-ov .hr-sbtn.dt{background-image:var(--hr-detail);height:calc(34*var(--u))}
+#wdl .hr-sbtn.dt,#wdl-ov .hr-sbtn.dt{height:calc(34*var(--u))}
 #wdl .hr-sbtn.dt.wide,#wdl-ov .hr-sbtn.dt.wide{width:60%;margin:calc(10*var(--u)) auto 0}
-#wdl .hr-sbtn.up{background-image:var(--hr-btnsk)}
+#wdl .hr-sbtn.up{background-image:none}
 #wdl .hr-sbtn.up b{color:#fff;font-size:calc(15.5*var(--u))}
 #wdl .hr-cost{display:flex;align-items:center;gap:calc(2*var(--u));font-size:calc(14*var(--u));-webkit-text-stroke:calc(3.2*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-cost img{width:calc(18*var(--u));height:calc(18*var(--u));object-fit:contain}
@@ -24337,17 +24337,17 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 #wdl .hr-rl{flex:1;min-width:0;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-text-stroke:calc(3.2*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-rc{flex:none;width:calc(56*var(--u));text-align:right;font-weight:400;color:#fff;-webkit-text-stroke:calc(3.2*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-arw{flex:none;width:calc(24*var(--u));height:auto;margin:0 calc(2*var(--u))}
-#wdl .hr-rn{flex:none;min-width:calc(72*var(--u));height:calc(25*var(--u));display:grid;place-items:center;font-weight:400;color:#24400e;background:var(--hr-plgreen) 0 0 / 100% 100% no-repeat}
-#wdl .hr-rn:not(.up){background-image:var(--hr-plsteel);color:#fff;-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
-#wdl .hr-rn.mx{background-image:var(--hr-plsteel);color:#ffe07a;-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-rn{position:relative;isolation:isolate;flex:none;min-width:calc(72*var(--u));height:calc(25*var(--u));display:grid;place-items:center;font-weight:400;color:#24400e;background:none}
+#wdl .hr-rn:not(.up){color:#fff;-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-rn.mx{color:#ffe07a;-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-spd{margin:calc(5*var(--u)) 0 0;text-align:center;font-size:calc(12.5*var(--u));color:#c9d6ee;font-family:var(--ui-readable,var(--fd))}
 #wdl .hr-spd.up{color:#a8f07a}
 #wdl .hr-lvrow{display:flex;align-items:center;justify-content:center;gap:calc(8*var(--u));margin-top:calc(6*var(--u))}
 #wdl .hr-lvrow .hr-arw{width:calc(32*var(--u))}
-#wdl .hr-pl{min-width:calc(100*var(--u));height:calc(32*var(--u));display:grid;place-items:center;font-size:calc(17*var(--u));color:#fff;-webkit-text-stroke:calc(3.6*var(--u)) #0f1828;paint-order:stroke fill;background:0 0 / 100% 100% no-repeat}
-#wdl .hr-pl.blue{background-image:var(--hr-plblue)}
-#wdl .hr-pl.green{background-image:var(--hr-plgreen)}
-#wdl .hr-lvup{display:flex;align-items:center;justify-content:center;gap:calc(12*var(--u));width:80%;aspect-ratio:440/175;max-height:calc(66*var(--u));margin:calc(6*var(--u)) auto 0;padding:0 0 calc(3*var(--u));border:0;border-radius:0;background:var(--hr-btnlv) 0 0 / 100% 100% no-repeat;cursor:pointer;font-family:var(--fd)}
+#wdl .hr-pl{position:relative;isolation:isolate;min-width:calc(100*var(--u));height:calc(32*var(--u));display:grid;place-items:center;font-size:calc(17*var(--u));color:#fff;-webkit-text-stroke:calc(3.6*var(--u)) #0f1828;paint-order:stroke fill;background:none}
+#wdl .hr-pl.blue{background-image:none}
+#wdl .hr-pl.green{background-image:none}
+#wdl .hr-lvup{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;gap:calc(12*var(--u));width:80%;height:calc(58*var(--u));margin:calc(6*var(--u)) auto 0;padding:0 0 calc(3*var(--u));border:0;border-radius:0;background:none;cursor:pointer;font-family:var(--fd)}
 #wdl .hr-lvup:active,#wdl .hr-sbtn:active,#wdl-ov .hr-sbtn:active{transform:translateY(calc(2*var(--u)))}
 #wdl .hr-lvup b{font-weight:400;font-size:calc(23*var(--u));color:#3a2a1d;-webkit-text-stroke:0}
 #wdl .hr-gold{display:flex;align-items:center;gap:calc(4*var(--u));font-size:calc(22*var(--u));color:#3a2a1d}
@@ -24375,7 +24375,7 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 #wdl-views > .hr-ov .hr-pan.hr-in{animation:modal-in .65s var(--spring-hard) both}
 #wdl-views > .hr-ov.out .hr-pan{animation:modal-out .2s var(--ease-out) both}
 #wdl-views > .hr-ov .hr-range{aspect-ratio:780/250}
-#wdl-views > .hr-ov .hr-lvup{max-height:calc(58*var(--u));margin-top:calc(4*var(--u))}
+#wdl-views > .hr-ov .hr-lvup{margin-top:calc(4*var(--u))}
 #wdl-views > .hr-ov .hr-stats{margin-top:calc(6*var(--u))}
 #wdl .hr-ico.lg,#wdl-views .hr-ico.lg{width:calc(86*var(--u));height:calc(86*var(--u));border-radius:calc(18*var(--u));margin:calc(4*var(--u)) auto calc(8*var(--u))}
 #wdl .hr-ico.lg i{font-size:calc(40*var(--u))}
@@ -24386,7 +24386,7 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 #wdl .hr-chips span.tag{background:#3d5a8a;color:#fff;-webkit-text-stroke:calc(2.8*var(--u)) #0f1828;paint-order:stroke fill;font-family:var(--fd);font-size:calc(13*var(--u))}
 #wdl .hr-cmp{display:flex;align-items:stretch;justify-content:center;gap:calc(6*var(--u));margin:calc(8*var(--u)) 0 calc(10*var(--u))}
 #wdl .hr-cmpi{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:calc(4*var(--u));border-style:solid;border-color:transparent;border-width:calc(8*var(--u));border-image:var(--wd-pp-cream) 24 fill / calc(8*var(--u)) stretch;padding:calc(6*var(--u)) calc(4*var(--u)) calc(8*var(--u));text-align:center;color:#3b2a1d}
-#wdl .hr-cmpi b{display:grid;place-items:center;min-width:calc(70*var(--u));height:calc(24*var(--u));padding:0 calc(8*var(--u));background:var(--hr-plblue) 0 0 / 100% 100% no-repeat;font-weight:400;font-size:calc(13.5*var(--u));color:#fff;-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-cmpi b{position:relative;isolation:isolate;display:grid;place-items:center;min-width:calc(70*var(--u));height:calc(24*var(--u));padding:0 calc(8*var(--u));background:none;font-weight:400;font-size:calc(13.5*var(--u));color:#fff;-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-cmpi span{font-family:var(--ui-readable,var(--fd));font-size:calc(12.5*var(--u));line-height:1.35;word-break:keep-all}
 #wdl .hr-cmp .hr-arw{width:calc(28*var(--u));align-self:center}
 #wdl .hr-skpop .hr-sbtn.up,#wdl .hr-skpop .hr-sbtn.up.max{margin-top:calc(2*var(--u));height:calc(48*var(--u));width:86%}
@@ -24395,6 +24395,51 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 #wdl .hr-skpop .hr-cost img{width:calc(22*var(--u));height:calc(22*var(--u))}
 #wdl .hr-foot{margin:calc(2*var(--u)) auto 0;width:86%;min-height:calc(36*var(--u));display:grid;place-items:center;border-radius:calc(10*var(--u));background:linear-gradient(#22375a,#182844);box-shadow:inset 0 0 0 calc(2*var(--u)) #4f74ad;color:#fff;font-size:calc(15*var(--u));text-align:center;-webkit-text-stroke:calc(3.2*var(--u)) #0f1828;paint-order:stroke fill}
 @media (prefers-reduced-motion:reduce){#wdl-views > .hr-ov,#wdl-views > .hr-ov .hr-pan.hr-in,#wdl-views > .hr-ov.out,#wdl-views > .hr-ov.out .hr-pan{animation:none}}
+
+/* 이미지 배지·버튼: 원본 비율로만 캡을 두고, 가운데만 가로로 늘림 (9-slice / 가로 3-slice). 절대 가로세로를 다르게 스케일하지 않음. */
+#wdl .hr-skn::before,#wdl .hr-sklv::before,#wdl .hr-tlv::before,#wdl .hr-back::before,
+#wdl .hr-pl::before,#wdl .hr-rn::before,#wdl .hr-cmpi b::before,
+#wdl .hr-sbtn::before,#wdl-ov .hr-sbtn::before,#wdl .hr-lvup::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;box-sizing:border-box;
+  border-style:solid;border-color:transparent}
+#wdl .hr-skn>*,#wdl .hr-sklv>*,#wdl .hr-tlv>*,#wdl .hr-back>*,
+#wdl .hr-pl>*,#wdl .hr-rn>*,#wdl .hr-cmpi b>*,
+#wdl .hr-sbtn>*,#wdl-ov .hr-sbtn>*,#wdl .hr-lvup>*{position:relative;z-index:1}
+/* 판자 칩 (plBlue/Green/Steel 260×80, 모서리 ≈28px) */
+#wdl .hr-skn::before,#wdl .hr-sklv::before,#wdl .hr-tlv::before,#wdl .hr-pl.blue::before,#wdl .hr-cmpi b::before{
+  --s9:28;--ih:80;border-width:calc(var(--hh)*var(--s9)/var(--ih));
+  border-image:var(--hr-plblue) 28 fill / calc(var(--hh)*28/80) stretch}
+#wdl .hr-skn{--hh:calc(30*var(--u))}
+#wdl .hr-sklv{--hh:calc(28*var(--u))}
+#wdl .hr-tlv{--hh:calc(30*var(--u))}
+#wdl .hr-pl{--hh:calc(32*var(--u))}
+#wdl .hr-cmpi b{--hh:calc(24*var(--u))}
+#wdl .hr-pl.green::before{--s9:28;--ih:80;border-width:calc(var(--hh)*28/80);
+  border-image:var(--hr-plgreen) 28 fill / calc(var(--hh)*28/80) stretch}
+#wdl .hr-rn{--hh:calc(25*var(--u))}
+#wdl .hr-rn.up::before{border-width:calc(var(--hh)*28/80);
+  border-image:var(--hr-plgreen) 28 fill / calc(var(--hh)*28/80) stretch}
+#wdl .hr-rn:not(.up)::before,#wdl .hr-rn.mx::before,#wdl .hr-back::before{
+  border-width:calc(var(--hh)*28/80);
+  border-image:var(--hr-plsteel) 28 fill / calc(var(--hh)*28/80) stretch}
+#wdl .hr-back{--hh:calc(34*var(--u))}
+/* 상세 › 버튼 (btnDetail 300×119, 모서리 ≈36px) */
+#wdl .hr-sbtn.dt::before,#wdl-ov .hr-sbtn.dt::before{
+  --hh:calc(34*var(--u));border-width:calc(34*var(--u)*36/119);
+  border-image:var(--hr-detail) 36 fill / calc(34*var(--u)*36/119) stretch}
+/* 스킬 강화 버튼 (btnSk 400×157): 돌 소용돌이 캡은 통째로, 가운데만 가로로. 좌우 슬라이스 80, 상하 4 */
+#wdl .hr-sbtn.up::before{
+  --hh:calc(38*var(--u));
+  border-width:calc(var(--hh)*4/157) calc(var(--hh)*80/157);
+  border-image:var(--hr-btnsk) 4 80 4 80 fill / calc(var(--hh)*4/157) calc(var(--hh)*80/157) stretch}
+#wdl .hr-skpop .hr-sbtn.up::before{--hh:calc(48*var(--u));
+  border-width:calc(var(--hh)*4/157) calc(var(--hh)*80/157);
+  border-image:var(--hr-btnsk) 4 80 4 80 fill / calc(var(--hh)*4/157) calc(var(--hh)*80/157) stretch}
+/* 레벨업 버튼 (btnLv 440×175): 금색 소용돌이 캡은 통째로, 좌우 슬라이스 84, 상하 4 */
+#wdl .hr-lvup::before{
+  --hh:calc(58*var(--u));
+  border-width:calc(var(--hh)*4/175) calc(var(--hh)*84/175);
+  border-image:var(--hr-btnlv) 4 84 4 84 fill / calc(var(--hh)*4/175) calc(var(--hh)*84/175) stretch}
 </style>
 <script id="wd-hero-skill-js">
 /* 11/25 영웅 스킬·패시브 (다음 스토어 업데이트용). 숫자 = /workspace/q1116/hero_mock/balance.md
