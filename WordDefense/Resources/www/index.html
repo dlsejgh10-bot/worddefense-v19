@@ -4800,12 +4800,61 @@ function onClick(e) {
 
 /* ---------- press feel (squash & stretch) ---------- */
 let pressed = [];
+let pressAt = null;
+const TAP_PX = 8;
+const UI_CTL = 'button,[role=button],.btn,[data-press],.plus,.x,.tab,[data-act],a[href]';
+function uiCtl(t) {
+  if (!t) return null;
+  const el = t.nodeType === 1 ? t : t.parentElement;
+  if (!el || !el.closest) return null;
+  const b = el.closest(UI_CTL);
+  return (b && !b.disabled) ? b : null;
+}
+function clearPressed() { pressed.forEach(b => b.classList.remove('pressed')); pressed = []; }
+function snapScrolls(from, map) {
+  let n = from && (from.nodeType === 1 ? from : from.parentElement);
+  while (n) { map.set(n, { t: n.scrollTop || 0, l: n.scrollLeft || 0 }); n = n.parentElement; }
+  const se = document.scrollingElement || document.documentElement;
+  if (se && !map.has(se)) map.set(se, { t: se.scrollTop || 0, l: se.scrollLeft || 0 });
+}
 function onDown(e) {
   unlockAudio();
-  const b = e.target.closest('.btn,[data-press],.plus,.x'); if (!b || b.disabled) return;
-  b.classList.add('pressed'); pressed.push(b); if (b.matches('.btn')) sfx('click'); else sfx('tap');
+  if (e.isPrimary === false) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const b = uiCtl(e.target);
+  pressAt = { x: e.clientX, y: e.clientY, b, pid: e.pointerId, moved: false, scrolled: false, scrolls: new Map() };
+  snapScrolls(e.target, pressAt.scrolls);
+  if (!b) return;
+  b.classList.add('pressed'); pressed.push(b);
 }
-function onUp() { pressed.forEach(b => b.classList.remove('pressed')); pressed = []; }
+function pressEnd(e, kind) {
+  const st = pressAt; pressAt = null;
+  clearPressed();
+  if (kind !== 'up' || !st || !st.b || st.scrolled || st.moved) return;
+  if (e && typeof e.clientX === 'number' && Math.hypot(e.clientX - st.x, e.clientY - st.y) > TAP_PX) return;
+  if (e && e.target) {
+    const over = uiCtl(e.target);
+    if (over !== st.b && !(st.b.contains && st.b.contains(e.target))) return;
+  }
+  if (st.b.matches('.btn')) sfx('click'); else sfx('tap');
+}
+function onUp(e) { pressEnd(e, 'up'); }
+function onCancel() { pressEnd(null, 'cancel'); }
+function onPressMove(e) {
+  const st = pressAt; if (!st || (e.pointerId != null && st.pid != null && e.pointerId !== st.pid)) return;
+  if (Math.hypot(e.clientX - st.x, e.clientY - st.y) > TAP_PX) { st.moved = true; clearPressed(); }
+}
+function onPressScroll(e) {
+  const st = pressAt; if (!st) return;
+  const t = e && e.target;
+  const se = document.scrollingElement || document.documentElement;
+  const node = (!t || t === document || t === window) ? se : (t.nodeType === 1 ? t : t.parentElement);
+  if (!node) return;
+  const top = node.scrollTop || 0, left = node.scrollLeft || 0;
+  const prev = st.scrolls.get(node);
+  if (!prev) { st.scrolls.set(node, { t: top, l: left }); return; }
+  if (Math.abs(top - prev.t) > TAP_PX || Math.abs(left - prev.l) > TAP_PX) { st.scrolled = true; clearPressed(); }
+}
 
 /* ---------- wipe transition ---------- */
 async function wipeTo(cover, x, y, label) {
@@ -5486,7 +5535,7 @@ function init() {
   renderTop(); renderTabs(); route = 'home'; cur = document.createElement('section'); cur.className = 'view enter'; cur.dataset.vr = 'home'; cur.innerHTML = build('home'); viewCache.home = cur; viewDirty.home = false; views.appendChild(cur); updateTabs(true);
   for (const r of [root, ov]) { r.addEventListener('click', onClick); }
   exitBtn.addEventListener('click', () => askExit());
-  document.addEventListener('pointerdown', onDown, true); document.addEventListener('pointerup', onUp, true); document.addEventListener('pointercancel', onUp, true);
+  document.addEventListener('pointerdown', onDown, true); document.addEventListener('pointermove', onPressMove, true); document.addEventListener('pointerup', onUp, true); document.addEventListener('pointercancel', onCancel, true); document.addEventListener('scroll', onPressScroll, true);
   views.addEventListener('input', e => {
     const s = e.target.closest('[data-sl]'); if (!s) return; const v = +s.value / 100; S.set[s.dataset.sl] = v; s.style.setProperty('--p', s.value + '%'); s.nextElementSibling.textContent = s.value; applyAudio(); save();
   });
