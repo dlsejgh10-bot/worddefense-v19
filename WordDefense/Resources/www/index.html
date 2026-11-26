@@ -5564,7 +5564,7 @@ function heroFix() {   // fixState: 영웅 저장 정리 (모르는 키·이상�
   S.heroLv = o; S.skStone = Math.max(0, Math.floor(+S.skStone) || 0);
 }
 const heroW = k => (S.heroLv[k] = S.heroLv[k] || { lv: 1, s: 1 });
-let heroSel = null, heroLast = null;
+let heroSel = null, heroLast = null, heroSub = null;
 function heroArtVars() {
   if (heroArtVars.done) return; heroArtVars.done = 1;
   const r = document.documentElement.style, m = { bg: 'bgCastle', range: 'bgRange', fgray: 'frameGray', fgold: 'frameGold', btnlv: 'btnLv', btnsk: 'btnSk', plblue: 'plBlue', plgreen: 'plGreen', plsteel: 'plSteel', plgray: 'plGray', detail: 'btnDetail', cw: 'cloudW', cs: 'cloudS', stat: 'statPanel' };
@@ -5583,54 +5583,121 @@ function heroTabSync() {   // 탭 잠금 표시 (유물 레벨이 바뀌면 바�
   if (t.classList.contains('locked') === lock) return;
   t.classList.toggle('locked', lock); t.setAttribute('aria-label', lock ? '영웅 탭 · ' + HERO_LOCK_TXT : '영웅');
   const a = $('.tab-art', t), l = $('.tab-lock', t); if (lock && !l && a) a.insertAdjacentHTML('beforeend', '<i class="tab-lock">' + ic('lock') + '</i>'); else if (!lock && l) l.remove();
+  if (route !== 'hero') { const ov = app && $('#wdl-hov', app); if (ov) ov.remove(); heroSel = null; heroSub = null; }
 }
 const heroHead = () => `<div class="shead collection-head hr-head"><h2><img src="${NAV_ART.hero}" alt="">영웅</h2><div class="shr"><div class="stbar hr-skst" aria-label="${SKST_NAME}"><img src="${HERO_ART.skst}" alt="${SKST_NAME}"><b id="wdl-hskn">${num(S.skStone | 0)}</b></div></div></div>`;
-const heroIco = (k, t, nm) => { const u = HERO_SK_ICON[k + '_' + t]; return `<span class="hr-ico${u ? '' : ' empty'}" data-ico="${k}_${t}">${u ? `<img src="${u}" alt="">` : `<i>${(nm || '?').slice(0, 1)}</i>`}</span>`; };
+const heroIco = (k, t, nm, sz) => { const u = HERO_SK_ICON[k + '_' + t]; return `<span class="hr-ico${sz ? ' ' + sz : ''}${u ? '' : ' empty'}" data-ico="${k}_${t}">${u ? `<img src="${u}" alt="">` : `<i>${(nm || '?').slice(0, 1)}</i>`}</span>`; };
+const heroArw = () => `<img class="hr-arw" src="${HERO_ART.icArrow}" alt="→">`;
 function heroGrid() {
-  const cards = heroKeys().map((k, n) => `<button class="hr-card st${heroLast === k ? ' on' : ''}" style="--i:${n + 1}" data-act="heroOpen" data-k="${k}" data-press aria-label="${heroName(k)} Lv.${heroLvOf(k)}"><span class="hr-lv">Lv.${heroLvOf(k)}</span><span class="hr-art"><img src="${heroPort(k)}" alt=""></span><span class="hr-nm">${heroName(k)}</span></button>`).join('');
+  const cards = heroKeys().map((k, n) => `<button class="hr-card${heroSel ? '' : ' st'}${heroLast === k ? ' on' : ''}" style="--i:${n + 1}" data-act="heroOpen" data-k="${k}" data-press aria-label="${heroName(k)} Lv.${heroLvOf(k)}"><span class="hr-lv">Lv.${heroLvOf(k)}</span><span class="hr-art"><img src="${heroPort(k)}" alt=""></span><span class="hr-nm">${heroName(k)}</span></button>`).join('');
   return `${heroHead()}<div class="hr-grid">${cards}</div>`;
+}
+function heroStatRows(k, lv, max, pn) {
+  const P = heroPsOf(lv), P2 = heroPsOf(Math.min(HERO_MAX, lv + 1)), cu = heroStat(lv), nx = heroStat(Math.min(HERO_MAX, lv + 1));
+  const row = (n, ico, lb, a, b, up) => `<div class="hr-row r${n}"><span class="hr-ri">${ico}</span><span class="hr-rl">${lb}</span><b class="hr-rc">${a}</b>${max ? '<b class="hr-rn mx">MAX</b>' : `${heroArw()}<b class="hr-rn${up ? ' up' : ''}">${b}</b>`}</div>`;
+  return `<div class="hr-stats">
+      ${row(1, `<img src="${HERO_ART.icAtk}" alt="">`, '공격력', '+' + pct0(cu.atk), '+' + pct0(nx.atk), 1)}
+      ${row(2, `<img src="${HERO_ART.icCrit}" alt="">`, '치명타 피해', '+' + pct0(cu.critD), '+' + pct0(nx.critD), 1)}
+      ${row(3, heroIco(k, 'p', pn, 'sm'), pn, 'Lv.' + P, 'Lv.' + P2, P2 > P)}
+    </div>`;
+}
+function heroLvRow(a, b, max) {
+  return `<div class="hr-lvrow"><span class="hr-pl blue">Lv.${a}</span>${max ? '' : `${heroArw()}<span class="hr-pl green">Lv.${b}</span>`}</div>`;
 }
 function heroDetail(k) {
   const lv = heroLvOf(k), max = lv >= HERO_MAX, cost = heroCost(lv), okG = !max && S.gold >= cost;
-  const P = heroPsOf(lv), P2 = heroPsOf(Math.min(HERO_MAX, lv + 1)), sk = heroSkOf(k), hasA = heroHasAct(k), aOpen = heroActOpen();
-  const d = heroDesc(k, sk, P) || {}, cu = heroStat(lv), nx = heroStat(Math.min(HERO_MAX, lv + 1)), pn = d.pn || '패시브';
-  const skMax = sk >= HERO_SK_MAX, okS = (S.skStone | 0) >= HERO_SK_COST;
-  const arw = `<img class="hr-arw" src="${HERO_ART.icArrow}" alt="→">`;
-  const row = (n, ico, lb, a, b, up) => `<div class="hr-row r${n}"><span class="hr-ri">${ico}</span><span class="hr-rl">${lb}</span><b class="hr-rc">${a}</b>${max ? '<b class="hr-rn mx">MAX</b>' : `${arw}<b class="hr-rn${up ? ' up' : ''}">${b}</b>`}</div>`;
-  const nb = HERO_BRK.find(x => x > lv);
-  const pas = `<div class="hr-sk"><div class="hr-skn"><b>${pn}</b></div><div class="hr-skb">${heroIco(k, 'p', pn)}<span class="hr-sklv">Lv.${P}</span></div><p class="hr-skd">${d.p || ''}</p><small class="hr-skh">패시브 · 4글자 이상 유닛</small><button class="hr-sbtn dt" data-act="heroPs" data-k="${k}" data-press>상세 ›</button></div>`;
+  const P = heroPsOf(lv), sk = heroSkOf(k), hasA = heroHasAct(k), aOpen = heroActOpen();
+  const d = heroDesc(k, sk, P) || {}, pn = d.pn || '패시브';
+  const nb = HERO_BRK.find(x => x > lv), cu = heroStat(lv), nx = heroStat(Math.min(HERO_MAX, lv + 1));
+  const pas = `<div class="hr-sk"><div class="hr-skn"><b>${pn}</b></div><div class="hr-skb">${heroIco(k, 'p', pn)}<span class="hr-sklv">Lv.${P}</span></div><small class="hr-skh">패시브 · 4글자 이상 유닛</small><button class="hr-sbtn dt" data-act="heroPs" data-k="${k}" data-press>상세 ›</button></div>`;
   let act;
   if (!hasA) act = `<div class="hr-sk none"><div class="hr-skn"><b>액티브</b></div><p class="hr-none">액티브 스킬이 없어요</p></div>`;
   else {
-    const lockA = !aOpen, st = lockA ? ' lock' : skMax ? ' max' : okS ? '' : ' lack';
-    act = `<div class="hr-sk act${lockA ? ' lock' : ''}"><div class="hr-skn"><b>${d.an}</b></div><div class="hr-skb">${heroIco(k, 'a', d.an)}<span class="hr-sklv">Lv.${sk}</span></div><p class="hr-skd">${d.a || ''}</p><small class="hr-skh">액티브 · 5글자 이상 유닛</small>
-      <button class="hr-sbtn up${st}" data-act="heroSk" data-k="${k}" data-press ${lockA ? 'aria-disabled="true"' : ''}>${lockA ? `<i class="hr-lk">${ic('lock')}</i><b>스킬 강화</b>` : skMax ? '<b>최대 레벨</b>' : `<b>스킬 강화</b><span class="hr-cost${okS ? '' : ' no'}"><img src="${HERO_ART.skst}" alt="${SKST_NAME}">${HERO_SK_COST}</span>`}</button>
+    const lockA = !aOpen, skMax = sk >= HERO_SK_MAX, st = lockA ? ' lock' : skMax ? ' max' : '';
+    act = `<div class="hr-sk act${lockA ? ' lock' : ''}"><div class="hr-skn"><b>${d.an}</b></div><div class="hr-skb">${heroIco(k, 'a', d.an)}<span class="hr-sklv">Lv.${sk}</span></div><small class="hr-skh">액티브 · 5글자 이상 유닛</small>
+      <button class="hr-sbtn up${st}" data-act="heroSk" data-k="${k}" data-press ${lockA ? 'aria-disabled="true"' : ''}>${lockA ? `<i class="hr-lk">${ic('lock')}</i><b>스킬 강화</b>` : skMax ? '<b>최대 레벨</b>' : '<b>스킬 강화</b>'}</button>
       ${lockA ? `<div class="hr-lockv"><i>${ic('lock')}</i><span>${HERO_ACT_LOCK_TXT}</span><small>${relicCnt(3)} / ${RELICS.length}</small></div>` : ''}</div>`;
   }
-  return `${heroHead()}<div class="hr-pan st" style="--i:1">
+  return `<div class="hr-pan" role="dialog" aria-label="${heroName(k)} 상세">
     <div class="hr-top"><button class="hr-back" data-act="heroBack" data-press aria-label="뒤로">${ic('back')}</button><b class="hr-title">${heroName(k)}</b><span class="hr-tlv">Lv.${lv}</span></div>
     <div class="hr-range"><i class="hr-shadow"></i><img class="hr-unit" src="${heroPort(k)}" alt="${heroName(k)}"></div>
     <div class="hr-sks">${pas}${act}</div>
-    <div class="hr-stats">
-      ${row(1, `<img src="${HERO_ART.icAtk}" alt="">`, '공격력', '+' + pct0(cu.atk), '+' + pct0(nx.atk), 1)}
-      ${row(2, `<img src="${HERO_ART.icCrit}" alt="">`, '치명타 피해', '+' + pct0(cu.critD), '+' + pct0(nx.critD), 1)}
-      ${row(3, heroIco(k, 'p', pn).replace('hr-ico', 'hr-ico sm'), pn, 'Lv.' + P, 'Lv.' + P2, P2 > P)}
-    </div>
+    ${heroStatRows(k, lv, max, pn)}
     <p class="hr-spd${!max && nx.aspd > cu.aspd ? ' up' : ''}">공속 +${pct0(cu.aspd)}${!max && nx.aspd > cu.aspd ? ` → +${pct0(nx.aspd)} (Lv.${lv + 1} 돌파)` : nb ? ` · Lv.${nb} 돌파 때 +5%` : ''}</p>
-    <div class="hr-lvrow"><span class="hr-pl blue">Lv.${lv}</span>${max ? '' : `${arw}<span class="hr-pl green">Lv.${lv + 1}</span>`}</div>
+    ${heroLvRow(lv, lv + 1, max)}
     <button class="hr-lvup${max ? ' max' : okG ? '' : ' lack'}" data-act="heroUp" data-k="${k}" data-press>${max ? '<b>최대 레벨</b>' : `<b>레벨업</b><span class="hr-gold${okG ? '' : ' no'}"><img src="${IMG.coin}" alt="골드">${num(cost)}</span>`}</button>
+  </div>`;
+}
+function heroSkPop(k) {
+  const sk = heroSkOf(k), max = sk >= HERO_SK_MAX, okS = !max && (S.skStone | 0) >= HERO_SK_COST;
+  const d = heroDesc(k, sk, 1) || {}, d1 = heroDesc(k, 1, 1) || {}, dM = heroDesc(k, HERO_SK_MAX, 1) || {};
+  const an = d.an || '액티브', cd = d.cd || 10;
+  const st = max ? ' max' : okS ? '' : ' lack';
+  return `<div class="hr-pan hr-skpop" role="dialog" aria-label="${an} 강화">
+    <div class="hr-top"><button class="hr-back" data-act="heroBack" data-press aria-label="뒤로">${ic('back')}</button><b class="hr-title">${an} 강화</b></div>
+    <div class="hr-big">${heroIco(k, 'a', an, 'lg')}</div>
+    <div class="hr-box">${d.a || ''}</div>
+    <div class="hr-chips"><span>5글자 이상 유닛</span><span>재사용 ${cd}초</span></div>
+    ${heroLvRow(sk, sk + 1, max)}
+    <div class="hr-cmp"><div class="hr-cmpi"><b>Lv.1</b><span>${d1.a || ''}</span></div>${heroArw()}<div class="hr-cmpi"><b>Lv.${HERO_SK_MAX}</b><span>${dM.a || ''}</span></div></div>
+    <button class="hr-sbtn up${st}" data-act="heroSkUp" data-k="${k}" data-press>${max ? '<b>최대 레벨</b>' : `<b>스킬 강화</b><span class="hr-cost${okS ? '' : ' no'}"><img src="${HERO_ART.skst}" alt="${SKST_NAME}">${HERO_SK_COST}</span>`}</button>
+  </div>`;
+}
+function heroPsPop(k) {
+  const lv = heroLvOf(k), P = heroPsOf(lv), max = P >= HERO_PS_MAX, nxt = 3 * P + 1;
+  const d = heroDesc(k, 0, P) || {}, d1 = heroDesc(k, 0, 1) || {}, dM = heroDesc(k, 0, HERO_PS_MAX) || {};
+  const pn = d.pn || '패시브';
+  return `<div class="hr-pan hr-pspop" role="dialog" aria-label="${pn}">
+    <div class="hr-top"><button class="hr-back" data-act="heroBack" data-press aria-label="뒤로">${ic('back')}</button><b class="hr-title">${pn}</b></div>
+    <div class="hr-big">${heroIco(k, 'p', pn, 'lg')}</div>
+    <div class="hr-chips"><span class="tag">패시브</span><span>4글자 이상 유닛</span></div>
+    <div class="hr-box">${d.p || ''}</div>
+    ${heroLvRow(P, P + 1, max)}
+    <div class="hr-cmp"><div class="hr-cmpi"><b>Lv.1</b><span>${d1.p || ''}</span></div>${heroArw()}<div class="hr-cmpi"><b>Lv.${HERO_PS_MAX}</b><span>${dM.p || ''}</span></div></div>
+    <p class="hr-foot">${max ? '최대 레벨이에요' : `영웅 Lv.${nxt}에서 강화`}</p>
   </div>`;
 }
 function heroLocked() {
   return `${heroHead()}<div class="hr-pan hr-lockpan st" style="--i:1"><i class="hr-bigl">${ic('lock')}</i><b>${HERO_LOCK_TXT}</b><small>유물 Lv2 이상 ${relicCnt(2)} / ${RELICS.length}</small></div>`;
 }
-V.hero = () => { heroArtVars(); heroClouds(); if (!heroOpen()) return heroLocked(); return heroSel ? heroDetail(heroSel) : heroGrid(); };
+/* heroSub: null = 상세 팝업, sk = 액티브 강화, ps = 패시브 상세 */
+function heroPopHtml() {
+  if (!heroSel) return '';
+  return heroSub === 'sk' ? heroSkPop(heroSel) : heroSub === 'ps' ? heroPsPop(heroSel) : heroDetail(heroSel);
+}
+function heroPopHide() {
+  const ov = app && $('#wdl-hov', app); heroSel = null; heroSub = null;
+  if (!ov || ov._closing) { if (ov && !ov._closing) ov.remove(); return; }
+  ov._closing = true; ov.classList.add('out');
+  setTimeout(() => { ov.remove(); }, 230);
+}
+function heroPopSync() {
+  if (!app || !views) return;
+  if (route !== 'hero' || !heroOpen() || !heroSel) { if ($('#wdl-hov', app)) heroPopHide(); return; }
+  let ov = $('#wdl-hov', app);
+  const kind = heroSub || 'detail', opening = !ov || ov._closing;
+  if (ov && ov._closing) { ov.remove(); ov = null; }
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'wdl-hov'; ov.className = 'hr-ov';
+    ov.setAttribute('aria-hidden', 'false');
+    ov.addEventListener('pointerdown', e => { if (e.target === ov) ACT.heroDim(); });
+    views.appendChild(ov);
+  }
+  const changed = opening || ov.dataset.kind !== kind || ov.dataset.k !== heroSel;
+  ov.classList.remove('out'); ov._closing = false;
+  ov.innerHTML = heroPopHtml();
+  ov.dataset.kind = kind; ov.dataset.k = heroSel;
+  const pan = ov.querySelector('.hr-pan');
+  if (pan && changed) pan.classList.add('hr-in');
+}
+V.hero = () => { heroArtVars(); heroClouds(); queueMicrotask(heroPopSync); if (!heroOpen()) { heroSel = null; heroSub = null; return heroLocked(); } return heroGrid(); };
 const heroBad = () => { sfx('fail'); vib([20, 30, 20]); };
-function heroRe(top) { if (route !== 'hero') return; refresh(); if (top && cur) cur.scrollTop = 0; }
+function heroRe() { if (route !== 'hero') return; refresh(); heroPopSync(); }
 ACT.heroTab = () => { if (!heroOpen()) { toast(`${HERO_LOCK_TXT} (${relicCnt(2)}/${RELICS.length})`); heroBad(); return; } go('hero'); };
 ACT.heroWait = ACT.heroTab;
-ACT.heroOpen = t => { heroSel = heroLast = t.dataset.k; heroRe(true); };
-ACT.heroBack = () => { heroSel = null; heroRe(true); };
+ACT.heroOpen = t => { heroSel = heroLast = t.dataset.k; heroSub = null; try { document.querySelectorAll('#wdl .hr-card').forEach(c => c.classList.toggle('on', c.dataset.k === heroLast)); } catch (e) {} heroPopSync(); };
+ACT.heroBack = () => { if (heroSub) { heroSub = null; heroPopSync(); return; } heroPopHide(); };
+ACT.heroDim = () => ACT.heroBack();
 ACT.heroUp = t => {
   const k = t.dataset.k, lv = heroLvOf(k); if (!heroOpen()) { toast(HERO_LOCK_TXT); heroBad(); return; }
   if (lv >= HERO_MAX) { toast('최대 레벨이에요'); return; }
@@ -5643,16 +5710,21 @@ ACT.heroUp = t => {
 ACT.heroSk = t => {
   const k = t.dataset.k; if (!heroHasAct(k)) return;
   if (!heroActOpen()) { toast(`${HERO_ACT_LOCK_TXT} (${relicCnt(3)}/${RELICS.length})`); heroBad(); return; }
+  heroSub = 'sk'; heroPopSync();
+};
+ACT.heroSkUp = t => {
+  const k = t.dataset.k; if (!heroHasAct(k)) return;
+  if (!heroActOpen()) { toast(`${HERO_ACT_LOCK_TXT} (${relicCnt(3)}/${RELICS.length})`); heroBad(); return; }
   const s = heroSkOf(k); if (s >= HERO_SK_MAX) { toast('최대 레벨이에요'); return; }
   if ((S.skStone | 0) < HERO_SK_COST) { toast(`${iga(SKST_NAME)} 부족해요 (${num(S.skStone | 0)} / 필요 ${HERO_SK_COST})`); heroBad(); return; }
   S.skStone -= HERO_SK_COST; heroW(k).s = s + 1; save(true);
   const [x, y] = center(t); try { FX.burst(x, y, ['#fff', '#ffc2d6', '#ff8fb3', '#ffe08a'], 22, 240, { r: 3.2 }); } catch (e) {} sfx('coin'); vib([20, 30, 40]);
-  toast(`${(heroDesc(k, s + 1, 1) || {}).an || '액티브'} Lv.${s + 1}`); heroRe();
+  toast(`${(heroDesc(k, s + 1, 1) || {}).an || '액티브'} Lv.${s + 1}`);
+  heroSub = 'sk'; heroRe();
 };
 ACT.heroPs = t => {
-  const k = t.dataset.k, lv = heroLvOf(k), P = heroPsOf(lv), d0 = heroDesc(k, 0, 1) || {};
-  const rows = Array.from({ length: HERO_PS_MAX }, (_, i) => { const p = i + 1, d = heroDesc(k, 0, p) || {}; return `<div class="hr-pr${p === P ? ' on' : p < P ? ' got' : ''}"><b>Lv.${p}</b><span>${d.p || ''}</span><small>영웅 Lv.${3 * p - 2}</small></div>`; }).join('');
-  modal(`<div class="hr-pm"><h3>${d0.pn || '패시브'}</h3><p class="hr-pms">영웅 레벨 3마다 1레벨씩 자동으로 올라요 (최대 Lv.${HERO_PS_MAX})</p><div class="hr-prs">${rows}</div><button class="hr-sbtn dt wide" data-act="close" data-press>확인</button></div>`, { cls: 'hr-pmod' });
+  const k = t.dataset.k; if (!k) return;
+  heroSub = 'ps'; heroPopSync();
 };
 window.WDHero = {   // 전투(wd-hero-skill-js) · 테스트가 읽는 값
   rec: k => ({ s: heroSkOf(k), p: heroPsOf(heroLvOf(k)) }),
@@ -24225,7 +24297,7 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 #wdl .hr-range .hr-shadow{position:absolute;left:30%;bottom:6%;width:30%;height:9%;transform:translateX(-50%);border-radius:50%;background:rgba(60,35,10,.28)}
 /* 스킬 카드 = 베이지 (기존 크림 9-slice) + 파란 이름 띠 */
 #wdl .hr-sks{display:grid;grid-template-columns:1fr 1fr;gap:calc(8*var(--u));margin-top:calc(12*var(--u))}
-#wdl .hr-sk{position:relative;display:flex;flex-direction:column;align-items:center;gap:calc(4*var(--u));min-height:calc(160*var(--u));border-style:solid;border-color:transparent;border-width:calc(10*var(--u));border-image:var(--wd-pp-cream) 24 fill / calc(10*var(--u)) stretch;padding:calc(24*var(--u)) calc(2*var(--u)) calc(2*var(--u));color:#3b2a1d}
+#wdl .hr-sk{position:relative;display:flex;flex-direction:column;align-items:center;gap:calc(4*var(--u));min-height:calc(118*var(--u));border-style:solid;border-color:transparent;border-width:calc(10*var(--u));border-image:var(--wd-pp-cream) 24 fill / calc(10*var(--u)) stretch;padding:calc(24*var(--u)) calc(2*var(--u)) calc(2*var(--u));color:#3b2a1d}
 #wdl .hr-skn{position:absolute;left:calc(-6*var(--u));right:calc(-6*var(--u));top:calc(-8*var(--u));height:calc(30*var(--u));display:grid;place-items:center;background:var(--hr-plblue) 0 0 / 100% 100% no-repeat}
 #wdl .hr-skn b{font-weight:400;font-size:calc(17*var(--u));color:#fff;-webkit-text-stroke:calc(3.8*var(--u)) #0f1828;paint-order:stroke fill;white-space:nowrap}
 #wdl .hr-skb{display:flex;align-items:center;gap:calc(8*var(--u))}
@@ -24295,6 +24367,34 @@ html body #wdl .shead.collection-head.hr-head .hr-skst img{width:calc(30*var(--u
 #wdl-ov .hr-pr small{font-size:calc(11*var(--u));opacity:.7}
 #wdl-ov .hr-pr.got{opacity:.6}
 #wdl-ov .hr-pr.on{background:#ffe08a;box-shadow:inset 0 0 0 calc(2*var(--u)) #c98a1c}
+
+/* 영웅 팝업: 목록·헤더는 뒤에 그대로 두고, 상단 재화·하단 탭 사이만 어둡게 */
+#wdl-views > .hr-ov{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:calc(6*var(--u)) calc(8*var(--u)) calc(8*var(--u));overflow-y:auto;overflow-x:hidden;background:rgba(10,16,32,.58);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fade-in .25s both;pointer-events:auto;-webkit-overflow-scrolling:touch}
+#wdl-views > .hr-ov.out{animation:fade-out .22s both}
+#wdl-views > .hr-ov .hr-pan{margin:auto 0;width:100%;padding:calc(2*var(--u)) calc(3*var(--u)) calc(8*var(--u))}
+#wdl-views > .hr-ov .hr-pan.hr-in{animation:modal-in .65s var(--spring-hard) both}
+#wdl-views > .hr-ov.out .hr-pan{animation:modal-out .2s var(--ease-out) both}
+#wdl-views > .hr-ov .hr-range{aspect-ratio:780/250}
+#wdl-views > .hr-ov .hr-lvup{max-height:calc(58*var(--u));margin-top:calc(4*var(--u))}
+#wdl-views > .hr-ov .hr-stats{margin-top:calc(6*var(--u))}
+#wdl .hr-ico.lg,#wdl-views .hr-ico.lg{width:calc(86*var(--u));height:calc(86*var(--u));border-radius:calc(18*var(--u));margin:calc(4*var(--u)) auto calc(8*var(--u))}
+#wdl .hr-ico.lg i{font-size:calc(40*var(--u))}
+#wdl .hr-big{display:flex;justify-content:center}
+#wdl .hr-box{margin:0 0 calc(8*var(--u));border-style:solid;border-color:transparent;border-width:calc(10*var(--u));border-image:var(--wd-pp-cream) 24 fill / calc(10*var(--u)) stretch;padding:calc(8*var(--u)) calc(8*var(--u));color:#3b2a1d;text-align:center;font-family:var(--ui-readable,var(--fd));font-size:calc(14*var(--u));line-height:1.4;word-break:keep-all}
+#wdl .hr-chips{display:flex;justify-content:center;flex-wrap:wrap;gap:calc(6*var(--u));margin:0 0 calc(8*var(--u))}
+#wdl .hr-chips span{display:inline-flex;align-items:center;justify-content:center;min-height:calc(24*var(--u));padding:0 calc(10*var(--u));border-radius:calc(12*var(--u));background:#efe0c0;box-shadow:inset 0 0 0 calc(2*var(--u)) #3a2a1d;color:#3b2a1d;font-size:calc(12*var(--u));font-family:var(--ui-readable,var(--fd));white-space:nowrap}
+#wdl .hr-chips span.tag{background:#3d5a8a;color:#fff;-webkit-text-stroke:calc(2.8*var(--u)) #0f1828;paint-order:stroke fill;font-family:var(--fd);font-size:calc(13*var(--u))}
+#wdl .hr-cmp{display:flex;align-items:stretch;justify-content:center;gap:calc(6*var(--u));margin:calc(8*var(--u)) 0 calc(10*var(--u))}
+#wdl .hr-cmpi{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:calc(4*var(--u));border-style:solid;border-color:transparent;border-width:calc(8*var(--u));border-image:var(--wd-pp-cream) 24 fill / calc(8*var(--u)) stretch;padding:calc(6*var(--u)) calc(4*var(--u)) calc(8*var(--u));text-align:center;color:#3b2a1d}
+#wdl .hr-cmpi b{display:grid;place-items:center;min-width:calc(70*var(--u));height:calc(24*var(--u));padding:0 calc(8*var(--u));background:var(--hr-plblue) 0 0 / 100% 100% no-repeat;font-weight:400;font-size:calc(13.5*var(--u));color:#fff;-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-cmpi span{font-family:var(--ui-readable,var(--fd));font-size:calc(12.5*var(--u));line-height:1.35;word-break:keep-all}
+#wdl .hr-cmp .hr-arw{width:calc(28*var(--u));align-self:center}
+#wdl .hr-skpop .hr-sbtn.up,#wdl .hr-skpop .hr-sbtn.up.max{margin-top:calc(2*var(--u));height:calc(48*var(--u));width:86%}
+#wdl .hr-skpop .hr-sbtn.up{margin-left:auto;margin-right:auto}
+#wdl .hr-skpop .hr-cost{font-size:calc(18*var(--u))}
+#wdl .hr-skpop .hr-cost img{width:calc(22*var(--u));height:calc(22*var(--u))}
+#wdl .hr-foot{margin:calc(2*var(--u)) auto 0;width:86%;min-height:calc(36*var(--u));display:grid;place-items:center;border-radius:calc(10*var(--u));background:linear-gradient(#22375a,#182844);box-shadow:inset 0 0 0 calc(2*var(--u)) #4f74ad;color:#fff;font-size:calc(15*var(--u));text-align:center;-webkit-text-stroke:calc(3.2*var(--u)) #0f1828;paint-order:stroke fill}
+@media (prefers-reduced-motion:reduce){#wdl-views > .hr-ov,#wdl-views > .hr-ov .hr-pan.hr-in,#wdl-views > .hr-ov.out,#wdl-views > .hr-ov.out .hr-pan{animation:none}}
 </style>
 <script id="wd-hero-skill-js">
 /* 11/25 영웅 스킬·패시브 (다음 스토어 업데이트용). 숫자 = /workspace/q1116/hero_mock/balance.md
