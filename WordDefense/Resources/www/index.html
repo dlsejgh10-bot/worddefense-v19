@@ -5624,7 +5624,7 @@ const SKST_NAME = '스킬석';                 // 스킬석 표시 이름 (이�
 const HERO_SK_UNIT = '5글자 이상 유닛', HERO_PS_UNIT = '4글자 이상 유닛';   // WD_SKILL: 액티브 T.len>=5, 패시브 T.len>=4
 const HERO_MAX = 30, HERO_SK_MAX = 15, HERO_PS_MAX = 10;   // 영웅 Lv30 · 액티브 Lv15 · 패시브 Lv10
 const heroSkCost = lv => { const n = Math.max(1, lv | 0); return n >= 11 ? 30 : n >= 6 ? 20 : 10; };   // 액티브 강화: Lv1–5 = 10, Lv6–10 = 20, Lv11–14 = 30 (합 270)
-const HERO_ATK = 0.05, HERO_CRITD = 0.03, HERO_ASPD = 0.05, HERO_BRK = [10, 20, 30];   // 레벨마다 공격력 +5% · 치명타 피해 +3% / 돌파 Lv10·20·30 공속 +5%
+const HERO_ATK = 0.05, HERO_CRITD = 0.03, HERO_ASPD = 0.05, HERO_BRK = [10, 20, 30], HERO_DB_RAD = 0.5, HERO_DB_ASPD = 0.5;   // 레벨마다 공격력 +5% · 치명타 피해 +3% / 돌파 Lv10·20·30 공속 +5%
 /* 영웅 레벨업 골드: [i] = Lv(i+1) → Lv(i+2). 전투 직군 강화와 같은 곡선 100 + 173.5·n² (n = 지금 레벨), 10골드 단위. 합계 1,487,170 */
 const HERO_GOLD = [270, 790, 1660, 2880, 4440, 6350, 8600, 11200, 14150, 17450, 21090, 25080, 29420, 34110, 39140, 44520, 50240, 56310, 62730, 69500, 76610, 84070, 91880, 100040, 108540, 117390, 126580, 136120, 146010];
 const HERO_LOCK_TXT = '모든 유물 2레벨 달성 시 해금', HERO_ACT_LOCK_TXT = '모든 유물 3레벨 달성 시 해금';
@@ -5751,7 +5751,10 @@ const heroRec = k => { const h = S.heroLv && S.heroLv[k]; return h && typeof h =
 const heroLvOf = k => Math.max(1, Math.min(HERO_MAX, ((heroRec(k) || {}).lv | 0) || 1));
 const heroSkOf = k => Math.max(1, Math.min(HERO_SK_MAX, ((heroRec(k) || {}).s | 0) || 1));
 const heroPsOf = lv => Math.min(HERO_PS_MAX, 1 + Math.floor((Math.max(1, lv) - 1) / 3));   // 패시브: 영웅 Lv1·4·7·…·28 에 +1 (최대 10)
-const heroStat = lv => ({ atk: HERO_ATK * (lv - 1), critD: HERO_CRITD * (lv - 1), aspd: HERO_ASPD * HERO_BRK.filter(x => lv >= x).length });
+const heroStat = (lv, k) => { const aspd = HERO_ASPD * HERO_BRK.filter(x => lv >= x).length;   // 직업별: 유령 = 디버프 범위·공속 (Lv30 각 +50%, 직선) / 버퍼 = 공속만 / 나머지 = 공격력·치명타 피해 + 공속(돌파)
+  if (k === 'debuffer') return { rad: HERO_DB_RAD * (lv - 1) / (HERO_MAX - 1), aspd: HERO_DB_ASPD * (lv - 1) / (HERO_MAX - 1) };
+  if (k === 'buffer') return { aspd };
+  return { atk: HERO_ATK * (lv - 1), critD: HERO_CRITD * (lv - 1), aspd }; };
 const heroCost = lv => lv >= HERO_MAX ? 0 : HERO_GOLD[lv - 1];
 const relicCnt = n => RELICS.filter((r, i) => S.relics && S.relics[i] && (S.relics[i].lv | 0) >= n).length;
 const heroOpen = () => relicCnt(2) >= RELICS.length, heroActOpen = () => relicCnt(3) >= RELICS.length;
@@ -5803,9 +5806,10 @@ function heroGrid() {
   return `${heroHead()}<div class="hr-grid">${cards}</div>`;
 }
 function heroStatRows(k, lv, max, pn) {
-  const P = heroPsOf(lv), P2 = heroPsOf(Math.min(HERO_MAX, lv + 1)), cu = heroStat(lv), nx = heroStat(Math.min(HERO_MAX, lv + 1));
+  const P = heroPsOf(lv), P2 = heroPsOf(Math.min(HERO_MAX, lv + 1)), cu = heroStat(lv, k), nx = heroStat(Math.min(HERO_MAX, lv + 1), k);
   const row = (n, ico, lb, a, b, up) => `<div class="hr-row r${n}"><span class="hr-ri">${ico}</span><span class="hr-rl">${lb}</span><span class="hr-vals"><b class="hr-rc">${a}</b>${max ? '<b class="hr-rn mx">MAX</b>' : `${heroArw()}<b class="${up ? 'hr-nx' : 'hr-nv'}">${b}</b>`}</span></div>`;
-  return `<div class="hr-stats">${row(1, `<img src="${HERO_ART.icAtk}" alt="">`, '공격력', '+' + pct0(cu.atk), '+' + pct0(nx.atk), nx.atk > cu.atk)}${row(2, `<img src="${HERO_ART.icCrit}" alt="">`, '치명타 피해', '+' + pct0(cu.critD), '+' + pct0(nx.critD), nx.critD > cu.critD)}${row(3, heroIco(k, 'p', pn, 'sm'), pn, 'Lv.' + P, 'Lv.' + P2, P2 > P)}</div>`;
+  const sv = (window.WD_SKILL_V || {}).buffer, r12 = k === 'debuffer' ? [['디버프 범위', cu.rad, nx.rad], ['공속', cu.aspd, nx.aspd]] : k === 'buffer' ? [['공속', cu.aspd, nx.aspd], ['스킬 공격력', sv ? sv.skAmp(P) : 0, sv ? sv.skAmp(P2) : 0]] : [['공격력', cu.atk, nx.atk], ['치명타 피해', cu.critD, nx.critD]];
+  return `<div class="hr-stats">${row(1, `<img src="${HERO_ART.icAtk}" alt="">`, r12[0][0], '+' + pct0(r12[0][1]), '+' + pct0(r12[0][2]), r12[0][2] > r12[0][1])}${row(2, `<img src="${HERO_ART.icCrit}" alt="">`, r12[1][0], '+' + pct0(r12[1][1]), '+' + pct0(r12[1][2]), r12[1][2] > r12[1][1])}${row(3, heroIco(k, 'p', pn, 'sm'), pn, 'Lv.' + P, 'Lv.' + P2, P2 > P)}</div>`;
 }
 function heroLvRow(a, b, max) {
   return `<div class="hr-lvrow"><span class="hr-pl blue">Lv.${a}</span>${max ? '' : `${heroArw()}<span class="hr-pl blue nxt">Lv.${b}</span>`}</div>`;
@@ -5876,26 +5880,27 @@ function heroFxOf(k, kind, lv) {
   const empty = { story: '', cmp: '' }; if (!v) return empty;
   if (kind === 'a') {
     if (k === 'rapid') { const n = v.n(L), per = v.total(L) / n; return { story: `권총 두 자루로 주변 모든 적에게, ${skPct(per)} 피해를 ${n}회 난사한다.`, cmp: `${skPct(per)} 피해 × ${n}회` }; }
-    if (k === 'archer') { const n = v.n(L), per = v.total(L) / n; return { story: `하나의 적에게 ${skPct(per)} 피해를 ${n}회 쏘고, 대상이 쓰러지면 남은 화살은 다른 적에게 향한다.`, cmp: `${skPct(per)} 피해 × ${n}회` }; }
+    if (k === 'archer') { const n = v.n(L), per = v.total(L) / n; return { story: `체력이 높은 적에게, ${skPct(per)} 피해를 ${n}회 쏜다.`, cmp: `${skPct(per)} 피해 × ${n}회` }; }
     if (k === 'sniper') return { story: `1초 조준한 뒤 일직선상의 모든 적에게, ${skPct(v.p(L))} 피해를 관통시킨다.`, cmp: `${skPct(v.p(L))} 피해 · 관통` };
-    if (k === 'warrior') return { story: `전방 일직선의 적에게, ${skPct(v.p(L))} 피해로 베어 낸다.`, cmp: `${skPct(v.p(L))} 피해 · 일직선` };
-    if (k === 'miner') return { story: `대상과 그 주변의 적에게, ${skPct(v.p(L))} 피해를 준다.`, cmp: `${skPct(v.p(L))} 피해 · 범위` };
+    if (k === 'warrior') return { story: `모든 적에게, ${skPct(v.p(L))} 피해로 베어 낸다.`, cmp: `${skPct(v.p(L))} 피해 · 모든 적` };
+    if (k === 'miner') return { story: `대상과 그 주변의 적에게, ${skPct(v.p(L))} 피해를 주고 ${skSec(v.stun(L))} 기절시킨다.`, cmp: `${skPct(v.p(L))} 피해 · 기절 ${skSec(v.stun(L))}` };
     if (k === 'artillery') return { story: `떨어진 곳의 적을 1초 기절시킨 뒤, 1초 후 그 자리를 ${skPct(v.p(L))} 피해로 폭발시킨다.`, cmp: `${skPct(v.p(L))} 피해 · 기절 1초` };
     if (k === 'mage') return { story: `하늘에서 운석을 떨어뜨려 주변 적에게, ${skPct(v.p(L))} 피해를 준다.`, cmp: `${skPct(v.p(L))} 피해 · 범위` };
-    if (k === 'zone') { const dur = v.dur(L), per = v.per(L); return { story: `대상을 따라가며 ${skSec(dur)} 동안, 0.25초마다 ${skPct(per)} 피해를 준다.`, cmp: `${skPct(per)} 피해 / 0.25초 · ${skSec(dur)}` }; }
+    if (k === 'zone') { const dur = v.dur(L), per = v.per(L); return { story: `떨어진 자리에 고정되어 ${skSec(dur)} 동안, 0.25초마다 ${skPct(per)} 피해를 준다.`, cmp: `${skPct(per)} 피해 / 0.25초 · ${skSec(dur)}` }; }
+    if (k === 'buffer') return { story: `${skSec(v.blessDur)} 동안 아군이 받는 모든 CC 지속시간이, ${skPct(v.blessCut)} 줄어든다 (이미 걸린 효과 포함).`, cmp: `${skSec(v.blessDur)} · CC 지속 -${skPct(v.blessCut)}` };
     if (k === 'debuffer') return { story: `범위 안 적을 밀어내고, ${skSec(v.dur(L))} 동안 받는 피해를 ${skPct(v.vuln(L))} 증가시킨다.`, cmp: `받는 피해 +${skPct(v.vuln(L))} · ${skSec(v.dur(L))}` };
     return empty;
   }
   if (k === 'rapid') return { story: `공격 시 ${skPct(v.hsP)} 확률로 ${skPct(v.hsX(L))} 피해를 주고, 그 방향으로 2명을 관통한다.`, cmp: `${skPct(v.hsP)} 확률 · ${skPct(v.hsX(L))} 피해 · 2명 관통` };
-  if (k === 'archer') return { story: `적을 처치하면 다음 공격을 즉시 가하고, 그 피해가 ${skPct(v.lhX(L))}가 된다.`, cmp: `다음 공격 ${skPct(v.lhX(L))}` };
+  if (k === 'archer') return { story: `적을 처치하면, 즉시 ${skPct(v.lhX(L))} 피해를 입힌다.`, cmp: `즉시 ${skPct(v.lhX(L))} 피해` };
   if (k === 'sniper') return { story: `4타마다, ${skPct(v.chX(L))} 피해로 공격한다.`, cmp: `4타마다 ${skPct(v.chX(L))}` };
   if (k === 'warrior') return { story: `공격할 때, 대상 주변의 적에게 추가로 ${skPct(v.duskA(L))} 피해를 준다.`, cmp: `추가 ${skPct(v.duskA(L))} 피해 · 범위` };
   if (k === 'miner') return { story: `${skPct(v.crP)} 확률로 ${skPct(v.crX(L))} 피해를 주고, 주변 적을 1초 기절시킨다.`, cmp: `${skPct(v.crP)} 확률 · ${skPct(v.crX(L))} 피해 · 기절 1초` };
   if (k === 'artillery') return { story: `${skPct(v.dudP)} 확률로 탄이 떨어진 자리가 1초 뒤, ${skPct(v.dudX(L))} 피해로 폭발한다.`, cmp: `${skPct(v.dudP)} 확률 · ${skPct(v.dudX(L))} 피해 · 지연 폭발` };
   if (k === 'mage') return { story: `피해가 ${skPct(v.amp(L))} 증가하고, 폭발 시 ${skPct(v.stP(L))} 확률로 적을 1초 기절시킨다.`, cmp: `피해 +${skPct(v.amp(L))} · 기절 ${skPct(v.stP(L))}` };
   if (k === 'zone') return { story: `장판 위 적의 이동 속도를 ${skPct(v.slow(L))} 낮춘다.`, cmp: `둔화 ${skPct(v.slow(L))}` };
-  if (k === 'debuffer') return { story: `오라 번개가 ${skPct(v.boltP(L))} 확률로 피해 ×${(Math.round(v.boltX(L) * 10) / 10)}이 되고, 아니면 거의 들어가지 않는다.`, cmp: `${skPct(v.boltP(L))} 확률 · 피해 ×${(Math.round(v.boltX(L) * 10) / 10)}` };
-  if (k === 'buffer') return { story: `같은 편의 스킬 피해를 ${skPct(v.skAmp(L))} 증가시킨다.`, cmp: `스킬 피해 +${skPct(v.skAmp(L))}` };
+  if (k === 'debuffer') return { story: `번개·얼음 유령의 기절 오라가, ${skPct(v.boltP(L))} 확률로 ${skSec(v.boltS(L))} 기절시킨다.`, cmp: `${skPct(v.boltP(L))} 확률 · 기절 ${skSec(v.boltS(L))}` };
+  if (k === 'buffer') return { story: `버프 시 아군의 스킬 공격력이, ${skPct(v.skAmp(L))} 증가한다.`, cmp: `스킬 공격력 +${skPct(v.skAmp(L))}` };
   if (k === 'merchant') return { story: `골드 이자를 받을 때, ${skPct(v.dbl(L))} 확률로 한 번 더 받는다.`, cmp: `${skPct(v.dbl(L))} 확률` };
   return empty;
 }
@@ -5986,7 +5991,7 @@ function heroAcqShow(opt) {   // 기존 #wd-acq 획득 연출(가운데 금줄�
   try { if (document.getElementById('wd-acq')) return; } catch (e) {}
   const title = opt.title || '', img = opt.img || '', kind = opt.kind || 'lv';
   const name = opt.name || '', sub = opt.sub || '', lines = opt.lines || [];
-  const el = document.createElement('div'); el.id = 'wd-acq'; el.className = 'acq pre hr-acq'; el.style.setProperty('--cw', kind === 'sk' ? '120' : '160');
+  const el = document.createElement('div'); el.id = 'wd-acq'; el.className = 'acq pre hr-acq'; el.style.setProperty('--cw', kind === 'sk' ? '120' : '104');   /* 레벨업 그림 65% → 띠 높이도 같이 */
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const acqLine = t => { t = String(t || ''); const i = t.indexOf(' → '); if (i < 0) return '<span>' + esc(t) + '</span>'; const a = t.slice(0, i), b = t.slice(i + 3); return '<span>' + esc(a) + ' → ' + heroHilite(esc(a), esc(b)) + '</span>'; };
   el.innerHTML =
@@ -6026,14 +6031,15 @@ ACT.heroUp = t => {
   const k = t.dataset.k, lv = heroLvOf(k); if (!heroOpen()) { toast(HERO_LOCK_TXT); heroBad(); return; }
   if (lv >= HERO_MAX) { toast('최대 레벨이에요'); return; }
   const cost = heroCost(lv); if (S.gold < cost) { toast(`골드가 부족해요 (${num(S.gold)} / 필요 ${num(cost)})`); heroBad(); return; }
-  const p0 = heroPsOf(lv), cu = heroStat(lv), nx = heroStat(lv + 1); S.gold -= cost; heroW(k).lv = lv + 1; save(true); renderTop();
+  const p0 = heroPsOf(lv), cu = heroStat(lv, k), nx = heroStat(lv + 1, k); S.gold -= cost; heroW(k).lv = lv + 1; save(true); renderTop();
   const [x, y] = center(t); try { FX.burst(x, y, ['#fff', '#ffd36a', '#ff9f2e', '#ffe08a'], 26, 280, { r: 3.6 }); } catch (e) {} sfx('coin'); vib([20, 30, 40]);
   const lines = [];
   if (nx.atk > cu.atk) lines.push('공격력 +' + pct0(cu.atk) + ' → +' + pct0(nx.atk));
   if (nx.critD > cu.critD) lines.push('치명타 피해 +' + pct0(cu.critD) + ' → +' + pct0(nx.critD));
+  if (nx.rad > cu.rad) lines.push('디버프 범위 +' + pct0(cu.rad) + ' → +' + pct0(nx.rad));
   if (nx.aspd > cu.aspd) lines.push('공속 +' + pct0(cu.aspd) + ' → +' + pct0(nx.aspd));
-  if (heroPsOf(lv + 1) > p0) lines.push((heroDesc(k, 1, p0) || {}).pn || '패시브' + ' Lv.' + p0 + ' → Lv.' + heroPsOf(lv + 1));
-  heroAcqShow({ kind: 'lv', title: '레벨업', img: heroPort(k), name: heroName(k), sub: 'Lv.' + lv + ' → Lv.' + (lv + 1), lines });
+  if (heroPsOf(lv + 1) > p0) lines.push(((heroDesc(k, 1, p0) || {}).pn || '패시브') + ' Lv.' + p0 + ' → Lv.' + heroPsOf(lv + 1));
+  heroAcqShow({ kind: 'lv', title: '레벨업!', img: heroPort(k), name: heroName(k), sub: 'Lv.' + lv + ' → Lv.' + (lv + 1), lines });
   heroRe();
 };
 ACT.heroSk = t => {
@@ -6065,7 +6071,7 @@ ACT.heroPs = t => {
 };
 window.WDHero = {   // 전투(wd-hero-skill-js) · 테스트가 읽는 값
   rec: k => ({ s: heroSkOf(k), p: heroPsOf(heroLvOf(k)) }),
-  bonus: k => { const lv = heroLvOf(k); return lv > 1 ? heroStat(lv) : null; },
+  bonus: k => { const lv = heroLvOf(k); return lv > 1 ? heroStat(lv, k) : null; },
   actOn: () => heroActOpen(), open: () => heroOpen(),
   lv: heroLvOf, sk: heroSkOf, ps: k => heroPsOf(heroLvOf(k)), stat: heroStat, cost: heroCost,
   GOLD: HERO_GOLD, MAX: HERO_MAX, SK_MAX: HERO_SK_MAX, SK_COST: heroSkCost, skCost: heroSkCost, NAME: SKST_NAME, ART: HERO_ART,
@@ -6338,6 +6344,7 @@ const EL = {
 // support element effects (values are for a 2-syllable unit; x SUPPORT_MULT by length, x upgrade)
 const SUP = {
   RADIUS_CELLS: 3,                         // debuffer aura radius in cells (buffer = the 8 adjacent cells)
+  D_RAD_MUL: 0.6,                          // 11/27: 모든 유령 기본 반경 -40% (3칸 → 1.8칸, 번개·바람 2칸 → 1.2칸). 영웅 레벨 디버프 범위 +50%는 그 위에 곱
   BOLT_RADIUS_CELLS: 2,                    // 번개 debuffer radius (cells)
   // ---- BUFFER effects (x K, K = SUPPORT_MULT * (1 + UPG_SUPPORT * lv); no caps) ----
   B_PHYS_ATK: 0.20,        // 물리: attack +20%
@@ -6356,7 +6363,7 @@ const SUP = {
   D_WATER_VULN: 0.15,      // 물: damage taken +15%
   D_ICE_SLOW: 0.07,        // 얼음: slow 7% (no cap)
   D_BOLT_PERIOD: 5, D_BOLT_STUN: 0.5, // 번개: AoE stun every 5 s (Lv20 = 2.5 s, 공속 배율 적용), 0.5 s x K
-  D_WIND_PERIOD: 5, D_WIND_KNOCK: 25, // 바람: knockback every 5 s (Lv20 = 2.5 s, 공속 배율 적용), 38 px x K, pushed smoothly over 0.3 s
+  D_WIND_PERIOD: 10, D_WIND_KNOCK: 25, // 바람: knockback every 10 s (11/27: 5 → 10, 기본 공속 0.10/초; Lv20 = 5 s, 공속 배율 적용), 38 px x K, pushed smoothly over 0.3 s
   D_EARTH_VULN: 0.30,      // 땅: physical-type units' damage taken +30%
   D_POISON_VULN: 0.30,     // 독: magic-type units' damage taken +30%
   D_LIGHT_STONE: 0.005,    // 빛: +0.5% 클로버 chance per kill (x K)
@@ -6426,7 +6433,7 @@ const PLOTS = {   // unit slot areas = the whole grass island inside each road l
 const ISLANDS = [{ x: 113, y: YX(241), w: 494, h: 312 }, { x: 113, y: YX(624), w: 494, h: 320 }];
 const PLOT_COVER = 'rgb(147,174,96)';
 let ROWS = 3; const COLS = 5;   /* 월보: ㄹ 안쪽 두 칸밭(위 3줄 + 아래 2줄) = ROWS 5 (월보 스크립트가 바꿈) */
-ROLES[8].range = ROLES[9].range = SUP.RADIUS_CELLS * PLOTS.me.w / COLS; // (번개 debuffer uses 2/3 of this via T.rangeMult)
+ROLES[8].range = SUP.RADIUS_CELLS * PLOTS.me.w / COLS; ROLES[9].range = ROLES[8].range * SUP.D_RAD_MUL; // 유령 반경 = 3칸 × 0.6 = 1.8칸 (번개·바람 유령은 그 2/3 = 1.2칸, T.rangeMult)
 const COL = { ink: '#3a2a20', cream: '#f7eed6', cream2: '#eadbb7', paper: '#fffaf0', me: '#d9822b', partner: '#4f86c6' };
 const TIER_COL = { 2: '#d9d0b8', 3: '#8cc3ee', 4: '#c49ae8', 5: '#f3c04f', 6: '#ff7a5c' };
 const FONT = "'GWTT','Malgun Gothic','Noto Sans KR',sans-serif";
@@ -8398,7 +8405,7 @@ function drawTag(T, x, y) {
 function supDesc(T) {
   const R = ROLES[T.role], k = supEffK(T), pc = v => Math.round(v * k * 100) + '%', pc1 = v => (+(v * k * 100).toFixed(1)) + '%';
   if (R.type === 'buff') return ['아군 공격 +' + pc(SUP.B_PHYS_ATK), Math.round(SUP.B_FIRE_CHANCE * 100) + '% 확률로 피해 x' + (1 + SUP.B_FIRE_MULT * k).toFixed(1), '치명확률 +' + pc(SUP.B_WATER_CRIT), '치명피해 +' + pc(SUP.B_ICE_CRITDMG), '공속 +' + pc(SUP.B_BOLT_ASPD), '사거리 +' + pc(SUP.B_WIND_RANGE), '공격할 때 ' + pc(SUP.B_EARTH_STUN) + ' 확률로 ' + SUP.B_EARTH_STUN_DUR + '초 기절', '보스 피해 +' + pc(SUP.B_POISON_BOSS), '바로 왼쪽 유닛 공격 +' + pc(SUP.B_LIGHT_LEFT), '체력 ' + pc1(SUP.B_DARK_EXEC) + ' 이하 적 즉시 처치'][T.el];
-  if (R.type === 'debuff') return ['방어력 -' + pc(SUP.D_PHYS_SHRED), '죽을 때 폭발: 주변 적 최대체력 ' + pc1(SUP.D_FIRE_EXPLODE), '받는 피해 +' + pc(SUP.D_WATER_VULN), '둔화 ' + pc1(SUP.D_ICE_SLOW), (SUP.D_BOLT_STUN * k).toFixed(1) + '초 기절 (' + +(SUP.D_BOLT_PERIOD / dbSpd(T)).toFixed(1) + '초마다)', '넉백 ' + Math.round(SUP.D_WIND_KNOCK * k) + 'px (' + +(SUP.D_WIND_PERIOD / dbSpd(T)).toFixed(1) + '초마다)', '물리형 받는 피해 +' + pc(SUP.D_EARTH_VULN), '마법형 받는 피해 +' + pc(SUP.D_POISON_VULN), '클로버 확률 +' + pc1(SUP.D_LIGHT_STONE) + 'p', '체력 ' + Math.round(SUP.D_DARK_HP * 100) + '% 이하 적 받는 피해 x' + (1 + SUP.D_DARK_MULT_PER_K * k).toFixed(1)][T.el];
+  if (R.type === 'debuff') return ['방어력 -' + pc(SUP.D_PHYS_SHRED), '죽을 때 폭발: 주변 적 최대체력 ' + pc1(SUP.D_FIRE_EXPLODE), '받는 피해 +' + pc(SUP.D_WATER_VULN), '둔화 ' + pc1(SUP.D_ICE_SLOW) + (T.len >= 4 ? ', ' + (SUP.D_BOLT_STUN * k).toFixed(1) + '초 기절 (' + +(SUP.D_BOLT_PERIOD / dbSpd(T)).toFixed(1) + '초마다)' : ''), (SUP.D_BOLT_STUN * k).toFixed(1) + '초 기절 (' + +(SUP.D_BOLT_PERIOD / dbSpd(T)).toFixed(1) + '초마다)', '넉백 ' + Math.round(SUP.D_WIND_KNOCK * k) + 'px (' + +(SUP.D_WIND_PERIOD / dbSpd(T)).toFixed(1) + '초마다)', '물리형 받는 피해 +' + pc(SUP.D_EARTH_VULN), '마법형 받는 피해 +' + pc(SUP.D_POISON_VULN), '클로버 확률 +' + pc1(SUP.D_LIGHT_STONE) + 'p', '체력 ' + Math.round(SUP.D_DARK_HP * 100) + '% 이하 적 받는 피해 x' + (1 + SUP.D_DARK_MULT_PER_K * k).toFixed(1)][T.el];
   return '';   /* 11/17 상인 같은 속성 공격 보너스 제거 */
 }
 /* ---------- unit details ---------- */
@@ -8474,10 +8481,11 @@ function elAtkDesc10(T) { if (T.el > 0) return elTxt16(T.el, T.elLv | 0, T);   /
   return EL_ATK_DESC[T.el];
 }
 function mRelTxt16(base, rel) { const f = v => '' + (+v.toFixed(1)); return rel > 0 ? f(base) + '(+' + f(base * rel) + ')' : f(base); }
-function areaText(T) { const R = ROLES[T.role]; return R.type === 'buff' ? (T.el === 8 ? `항상 바로 왼쪽 1칸 (빛줄기)` : `${SUP.PERIOD}초마다 주변 8칸 아군\n${SUP.DUR}초 지속`) : R.type === 'debuff' ? ((T.el === 3 || T.el === 8) ? `반경 ${SUP.RADIUS_CELLS}칸 안 적\n상시` : T.el === 4 ? `${+(SUP.D_BOLT_PERIOD / dbSpd(T)).toFixed(1)}초마다 반경 ${SUP.BOLT_RADIUS_CELLS}칸 적\n기절` : T.el === 5 ? `${+(SUP.D_WIND_PERIOD / dbSpd(T)).toFixed(1)}초마다 반경 ${SUP.BOLT_RADIUS_CELLS}칸 적\n넉백` : `${+(SUP.D_PERIOD / dbSpd(T)).toFixed(1)}초마다 반경 ${SUP.RADIUS_CELLS}칸 적\n${SUP.DUR}초 지속`) : `웨이브 시작마다 보유 골드의 ${mRelTxt16((SUP.M_RATE[T.len] || 0) * grK(T) * mInt16(T) * 100, T.side === 'me' ? RLG('merchGold') : 0)}% 이자`; }
+function dbCells(T) { return +(trange(T) / (PLOTS.me.w / COLS)).toFixed(1); }   /* 실제 반경 (칸) = 기본 × 영웅 디버프 범위 */
+function areaText(T) { const R = ROLES[T.role]; return R.type === 'buff' ? (T.el === 8 ? `항상 바로 왼쪽 1칸 (빛줄기)` : `${SUP.PERIOD}초마다 주변 8칸 아군\n${SUP.DUR}초 지속`) : R.type === 'debuff' ? ((T.el === 3 && T.len >= 4) ? `반경 ${dbCells(T)}칸 안 적 상시 둔화\n${+(SUP.D_BOLT_PERIOD / dbSpd(T)).toFixed(1)}초마다 기절` : (T.el === 3 || T.el === 8) ? `반경 ${dbCells(T)}칸 안 적\n상시` : T.el === 4 ? `${+(SUP.D_BOLT_PERIOD / dbSpd(T)).toFixed(1)}초마다 반경 ${dbCells(T)}칸 적\n기절` : T.el === 5 ? `${+(SUP.D_WIND_PERIOD / dbSpd(T)).toFixed(1)}초마다 반경 ${dbCells(T)}칸 적\n넉백` : `${+(SUP.D_PERIOD / dbSpd(T)).toFixed(1)}초마다 반경 ${dbCells(T)}칸 적\n${SUP.DUR}초 지속`) : `웨이브 시작마다 보유 골드의 ${mRelTxt16((SUP.M_RATE[T.len] || 0) * grK(T) * mInt16(T) * 100, T.side === 'me' ? RLG('merchGold') : 0)}% 이자`; }
 /* 자동 줄바꿈 (한글은 띄어쓰기 단위, 한 단어가 너무 길면 글자 단위) */
-function dbSpdShown(T) { return ROLES[T.role].type === 'debuff' && T.el !== 3 && T.el !== 8; }   // 얼음/빛 디버퍼는 상시 효과라 공속(주기) 없음
-function dbSpdRows(T) { const P = T.el === 4 ? SUP.D_BOLT_PERIOD : T.el === 5 ? SUP.D_WIND_PERIOD : SUP.D_PERIOD, b0 = grK(T) * (T.side === 'me' ? 1 + CFG.UPG_ASPD * upgLv(T.role) : 1) / P, n0 = dbSpd(T) / P, d = Math.round(n0 * 100) - Math.round(b0 * 100); return { v: b0.toFixed(2), b: d > 0 ? '+' + (d / 100).toFixed(2) : '' }; }
+function dbSpdShown(T) { return ROLES[T.role].type === 'debuff' && T.el !== 8 && (T.el !== 3 || T.len >= 4); }   /* 얼음 유령 4글자+ = 기절 오라 주기 있음 */   // 얼음/빛 디버퍼는 상시 효과라 공속(주기) 없음
+function dbSpdRows(T) { const buf = ROLES[T.role].type === 'buff', P = buf ? SUP.PERIOD : (T.el === 4 || T.el === 3) ? SUP.D_BOLT_PERIOD : T.el === 5 ? SUP.D_WIND_PERIOD : SUP.D_PERIOD, b0 = grK(T) * (T.side === 'me' && !buf ? 1 + CFG.UPG_ASPD * upgLv(T.role) : 1) / P, n0 = dbSpd(T) / P, d = Math.round(n0 * 100) - Math.round(b0 * 100); return { v: b0.toFixed(2), b: d > 0 ? '+' + (d / 100).toFixed(2) : '' }; }
 function infoWrap(s, size, maxW) { ctx.font = canvasFont(size); const out = []; let line = ''; for (const w of String(s).replace(/\([^)]*\)/g, m => m.replace(/ /g, '\u00A0')).replace(/ (?=[+x-]?\d)/g, '\u00A0').split(' ')) { const t = line ? line + ' ' + w : w; if (!line || ctx.measureText(t).width <= maxW) line = t; else { out.push(line); line = w; } } if (line) out.push(line);
   const res = []; for (const l of out) { if (ctx.measureText(l).width <= maxW) { res.push(l); continue; } let c = ''; for (const ch of l) { if (ctx.measureText(c + ch).width > maxW) { res.push(c); c = ch; } else c += ch; } if (c) res.push(c); } return res; }
 function infoText(T) {
@@ -8507,7 +8515,7 @@ function drawTowerInfo(T) {
   let yy = divY + L.gap;
   detail.lines.forEach((line, i) => infoRich(line, x + 2, yy + L.lineH * (i + 0.5), F.eff, T.el));
   yy += detail.lines.length * L.lineH + L.gap;
-  const stats = R.dmg ? unitStats(T) : dbSpdShown(T) ? [{ k: '공속', u: '/초', ...dbSpdRows(T) }] : (R.type === 'buff' && T.el !== 8) ? [{ k: '공속', v: SUP.PERIOD + '초', u: '', b: '' }] : [];
+  const stats = R.dmg ? unitStats(T) : dbSpdShown(T) ? [{ k: '공속', u: '/초', ...dbSpdRows(T) }] : (R.type === 'buff' && T.el !== 8) ? [{ k: '공속', u: '/초', ...dbSpdRows(T) }] : [];   /* 버퍼 공속 = 1 / 8초 × 공속 배율 (유령과 같은 표기, 표시만) */
   const cp = Math.round(ifs(8));
   stats.forEach((stat, i) => {
     const cellW = i === 0 ? w : (w - L.gap * 2) / 3;
@@ -11607,7 +11615,7 @@ function kbStep10(dt) {
   for (const m of G.mobs) { const q = m.kb10; if (!q || !q.length) continue;
     let dd = 0; for (const e of q) { const t0 = e.t; e.t = Math.min(KB10_DUR, e.t + dt); const f = u => 1 - Math.pow(1 - u / KB10_DUR, 3); dd += e.dist * (f(e.t) - f(t0)); }
     m.kb10 = q.filter(e => e.t < KB10_DUR); if (m.dead) { m.kb10 = null; continue; }
-    m.d = Math.max(m.path.entryLen, m.d - dd); }
+    m.d = Math.max(0, Math.min(m.d, (m.path && m.path.entryLen) || 0), m.d - dd); }   /* 11/27: 시작점(길 입구 entryLen / 아직 입구 구간이면 지금 자리, 최소 0) 뒤로는 절대 안 밀림. 입구 구간 적을 앞으로 당기지도 않음 */
 }
 function playSwordConv(T) {
   const el = T.convEl | 0; if (!el) return;
@@ -24970,7 +24978,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wd-acq.hr-acq .acq-body{padding:calc(22*var(--cu)) 0 calc(20*var(--cu));box-sizing:border-box}
 #wd-acq.hr-acq .acq-body{gap:calc(8*var(--cu))}
 #wd-acq.hr-acq .hr-acq-fig{position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;animation:acqPop .38s cubic-bezier(.3,1.8,.5,1) .3s both;filter:drop-shadow(0 calc(4*var(--cu)) 0 rgba(0,0,0,.4))}
-#wd-acq.hr-acq .hr-acq-fig.lv{width:calc(168*var(--cu));height:calc(176*var(--cu))}
+#wd-acq.hr-acq .hr-acq-fig.lv{width:calc(109*var(--cu));height:calc(114*var(--cu));margin:calc(6*var(--cu)) 0 calc(4*var(--cu))}
 #wd-acq.hr-acq .hr-acq-fig.sk{width:calc(128*var(--cu));height:calc(128*var(--cu))}
 #wd-acq.hr-acq .hr-acq-fig img{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;object-position:center;overflow:visible;clip-path:none}
 #wd-acq.hr-acq .hr-acq-shine{position:absolute;inset:-10%;pointer-events:none;background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,0) 32%,rgba(255,255,255,.55) 50%,rgba(255,255,255,0) 68%,transparent 100%);transform:translateX(-130%) rotate(18deg);animation:hrAcqShine 1.1s ease-out .42s both;mix-blend-mode:screen}
@@ -24982,10 +24990,10 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wd-acq.hr-acq .hr-acq-lines{display:flex;flex-direction:column;align-items:center;gap:calc(3*var(--cu));margin-top:calc(2*var(--cu))}
 #wd-acq.hr-acq .hr-acq-lines span{font-family:var(--fd);font-weight:400;font-size:calc(16*var(--cu));line-height:1.15;color:#fff;-webkit-text-stroke:calc(3.8*var(--cu)) var(--k);paint-order:stroke fill;animation:acqTitle .28s cubic-bezier(.3,1.7,.5,1) .48s both}
 #wd-acq.hr-acq .hr-acq-lines .hr-hi{color:#8dff6a;-webkit-text-stroke-color:#163a10;font-style:normal}
-#wd-acq.hr-acq .hr-acq-aura{position:absolute;z-index:0;pointer-events:none;left:50%;top:50%;width:calc(160*var(--cu));height:calc(160*var(--cu));margin:calc(-80*var(--cu)) 0 0 calc(-80*var(--cu));border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,200,40,1) 0deg 9deg,rgba(255,246,200,.95) 9deg 13deg,rgba(255,220,90,0) 13deg 30deg);-webkit-mask:radial-gradient(circle,#000 22%,rgba(0,0,0,.8) 45%,transparent 70%);mask:radial-gradient(circle,#000 22%,rgba(0,0,0,.8) 45%,transparent 70%);animation:attFanfare2 5s linear infinite}
+#wd-acq.hr-acq .hr-acq-aura{position:absolute;z-index:0;pointer-events:none;left:50%;top:50%;width:calc(130*var(--cu));height:calc(130*var(--cu));margin:calc(-65*var(--cu)) 0 0 calc(-65*var(--cu));border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,200,40,1) 0deg 9deg,rgba(255,246,200,.95) 9deg 13deg,rgba(255,220,90,0) 13deg 30deg);-webkit-mask:radial-gradient(circle,#000 22%,rgba(0,0,0,.8) 45%,transparent 70%);mask:radial-gradient(circle,#000 22%,rgba(0,0,0,.8) 45%,transparent 70%);animation:attFanfare2 5s linear infinite}
 #wd-acq.hr-acq .hr-acq-fig.sk .hr-acq-aura{width:calc(120*var(--cu));height:calc(120*var(--cu));margin:calc(-60*var(--cu)) 0 0 calc(-60*var(--cu))}
 #wd-acq.hr-acq .hr-acq-fig img{position:relative;z-index:1}
-#wd-acq.hr-acq .hr-acq-sp,#wd-acq.hr-acq .hr-acq-shine{display:none}
+#wd-acq.hr-acq .hr-acq-sp,#wd-acq.hr-acq .hr-acq-shine,#wd-acq.hr-acq .hr-acq-fig .hr-shine-clip{display:none!important}
 @keyframes hrAcqShine{0%{transform:translateX(-130%) rotate(18deg);opacity:0}25%{opacity:1}100%{transform:translateX(130%) rotate(18deg);opacity:0}}
 @keyframes hrAcqSp{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}30%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + (var(--i) - 4.5)*18*var(--cu)), calc(-50% + ((var(--i)*37)%11 - 5)*14*var(--cu))) scale(.4)}}
 </style>
@@ -25013,12 +25021,12 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
     archer:    { total: L => 16.5 * f3(L), n: shots, gap: 0.1, lhX: L => pv(3, 6, L), cd: 11 },
     sniper:    { p: L => 2.4 * f3(L), aim: 1.0, len: 800, w: 30, chX: L => pv(1.6, 2.8, L), cd: 12 },
     warrior:   { p: L => 6.48 * f3(L), len: 236, w: 50, wind: 0.2, duskA: L => pv(0.10, 0.30, L), duskR: 70, cd: 12 },
-    miner:     { p: L => 4.8 * f3(L), R: 55, crP: 0.08, crX: L => pv(3, 7, L), crStun: 1, cd: 8 },
+    miner:     { p: L => 4.8 * f3(L), R: 70, stun: L => L >= 10 ? 3 : L >= 5 ? 2 : 1, crP: 0.08, crX: L => pv(3, 7, L), crStun: 1, cd: 8 },   /* 진심 펀치: 대상+주변 R70 (포병 폭발 범위와 같음) · 기절 1/2/3초 (Lv1~4/5~9/10+) */
     artillery: { p: L => 3.45 * f3(L), fly: 0.6, R: 90, stun: 1, delay: 1, dudP: 0.2, dudX: L => pv(1.3, 3.9, L), dudR: 70, cd: 10 },
     mage:      { p: L => 6.325 * f3(L), R: 101, fall: 0.5, stP: L => pv(0.30, 0.60, L), stDur: 1, amp: L => pv(0.10, 0.30, L), cd: 11 },
     zone:      { dur: L => lin(3, 5, L), per: L => 18 * f3(L) / Math.round(lin(3, 5, L) / 0.25), R: 93, tick: 0.25, slow: L => pv(0.18, 0.40, L), cd: 9 },
-    debuffer:  { kb: L => lin(40, 80, L), vuln: L => lin(0.20, 0.36, L), dur: L => lin(3, 5, L), boltP: L => pv(0.6, 1.0, L), boltX: L => pv(1.6, 2.4, L), cd: 10 },
-    buffer:    { skAmp: L => pv(0.15, 0.45, L) },
+    debuffer:  { kb: L => lin(40, 80, L), vuln: L => lin(0.20, 0.36, L), dur: L => lin(3, 5, L), boltP: L => pv(0.6, 1.0, L), boltS: L => pv(2, 5, L), cd: 10 },   /* 번개 유령 패시브: 기본 기절은 그대로, boltP 확률로 기절 boltS초 (얼음 유령 기절 오라도 같은 값) */
+    buffer:    { skAmp: L => pv(0.15, 1.00, L), cd: 20, blessDur: 10, blessCut: 0.7 },   /* 패시브: 버프 받은 아군 스킬 공격력 +15%~+100% · 축복: 고정값 (레벨 무관) */
     merchant:  { dbl: L => pv(0.033, 0.10, L) },
   };
   function skCD(T) { try { const v = V[ROLES[T.role].key]; return (v && v.cd) || 10; } catch (e) { return 10; } }
@@ -25043,30 +25051,30 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
       return true;
     },
     archer(T, L) {   /* 심판: 한 명에게 n발, 대상이 죽으면 남은 화살은 다른 적 (이미 날아간 화살은 낭비) */
-      const v = V.archer; let tg = front(T, trange(T)); if (!tg) return false;
+      const v = V.archer, top = () => { let b = null; for (const m of mobsIn(T.x, T.y, trange(T))) if (!b || m.hp > b.hp) b = m; return b; }; let tg = top(); if (!tg) return false;   /* 체력이 가장 높은 적 */
       const n = v.n(L), per = v.total(L) / n; T.skPause = n * v.gap; txt(T.x, T.y - 70, '심판!', '#ffe08a', 28);
-      for (let i = 0; i < n; i++) Q(i * v.gap, () => { if (!alive(T)) return; if (!tg || tg.dead) tg = front(T, trange(T)); if (!tg) return;
+      for (let i = 0; i < n; i++) Q(i * v.gap, () => { if (!alive(T)) return; if (!tg || tg.dead) tg = top(); if (!tg) return;
         G.projs.push({ k: 'arrow', x: T.x + (T.face || 1) * 20, y: T.y - 16, tgt: tg, tx: tg.x, ty: tg.y, sp: 1300, T: prox(T, per, 1), dmg: unitDmg(T), col: ecol(T) }); try { SFX.play('bow'); } catch (e) {} });
       return true;
     },
     sniper(T, L) {   /* 필살 조준: 1초 조준 → 화면 끝까지 관통 한 발 */
       const v = V.sniper; let tg = null; for (const m of mobsIn(T.x, T.y, trange(T))) if (!tg || m.hp > tg.hp) tg = m; if (!tg) return false;
-      T.skPause = v.aim + 0.15; (G.skfx || (G.skfx = [])).push({ k: 'aim', T, m: tg, t: 0, life: v.aim }); txt(T.x, T.y - 70, '필살 조준', '#ff7a6a', 26);
+      T.skPause = v.aim + 0.15; (G.skfx || (G.skfx = [])).push({ k: 'aim', T, m: tg, t: 0, life: v.aim }); txt(T.x, T.y - 70, '레이저 바주카', '#ff7a6a', 26);
       Q(v.aim, () => { if (!alive(T)) return; const tx = tg.dead ? tg.x : tg.x, ty = tg.y; const dx = tx - T.x, dy = ty - T.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
         for (const m of lineMobs(T.x, T.y, ux, uy, v.len, v.w)) pHit(T, m, v.p(L), 1);
         addFx({ k: 'line', x1: T.x + ux * 30, y1: T.y - 14 + uy * 30, x2: T.x + ux * v.len, y2: T.y - 14 + uy * v.len, col: '#ffffff', life: 0.4, w: 10 }); try { SFX.play('gunH'); } catch (e) {} });
       return true;
     },
-    warrior(T, L) {   /* 발도: 앞으로 일직선 베기 */
+    warrior(T, L) {   /* 발도: 필드의 모든 적 베기 (피해 같음) */
       const v = V.warrior, tg = front(T, trange(T) * 1.6); if (!tg) return false; T.skPause = v.wind + 0.1;
-      Q(v.wind, () => { if (!alive(T)) return; const dx = tg.x - T.x, dy = tg.y - T.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
-        for (const m of lineMobs(T.x, T.y, ux, uy, v.len, v.w)) pHit(T, m, v.p(L), 1);
-        addFx({ k: 'line', x1: T.x, y1: T.y - 10, x2: T.x + ux * v.len, y2: T.y - 10 + uy * v.len, col: '#f4f8ff', life: 0.3, w: 14 }); txt(T.x, T.y - 70, '발도', '#e8f0ff', 28); try { SFX.play('slash'); } catch (e) {} });
+      Q(v.wind, () => { if (!alive(T)) return; let nf = 0;
+        for (const m of G.mobs.slice()) { if (m.dead) continue; pHit(T, m, v.p(L), 1); if (nf++ < 14) addFx({ k: 'line', x1: m.x - 26, y1: m.y - 30, x2: m.x + 26, y2: m.y + 6, col: '#f4f8ff', life: 0.3, w: 8 }); }
+        G.skBaldo = (G.skBaldo | 0) + 1; txt(T.x, T.y - 70, '발도', '#e8f0ff', 28); try { SFX.play('slash'); } catch (e) {} });
       return true;
     },
     miner(T, L) {   /* 진심 펀치: 死 + 좁은 범위 쾅 */
       const v = V.miner, tg = front(T, trange(T)); if (!tg) return false; const x = tg.x, y = tg.y;
-      for (const m of mobsIn(x, y, v.R)) { pHit(T, m, v.p(L), 1); }
+      const sd = v.stun(L); for (const m of mobsIn(x, y, v.R)) { pHit(T, m, v.p(L), 1); stun(m, sd); }   /* 기절: 기존 규칙 (월드보스만 면역) */
       addFx({ k: 'slam', x, y: y + 4, r: v.R, col: '#ff3b2f', life: 0.45, el: T.el }); txt(x, y - 60, '死', '#ff2a2a', 72); try { SFX.play('boom'); } catch (e) {}
       return true;
     },
@@ -25084,9 +25092,18 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
       Q(v.fall, () => { if (!G.towers.includes(T)) return; for (const m of mobsIn(x, y, v.R)) pHit(T, m, v.p(L), 1); addFx({ k: 'boom', x, y, r: v.R, col: '#ff6a2e', life: 0.55, el: T.el }); try { SFX.play('boom'); } catch (e) {} });
       return true;
     },
-    zone(T, L) {   /* 에너지 구: 대상을 따라가며 0.25초마다 아래로 지지직 */
+    zone(T, L) {   /* 에너지 구: 시전한 자리에 고정, 0.25초마다 아래로 지지직 (대상을 따라가지 않음) */
       const v = V.zone, tg = front(T, trange(T)); if (!tg) return false;
-      (G.sko || (G.sko = [])).push({ T, tg, x: tg.x, y: tg.y, t: 0, dur: v.dur(L), tick: 0, per: v.per(L), R: v.R }); txt(T.x, T.y - 70, '에너지 구', '#bfe8ff', 26);
+      (G.sko || (G.sko = [])).push({ T, tg: null, fixed: 1, x: tg.x, y: tg.y, t: 0, dur: v.dur(L), tick: 0, per: v.per(L), R: v.R }); txt(T.x, T.y - 70, '에너지 구', '#bfe8ff', 26);
+      return true;
+    },
+    buffer(T, L) {   /* 축복: blessDur초 동안 같은 편 유닛이 받는 CC 지속 -blessCut (이미 걸린 것 포함). 유닛 CC = 월드보스 번개 기절(wbStun)뿐 */
+      const v = V.buffer, side = T.side, mates = G.towers.filter(U => U.side === side && !U.walk); if (!mates.length) return false;
+      (G.bless || (G.bless = {}))[side] = v.blessDur; G.blessN = (G.blessN | 0) + 1;
+      for (const U of mates) { if (U.wbStun > 0) U.wbStun *= 1 - v.blessCut; U._wbPrev = U.wbStun || 0; }
+      addFx({ k: 'burst', x: T.x, y: T.y, r: 120, col: '#ffe9a0', life: 0.45 });   /* 기존 버퍼 시전 연출 재사용: 링(burst) + 별가루(sparkfly, supBuffFx와 같음) */
+      for (const U of mates.slice(0, 10)) if (U !== T) addFx({ k: 'sparkfly', x: T.x, y: T.y - 30, T: U, col: '#ffe9a0', life: 0.55 });
+      supMotion(T); txt(T.x, T.y - 70, '축복', '#fff3b0', 28); try { SFX.play('bufch'); } catch (e) {}
       return true;
     },
     debuffer(T, L) {   /* 공포: 범위 안 적 넉백 + 받는 피해 증가 */
@@ -25128,10 +25145,10 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
         for (const o of lineMobs(mx, my, ux, uy, 160, 26)) { if (o === m || k >= 2) continue; k++; pHit(T, o, X, 0); } }
       return;
     }
-    if (key === 'archer') {   /* 막타: 처치하면 다음 공격 즉시 + 강화 */
+    if (key === 'archer') {   /* 리듬: 처치하면 다음 공격 즉시 + 강화 */
       const mul = T.lhX || 1; if (T.lhX) T.lhX = 0;
       const was = !m.dead; withMul(T, mul, () => _hitSK(T, m, base));
-      if (was && m.dead) { T.lhX = V.archer.lhX(P); T.cd = 0; T.lhN = (T.lhN | 0) + 1; txt(T.x, T.y - 56, '막타!', '#ffe08a', 18); }
+      if (was && m.dead) { T.lhX = V.archer.lhX(P); T.cd = 0; T.lhN = (T.lhN | 0) + 1; txt(T.x, T.y - 56, '리듬!', '#ffe08a', 18); }
       return;
     }
     if (key === 'mage') {   /* 평타 폭발 확률 기절 (한 번의 폭발 = 한 번 굴림) + 피해 +amp */
@@ -25156,17 +25173,29 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
   let SUPDT = 0, INSUP = 0;
   const _seK = supEffK;
   supEffK = function (D) {
-    const k = _seK(D);
-    try { if (INSUP && D && D.el === 4 && ROLES[D.role].type === 'debuff' && D.len >= 4 && ((D.castT ?? SUP.FIRST) - SUPDT) <= 0) { const P = psLv(D); return rand() < V.debuffer.boltP(P) ? k * V.debuffer.boltX(P) : k * 1e-4; } } catch (e) {}
+    let k = _seK(D);
+    try { if (INSUP && D && D.el === 4 && ROLES[D.role].type === 'debuff' && D.len >= 4 && ((D.castT ?? SUP.FIRST) - SUPDT) <= 0) { const P = psLv(D); if (rand() < V.debuffer.boltP(P)) { k = Math.max(k, V.debuffer.boltS(P) / SUP.D_BOLT_STUN); D.boltN = (D.boltN | 0) + 1; } } } catch (e) {}   /* 기본 기절은 그대로, 발동 시 boltS초 */
     return k;
   };
+  const _trSK = trange;
+  trange = function (T) { const r = _trSK(T); return (T && T.hrRad) ? r * (1 + T.hrRad) : r; };   /* 영웅 레벨: 유령 디버프 범위 +% */
   const _usSK = updateSupport;
   updateSupport = function (dt) {
+    if (G) try { const H = window.WDHero; for (const T of G.towers) { T.hrRad = 0; if (!H || T.side !== 'me' || ROLES[T.role].type !== 'debuff') continue; const b = H.bonus(ROLES[T.role].key); if (b) T.hrRad = b.rad || 0; } } catch (e) {}
     SUPDT = dt; INSUP = 1; try { _usSK(dt); } finally { INSUP = 0; }
     if (!G) return;
-    try { const H = window.WDHero; if (H) for (const T of G.towers) {   /* b184 영웅 레벨: 공격력 +5%·치명타 피해 +3% (레벨마다), 공속 +5% (Lv10·20·30). 내 유닛만, 매 프레임 새로 계산되는 값 위에 곱/더하기 */
+    try { const H = window.WDHero; if (H) for (const T of G.towers) {   /* b184 영웅 레벨 (직업별): 공격 유닛 = 공격력 +5%·치명타 피해 +3% (레벨마다) + 공속 +5% (Lv10·20·30) / 유령 = 공속 Lv30 +50% (직선, 범위는 trange) / 버퍼 = 공속만. 내 유닛만 */
       if (T.side !== 'me') continue; const b = H.bonus(ROLES[T.role].key); if (!b) continue;
       if (b.atk) T.dmgMult *= 1 + b.atk; if (b.critD) T.critD += b.critD; if (b.aspd) T.aspd *= 1 + b.aspd; } } catch (e) {}
+    try { for (const D of G.towers) {   /* 얼음 유령 (4글자+): 상시 둔화는 그대로 + 번개 유령과 같은 주기(D_BOLT_PERIOD / 공속)로 기절 오라. 기절 = 번개 유령 패시브와 같은 값 */
+      if (D.el !== 3 || ROLES[D.role].type !== 'debuff' || D.len < 4 || D.walk) continue;
+      D.iceStT = (D.iceStT ?? SUP.FIRST) - dt; if (D.iceStT > 0) continue;
+      const R0 = trange(D), ms = mobsIn(D.x, D.y, R0); if (!ms.length) { D.iceStT = 0; continue; }
+      D.iceStT = SUP.D_BOLT_PERIOD / dbSpd(D); const P = psLv(D); let s = SUP.D_BOLT_STUN * supEffK(D);
+      if (rand() < V.debuffer.boltP(P)) { s = Math.max(s, V.debuffer.boltS(P)); D.boltN = (D.boltN | 0) + 1; }
+      for (const m of ms) m.stunT = Math.max(m.stunT || 0, s);   /* 번개 유령 기절과 같은 규칙 (월드보스는 기존대로 매 프레임 초기화) */
+      D.iceStN = (D.iceStN | 0) + 1; try { dbBurst10(D, 3, R0); } catch (e) {}   /* 기존 유령 링 (얼음색) */
+    } } catch (e) {}
     for (const m of G.mobs) if (m.fearT > 0) m.vuln = (m.vuln || 0) + (m.fearV || 0);
     if (G.zones && G.zones.length) { const best = new Map();
       for (const z of G.zones) { const T = z.T; if (!T || ROLES[T.role].key !== 'zone' || T.len < 4) continue; const s = V.zone.slow(psLv(T)); for (const m of mobsIn(z.x, z.y, z.r)) if (!(best.get(m) >= s)) best.set(m, s); }
@@ -25187,11 +25216,13 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
     _upSK(dt);
     if (!G || G.over) return;
     if (G.skq && G.skq.length) { const run = []; for (const q of G.skq) { q.t -= dt; if (q.t <= 0) run.push(q); } if (run.length) { G.skq = G.skq.filter(q => q.t > 0); for (const q of run) { try { q.fn(); } catch (e) {} } } }
-    if (G.sko && G.sko.length) { for (const o of G.sko) { o.t += dt; if (o.tg && o.tg.dead) { let b = null, bd = 1e9; for (const m of mobsIn(o.x, o.y, o.R * 2)) { const d = dist2(o.x, o.y, m.x, m.y); if (d < bd) { bd = d; b = m; } } o.tg = b; }
+    if (G.sko && G.sko.length) { for (const o of G.sko) { o.t += dt; if (!o.fixed && o.tg && o.tg.dead) { let b = null, bd = 1e9; for (const m of mobsIn(o.x, o.y, o.R * 2)) { const d = dist2(o.x, o.y, m.x, m.y); if (d < bd) { bd = d; b = m; } } o.tg = b; }
         if (o.tg) { const dx = o.tg.x - o.x, dy = o.tg.y - o.y, d = Math.hypot(dx, dy), st = 160 * dt; if (d > 1) { o.x += dx / d * Math.min(d, st); o.y += dy / d * Math.min(d, st); } }
         o.tick -= dt; if (o.tick <= 0 && o.t <= o.dur + 1e-6) { o.tick += V.zone.tick; if (G.towers.includes(o.T)) for (const m of mobsIn(o.x, o.y, o.R)) { pHit(o.T, m, o.per, 1); addFx({ k: 'line', x1: o.x + (Math.random() - 0.5) * 10, y1: o.y - 70, x2: m.x, y2: m.y - 10, col: '#cfeeff', life: 0.12, w: 3 }); } } }
       G.sko = G.sko.filter(o => o.t < o.dur); }
     for (const m of G.mobs) if (m.fearT > 0) m.fearT -= dt;
+    if (G.bless) { for (const sd in G.bless) if (G.bless[sd] > 0) G.bless[sd] -= dt;   /* 축복: 새로 걸리거나 늘어난 기절만 70% 줄임 */
+      for (const U of G.towers) { const st = U.wbStun || 0, pv0 = U._wbPrev || 0; if (G.bless[U.side] > 0 && st > pv0 + 1e-4) U.wbStun = pv0 + (st - pv0) * (1 - V.buffer.blessCut); U._wbPrev = U.wbStun || 0; } }
     if (G.skfx && G.skfx.length) { for (const f of G.skfx) f.t += dt; G.skfx = G.skfx.filter(f => f.t < f.life); }
   };
   /* ---- 그리기 (전투 화면 좌표, drawFx(false) 다음) ---- */
@@ -25211,6 +25242,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
         if (f.k === 'dud') { ctx.fillStyle = '#3a3a40'; ctx.beginPath(); ctx.arc(f.x, f.y, 6, 0, 6.283); ctx.fill(); ctx.fillStyle = Math.sin(f.t * 30) > 0 ? '#ff4a2a' : '#ffd84a'; ctx.beginPath(); ctx.arc(f.x, f.y - 6, 2.5, 0, 6.283); ctx.fill(); }
         if (f.k === 'meteor') { const x = f.x + (1 - q) * 120, y = f.y - (1 - q) * 360; const g = ctx.createRadialGradient(x, y, 2, x, y, 26); g.addColorStop(0, '#fff3c0'); g.addColorStop(0.4, '#ff8a2e'); g.addColorStop(1, 'rgba(255,60,20,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 26, 0, 6.283); ctx.fill(); ctx.globalAlpha = 0.25 + 0.4 * q; ctx.strokeStyle = '#ff6a2e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x, f.y, V.mage.R * q, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
       }
+      if (G.bless) for (const U of G.towers) { const bl = G.bless[U.side]; if (!(bl > 0) || U.walk) continue; ctx.globalAlpha = Math.min(1, bl) * (0.35 + 0.15 * Math.sin(G.t * 4)); ctx.strokeStyle = '#ffe9a0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(U.x, U.y + 20, 26, 9, 0, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
       for (const o of (G.sko || [])) { const y = o.y - 70, g = ctx.createRadialGradient(o.x, y, 2, o.x, y, 20); g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, '#8fd8ff'); g.addColorStop(1, 'rgba(80,160,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(o.x, y, 20 + Math.sin(o.t * 20) * 2, 0, 6.283); ctx.fill();
         ctx.globalAlpha = 0.18; ctx.fillStyle = '#8fd8ff'; ctx.beginPath(); ctx.arc(o.x, o.y, o.R, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1; }
       ctx.restore();
@@ -25218,31 +25250,32 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
   };
   function pctTxt(v) { const n = v * 100, r = Math.round(n * 10) / 10; return (Math.abs(r - Math.round(r)) < 1e-6 ? String(Math.round(r)) : String(r)) + '%'; }
   /* b184: 스킬 설명 (전투 정보창 · 영웅 탭 같은 글). an/pn = 이름, a/p = 설명 (이름 없는 줄은 pn = null) */
-  const SKN = { rapid: ['쇼타임', '헤드샷'], archer: ['심판', '막타'], sniper: ['필살 조준', '장전'], warrior: ['발도', '어스름'], miner: ['진심 펀치', '분쇄'], artillery: ['탄도미사일', '불발탄'], mage: ['메테오', '강화'], zone: ['에너지 구', '늪지'], debuffer: ['공포', '번개 유령'], buffer: [null, null], merchant: [null, '복리'] };
+  const SKN = { rapid: ['쇼타임', '헤드샷'], archer: ['심판', '리듬'], sniper: ['레이저 바주카', '장전'], warrior: ['발도', '어스름'], miner: ['진심 펀치', '분쇄'], artillery: ['탄도미사일', '불발탄'], mage: ['메테오', '충격포'], zone: ['에너지 구', '늪지'], debuffer: ['공포', '번개 유령'], buffer: ['축복', null], merchant: [null, '복리'] };
   function heroDesc(k, S, P) {
     const v = V[k]; if (!v) return null; const cd = v.cd || 10, o = { an: (SKN[k] || [])[0] || null, a: null, pn: (SKN[k] || [])[1] || null, p: null, cd: CAST[k] ? cd : 0 };
     if (S && CAST[k]) {
       if (k === 'rapid') o.a = '총 ' + pctTxt(v.total(S)) + ' (쿨 ' + cd + '초)';
       if (k === 'archer') o.a = '총 ' + pctTxt(v.total(S)) + ' (쿨 ' + cd + '초)';
       if (k === 'sniper') o.a = pctTxt(v.p(S)) + ' 관통 (쿨 ' + cd + '초)';
-      if (k === 'warrior') o.a = pctTxt(v.p(S)) + ' 일직선 (쿨 ' + cd + '초)';
-      if (k === 'miner') o.a = pctTxt(v.p(S)) + ' (쿨 ' + cd + '초)';
+      if (k === 'warrior') o.a = pctTxt(v.p(S)) + ' 모든 적 (쿨 ' + cd + '초)';
+      if (k === 'miner') o.a = pctTxt(v.p(S)) + ', 기절 ' + v.stun(S) + '초 (쿨 ' + cd + '초)';
       if (k === 'artillery') o.a = pctTxt(v.p(S)) + ' (쿨 ' + cd + '초)';
       if (k === 'mage') o.a = pctTxt(v.p(S)) + ' (쿨 ' + cd + '초)';
       if (k === 'zone') o.a = '총 ' + pctTxt(18 * f3(S)) + ' / ' + (+v.dur(S).toFixed(1)) + '초 (쿨 ' + cd + '초)';
       if (k === 'debuffer') o.a = '받는 피해 +' + pctTxt(v.vuln(S)) + ', ' + (+v.dur(S).toFixed(1)) + '초 (쿨 ' + cd + '초)';
+      if (k === 'buffer') o.a = v.blessDur + '초 동안 받는 CC -' + pctTxt(v.blessCut) + ' (쿨 ' + cd + '초)';
     }
     if (P) {
       if (k === 'rapid') o.p = pctTxt(v.hsP) + ' 확률 ' + pctTxt(v.hsX(P)) + ', 2명 관통';
-      if (k === 'archer') o.p = '처치 시 다음 공격 ' + pctTxt(v.lhX(P));
+      if (k === 'archer') o.p = '처치 시 즉시 ' + pctTxt(v.lhX(P)) + ' 피해';
       if (k === 'sniper') o.p = '4타마다 ' + pctTxt(v.chX(P));
       if (k === 'warrior') o.p = pctTxt(v.duskA(P));
       if (k === 'miner') o.p = pctTxt(v.crP) + ' 확률 ' + pctTxt(v.crX(P));
       if (k === 'artillery') o.p = pctTxt(v.dudP) + ' 확률 ' + pctTxt(v.dudX(P));
       if (k === 'mage') o.p = '피해 +' + pctTxt(v.amp(P)) + ', 기절 ' + pctTxt(v.stP(P));
       if (k === 'zone') o.p = '둔화 ' + pctTxt(v.slow(P));
-      if (k === 'debuffer') o.p = '기절 ' + pctTxt(v.boltP(P)) + ', 피해 x' + (Math.round(v.boltX(P) * 10) / 10);
-      if (k === 'buffer') o.p = '스킬 피해 +' + pctTxt(v.skAmp(P));
+      if (k === 'debuffer') o.p = pctTxt(v.boltP(P)) + ' 확률 기절 ' + (Math.round(v.boltS(P) * 10) / 10) + '초';
+      if (k === 'buffer') o.p = '버프 시 스킬 공격력 +' + pctTxt(v.skAmp(P));
       if (k === 'merchant') o.p = pctTxt(v.dbl(P)) + ' 확률';
     }
     return o;
