@@ -23135,7 +23135,7 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
   }
 
   function odds() {
-    const LV = { b: '5·10·15·30·35·40단계', u: '20·25·45단계', r: '50단계' };
+    const LV = { b: '40단계', u: '45단계', r: '50단계' };
     const sec = c => `<div class="bo-c"><div class="bo-hd"><img src="${asset(CH[c].img)}" alt=""><b>${CH[c].nm}</b></div><div class="bo-rs">${CH[c].k.map((k, i) => `<div class="bo-r"><span>열쇠 <b>${k}</b>개</span><em>${Math.round(ODDS[i] * 100)}%</em></div>`).join('')}</div><div class="bo-lv">${LV[c]}</div></div>`;
     A().modal(`<div class="pp-h"><h3>상자 확률</h3></div><div class="bo-l">${sec('b')}${sec('u')}${sec('r')}</div><button class="btn pn2-ok" data-act="close" type="button">확인</button>`, { cls: 'ppm boq2' });   /* 11/16 프로필 남색 종이창 */
   }
