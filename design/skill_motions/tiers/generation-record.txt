@@ -1,0 +1,31 @@
+Built-in image_gen mode for archer palette edits; existing completed knight and barrage PNGs reused.
+Final operation: deterministic sprite-atlas organization, explicitly requested by user. Original 13 source frames preserved; only original empty cells 12,15,16 populated with the three completed new motions. No base cell replacement.
+
+ARCHER PALETTE EDIT PROMPTS
+[
+  {
+    "tier": 5,
+    "prompt": "Use case: precise-object-edit. Recolor the supplied completed ARCHER motion atlas using the exact original project palette.\nImage 1 is the EDIT TARGET: ten copies of the selected kneeling, slightly backward-leaning, AFTER-RELEASE bow pose, arranged 5 columns by 2 rows.\nImage 2 is the AUTHORITATIVE ORIGINAL COLOR REFERENCE: ten original archers cropped directly from the user's ZIP, in the SAME 5-by-2 element order.\nMatch each target cell to the palette of the corresponding same-position cell of Image 2. Transfer exact colors by body part: hair/hat/feather, armor/tunic, cape fabric and edge, clasp, belt and bow metal/accent bands. Preserve target pose geometry, compact proportions, line art, equipment shapes and broad shadow shapes. Do not copy the standing pose, arrows, or drawn bowstring of the palette reference.\nElement order left-to-right top then bottom: physical, fire, water, lightning, poison; ice, light, wind, earth, dark.\nAll ten characters remain in the selected release pose from Image 1. The arrow is already gone; NO ARROW anywhere. Release hand follows back beside shoulder, bow arm extends right, front boot planted, one knee down, slight backward torso lean. No new gestures.\nKeep a complete transparent 5x2 sprite sheet with equal cells and at least a little clear margin around every full figure and bow. No cropping at outer canvas edges. Only color changes; no extra characters, halos, background, effects, text or new detail.\nThis is the simple feathered-cap Tier 5. Fire hat stays dark warm gray with RED feather, red cape and orange BANDS on dark bow; do not turn the whole hat or bow orange. Water has dark navy hat, CYAN feather and bow bands, blue cape. Lightning hat and clothes stay dark with yellow feather, cape border and bow bands. Ice feather is BLUE on pale blue hat. Light feather soft GOLD on ivory hat. Dark feather is muted dark purple, not bright lavender-white. Match every corresponding reference cell."
+  },
+  {
+    "tier": 6,
+    "prompt": "Use case: precise-object-edit. Recolor the supplied completed ARCHER motion atlas using the exact original project palette.\nImage 1 is the EDIT TARGET: ten copies of the selected kneeling, slightly backward-leaning, AFTER-RELEASE bow pose, arranged 5 columns by 2 rows.\nImage 2 is the AUTHORITATIVE ORIGINAL COLOR REFERENCE: ten original archers cropped directly from the user's ZIP, in the SAME 5-by-2 element order.\nMatch each target cell to the palette of the corresponding same-position cell of Image 2. Transfer exact colors by body part: hair/hat/feather, armor/tunic, cape fabric and edge, clasp, belt and bow metal/accent bands. Preserve target pose geometry, compact proportions, line art, equipment shapes and broad shadow shapes. Do not copy the standing pose, arrows, or drawn bowstring of the palette reference.\nElement order left-to-right top then bottom: physical, fire, water, lightning, poison; ice, light, wind, earth, dark.\nAll ten characters remain in the selected release pose from Image 1. The arrow is already gone; NO ARROW anywhere. Release hand follows back beside shoulder, bow arm extends right, front boot planted, one knee down, slight backward torso lean. No new gestures.\nKeep a complete transparent 5x2 sprite sheet with equal cells and at least a little clear margin around every full figure and bow. No cropping at outer canvas edges. Only color changes; no extra characters, halos, background, effects, text or new detail.\nThis is the dark-haired CYAN-eye-mask Tier 6. Keep cyan eye in all cells. The reference colors are restrained: physical warm gray/taupe cape/clothes; fire muted burgundy cape with coral edge and pink-gray bow with orange accent PLANES; water dark slate/navy clothes, blue cape with blue edge and mostly SILVER blue-gray bow (not cyan bow); lightning dark gray with GOLDEN YELLOW cape edge/gem and mostly pale gray bow, not yellow bow; poison muted plum clothes and MAUVE bow, chartreuse cape edge/gem, not lime bow; ice dark slate with pale icy cape border and silver-blue bow; light mostly gray underarmor with ivory/gold cape; wind gray-green sage with mint edge; earth muted brown/tan bronze; dark muted plum/mauve. Copy corresponding reference, including small hair hue shifts. Do not recolor skin."
+  }
+]
+
+ARCHER MARGIN EDIT PROMPT
+Use case: precise-object-edit, sprite atlas margin correction ONLY.
+Preserve all ten supplied archer illustrations, their selected poses, colors, short body proportions, equipment, linework and exact 5 columns by 2 rows element order. Keep a 5:2 aspect canvas with ten equal square cells.
+Adjust layout ONLY: reduce each complete figure and bow uniformly to 88% of its present size and center it in its own cell. Every bow and every character must be fully contained in its own cell with at least 6% clear margin on all sides. Especially restore the full outer black curve of the rightmost bows where the old canvas edge clipped it. Do not crop any bow tips, bow curves, cape, hair or boots. Keep all other drawing unchanged and do not add arrows. This remains the kneeling after-release pose in every cell.
+Real transparent alpha background, no scenery, no halos or shadows, no labels, no new characters, no changes to color or pose.
+
+SOURCE REFERENCES
+5-tier original full attack sheets: word-defense-attack-tiers-2-5.zip.
+6-tier original full attack sheets: word-defense-tier-5-motions.zip/attack.
+5-tier selected knight pairs: outputs/simple-knight-selected-poses-elements.
+6-tier selected knight pairs: outputs/tier6-knight-poses-2-5-elements-v1.
+Barrage sheets: outputs/game-motion-element-bundle-v1/02_gunner_barrage, copied byte-for-byte to separate archive.
+
+Packing implementation: work/pack-motion-atlases.ps1.
+Native alpha compositing and uniform fit-to-cell resizing only for inserted frames. Original full sheets retained as base.
+
