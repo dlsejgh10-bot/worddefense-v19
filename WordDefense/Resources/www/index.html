@@ -3094,6 +3094,13 @@ function fitChipFonts() {
       const min = 7;
       while (fs > min && el.scrollWidth > maxW) { fs -= 0.4; el.style.fontSize = fs + 'px'; }
     });
+    const goldB = document.querySelector('#wdl-top .t1c[data-cur="gold"] b');
+    const gemB = document.querySelector('#wdl-top .t1c[data-cur="gems"] b');
+    if (goldB && gemB) {
+      const px = el => parseFloat(el.style.fontSize) || parseFloat(getComputedStyle(el).fontSize) || 16;
+      const fs = Math.max(px(goldB), px(gemB));
+      goldB.style.fontSize = gemB.style.fontSize = fs + 'px';
+    }
   } catch (e) {}
 }
 function renderTop() {
@@ -3168,24 +3175,27 @@ function nickFit(b, box, maxF) {
 window.__wdNickFit = nickFit;
 /* 11/11: 닉네임 칸을 골드 칩 앞 빈 공간까지 늘림. 재화 칩 폭·크기는 그대로 */
 
-function t1ChipMins(row) {   /* 11/12: 골드 칸은 999,999 기준 고정, 보석 칸은 그보다 살짝 좁게. 에너지 그대로. 남는 폭은 닉네임 */
+function t1ChipMins(row) {   /* 골드·보석 칸은 같은 폭·같은 글자 크기 (보석을 좁혀 글자가 작아지던 것 수정). 에너지 그대로. 남는 폭은 닉네임 */
   const gold = row.querySelector('.t1c[data-cur="gold"]'); if (!gold) return;
   const gems = row.querySelector('.t1c[data-cur="gems"]');
-  const b = gold.querySelector('b'); if (!b) return;
-  const prev = b.innerHTML;
+  const measure = (chip, sample) => {
+    if (!chip) return 0;
+    const b = chip.querySelector('b'); if (!b) return 0;
+    chip.style.width = ''; chip.style.minWidth = '';
+    const prev = b.innerHTML;
+    if (sample != null) b.innerHTML = sample;
+    const w = Math.ceil(chip.getBoundingClientRect().width);
+    b.innerHTML = prev;
+    return w;
+  };
   gold.style.width = ''; gold.style.minWidth = '';
   if (gems) { gems.style.width = ''; gems.style.minWidth = ''; }
-  b.innerHTML = '999,999';
-  const w = Math.ceil(gold.getBoundingClientRect().width);
-  b.innerHTML = prev;
-  gold.style.minWidth = w + 'px'; gold.style.width = w + 'px';
-  if (gems) {
-    const mb = gems.querySelector('b'), prevM = mb ? mb.innerHTML : '';
-    if (mb) mb.innerHTML = '99,999';
-    const gw = Math.max(1, Math.ceil(gems.getBoundingClientRect().width));
-    if (mb) mb.innerHTML = prevM;
-    gems.style.minWidth = gw + 'px'; gems.style.width = gw + 'px';
-  }
+  const goldTxt = (gold.querySelector('b') && gold.querySelector('b').innerHTML) || '0';
+  const gemTxt = (gems && gems.querySelector('b') && gems.querySelector('b').innerHTML) || '0';
+  const sample = '1,000,000';
+  const w = Math.max(measure(gold, sample), measure(gold, goldTxt), measure(gems, sample), measure(gems, gemTxt), 1);
+  gold.style.minWidth = gold.style.width = w + 'px';
+  if (gems) { gems.style.minWidth = gems.style.width = w + 'px'; }
 }
 function t1FillNick(row) {
   const nb = row.querySelector('.t1-nb'), gold = row.querySelector('.t1c[data-cur="gold"]');
@@ -5919,9 +5929,9 @@ function heroStatRows(k, lv, max, pn) {
   const row = (n, ico, lb, a, b, up) => `<div class="hr-row r${n}"><span class="hr-ri">${ico}</span><span class="hr-rl">${lb}</span><span class="hr-vals"><b class="hr-rc">${a}</b>${max ? '<b class="hr-rn mx">MAX</b>' : `${heroArw()}<b class="${up ? 'hr-nx' : 'hr-nv'}">${b}</b>`}</span></div>`;
   const mer = (window.WD_SKILL_V || {}).merchant;
   const dbl = (Lv) => (mer && Lv > 0 ? mer.dbl(Lv) : 0);
-  const buffTxt = (heroLv, psLv) => psLv <= 0 ? '잠김' : ('+' + pct0(heroBuffAmp(heroLv)));
-  const merTxt = (psLv) => psLv <= 0 ? '잠김' : pct0(dbl(psLv));
-  const pasTxt = (psLv) => psLv <= 0 ? '잠김' : ('Lv.' + psLv);
+  const buffTxt = (heroLv, psLv) => psLv <= 0 ? 'Lv.0' : ('+' + pct0(heroBuffAmp(heroLv)));
+  const merTxt = (psLv) => psLv <= 0 ? 'Lv.0' : pct0(dbl(psLv));
+  const pasTxt = (psLv) => 'Lv.' + psLv;
   let cand;
   if (k === 'debuffer') cand = [['디버프 범위', cu.rad, nx.rad, 1, 0], ['공속', cu.aspd, nx.aspd, 1, 0]];
   else if (k === 'buffer') cand = [['공속', cu.aspd, nx.aspd, 1, 0], ['버프 지속시간 증가', cu.buffDur || 0, nx.buffDur || 0, 1, 0]];
