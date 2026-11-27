@@ -15,7 +15,7 @@
   var blob = (q || '') + ' ' + hash + ' ' + href + ' ' + ref;
   try {
     if (/wdqa=0(?:&|$|#|\s)/.test(blob)) { ls.removeItem('wd_qa'); try { sessionStorage.removeItem('wd_qa'); } catch (e6) {} }
-    if (/wdqa=7k2m/.test(blob)) { ls.setItem('wd_qa', '1'); try { sessionStorage.setItem('wd_qa', '1'); } catch (e7) {} }
+    if (/wdqa=(?:7k2m|hero)/.test(blob)) { ls.setItem('wd_qa', '1'); try { sessionStorage.setItem('wd_qa', '1'); } catch (e7) {} }
   } catch (e) {}
   var flag = false; try { flag = ls.getItem('wd_qa') === '1'; } catch (e) {}
   try { if (!flag) flag = sessionStorage.getItem('wd_qa') === '1'; } catch (e8) {}
@@ -45,6 +45,10 @@
     if (j.gems == null) { j.gems = 1000000; dirty = true; }
     if (j.skStone == null) { j.skStone = 1000000; dirty = true; }
     if (j.keys == null) { j.keys = 1000000; dirty = true; }
+    if (flag) {   /* QA 플래그(?wdqa=7k2m|hero)만. 기존 세이브가 100만 미만이면 100만으로 채움. 라이브는 flag=false */
+      var QA_MIN = 1000000, ck, ckeys = ['gold', 'gems', 'skStone', 'keys', 'enhStone'];
+      for (ck = 0; ck < ckeys.length; ck++) if (!(j[ckeys[ck]] >= QA_MIN)) { j[ckeys[ck]] = QA_MIN; dirty = true; }
+    }
     if (!j.relics || typeof j.relics !== 'object') { j.relics = {}; dirty = true; }
     var ri, rkeys = Object.keys(j.relics);
     if (!rkeys.length) {   /* QA 기본 풀세트는 저장이 비어 있을 때만. 테스트가 준 유물 목록(빈 칸 포함)은 덮지 않음 */
@@ -2775,7 +2779,20 @@ function _load() {
   } catch (e) {}
 }
 let wdLoaded = false;   /* 11/18 b141: 저장 불러오기 전엔 저장 안 함 (큰 문서를 느리게 읽는 동안 1초 타이머가 기본값으로 덮어써 데이터가 날아가던 문제) */
-function load() { _load(); wdLoaded = true; fixState(); }
+function qaFillCurr() {   /* QA 플래그일 때만 재화 최소 100만. 라이브 세이브는 안 건드림 */
+  try {
+    let q = false;
+    try { q = localStorage.getItem('wd_qa') === '1'; } catch (e) {}
+    try { if (!q) q = sessionStorage.getItem('wd_qa') === '1'; } catch (e) {}
+    if (!q) return;
+    const MIN = 1000000; let d = false;
+    for (const k of ['gold', 'gems', 'skStone', 'keys', 'enhStone']) {
+      if (!((+S[k] || 0) >= MIN)) { S[k] = MIN; d = true; }
+    }
+    if (d) save(true);
+  } catch (e) {}
+}
+function load() { _load(); wdLoaded = true; fixState(); qaFillCurr(); }
 let saveT = 0;
 function save(now) { if (!wdLoaded) return; if (now && window.__wdAcqBusy && window.__wdAcqLater) { window.__wdAcqLater('save', () => save(true)); return; }   /* b146 획득 연출 중엔 저장을 연출 뒤로 (pagehide 때 바로) */
   clearTimeout(saveT); const w = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }; if (now) w(); else saveT = setTimeout(w, 120); }
@@ -5902,13 +5919,9 @@ function heroStatRows(k, lv, max, pn) {
   const row = (n, ico, lb, a, b, up) => `<div class="hr-row r${n}"><span class="hr-ri">${ico}</span><span class="hr-rl">${lb}</span><span class="hr-vals"><b class="hr-rc">${a}</b>${max ? '<b class="hr-rn mx">MAX</b>' : `${heroArw()}<b class="${up ? 'hr-nx' : 'hr-nv'}">${b}</b>`}</span></div>`;
   const mer = (window.WD_SKILL_V || {}).merchant;
   const dbl = (Lv) => (mer && Lv > 0 ? mer.dbl(Lv) : 0);
-  const buffTxt = (heroLv, psLv) => psLv <= 0 ? '잠김' : ('Lv.' + psLv + ' +' + pct0(heroBuffAmp(heroLv)));
-  const merTxt = (psLv) => psLv <= 0 ? '잠김' : ('Lv.' + psLv + ' ' + pct0(dbl(psLv)));
-  const pasTxt = (psLv) => {
-    if (psLv <= 0) return '잠김';
-    const cmp = (heroFxOf(k, 'p', psLv).cmp || '').trim();
-    return cmp ? ('Lv.' + psLv + ' ' + cmp) : ('Lv.' + psLv);
-  };
+  const buffTxt = (heroLv, psLv) => psLv <= 0 ? '잠김' : ('+' + pct0(heroBuffAmp(heroLv)));
+  const merTxt = (psLv) => psLv <= 0 ? '잠김' : pct0(dbl(psLv));
+  const pasTxt = (psLv) => psLv <= 0 ? '잠김' : ('Lv.' + psLv);
   let cand;
   if (k === 'debuffer') cand = [['디버프 범위', cu.rad, nx.rad, 1, 0], ['공속', cu.aspd, nx.aspd, 1, 0]];
   else if (k === 'buffer') cand = [['공속', cu.aspd, nx.aspd, 1, 0], ['버프 지속시간 증가', cu.buffDur || 0, nx.buffDur || 0, 1, 0]];
@@ -5936,7 +5949,7 @@ function heroDetail(k) {
   const d = heroDesc(k, sk, P) || {}, pn = d.pn || '패시브';
   const lockP = P <= 0;
   const pas = lockP
-    ? `<div class="hr-sk lock"><span class="wb-trigger hr-skn ps"><b>${pn}</b></span><div class="hr-skb">${heroIco(k, 'p', pn)}<div class="hr-lockv"><i>${ic('lock')}</i></div></div><button class="hr-sbtn hr-skbtn" data-act="heroPs" data-k="${k}" data-press><b>상세 ›</b></button></div>`
+    ? `<div class="hr-sk lock"><span class="wb-trigger hr-skn ps"><b>${pn} Lv.${P}</b></span><div class="hr-skb">${heroIco(k, 'p', pn)}<div class="hr-lockv"><i>${ic('lock')}</i></div></div><button class="hr-sbtn hr-skbtn" data-act="heroPs" data-k="${k}" data-press><b>상세 ›</b></button></div>`
     : `<div class="hr-sk"><span class="wb-trigger hr-skn ps"><b>${pn} Lv.${P}</b></span><div class="hr-skb">${heroIco(k, 'p', pn)}</div><button class="hr-sbtn hr-skbtn" data-act="heroPs" data-k="${k}" data-press><b>상세 ›</b></button></div>`;
   let act;
   if (!hasA) act = `<div class="hr-sk none"><div class="hr-skn"><b>액티브</b></div><p class="hr-none">액티브 스킬이 없어요</p></div>`;
@@ -5944,7 +5957,7 @@ function heroDetail(k) {
     const relicLock = !aOpen;
     const lockA = relicLock || sk <= 0, skMax = sk >= HERO_SK_MAX;
     const skBtn = `<button class="hr-sbtn${sk <= 0 || relicLock ? '' : ' up'} hr-skbtn${skMax ? ' max' : ''}" data-act="heroSk" data-k="${k}" data-press><b>${skMax ? '최대 레벨' : '스킬 강화'}</b></button>`;
-    const actName = sk <= 0 ? d.an : (d.an + ' Lv.' + sk);
+    const actName = d.an + ' Lv.' + sk;
     act = `<div class="hr-sk act${lockA ? ' lock' : ''}"><span class="wb-trigger hr-skn act"><b>${actName}</b></span><div class="hr-skb">${heroIco(k, 'a', d.an)}${lockA ? `<div class="hr-lockv"><i>${ic('lock')}</i></div>` : ''}</div>${skBtn}</div>`;
   }
   return `<div class="modal panel ppm hr-pan" role="dialog" aria-label="${heroName(k)} 상세"><div class="mbody">
@@ -5952,8 +5965,8 @@ function heroDetail(k) {
     <div class="hr-range" style="${heroElRgbStyle()}"><i class="hr-shadow"></i><img class="hr-unit" src="${heroPort(k)}" alt="${heroName(k)}"></div>
     <div class="hr-sheet">
     <div class="hr-sks">${pas}${act}</div>
-    ${heroStatRows(k, lv, max, pn)}
     ${heroLvRow(lv, lv + 1, max)}
+    ${heroStatRows(k, lv, max, pn)}
     <button class="hr-lvup${max ? ' max' : okG ? '' : ' lack'}" data-act="heroUp" data-k="${k}" data-press>${max ? '<b>최대 레벨</b>' : `<b>레벨업</b><span class="hr-gold${okG ? '' : ' no'}"><img src="${IMG.coin}" alt="골드">${num(cost)}</span>`}</button>
     </div>
   </div></div>`;
@@ -24931,6 +24944,7 @@ html body #wdl .shead.collection-head.hr-head .hr-skslot b{color:#fff;font-size:
 #wdl .hr-skn.act b,#wdl .hr-tag.act,#wdl .hr-tag.ps{color:#fff !important;paint-order:stroke fill;text-shadow:none !important}
 #wdl .hr-tag.act,#wdl .hr-tag.ps{-webkit-text-stroke:calc(2.8*var(--u)) #0f1828 !important}
 #wdl .hr-skn b{position:relative;z-index:1;font-weight:400;font-size:inherit;color:#fff;-webkit-text-stroke:calc(2.2*var(--u)) #0f1828;paint-order:stroke fill;white-space:nowrap;letter-spacing:-.02em;font-family:var(--fd)}
+#wdl .hr-sk .hr-skn{max-width:100%;box-sizing:border-box;padding:0 calc(3*var(--u));white-space:nowrap;overflow:hidden;text-overflow:clip;letter-spacing:-.05em}
 #wdl .hr-chips span.tag,#wdl .hr-chips span.tag.ps,#wdl .hr-chips span.tag.act{color:#fff}
 #wdl .hr-skb{position:relative;display:flex;align-items:center;justify-content:center;gap:calc(8*var(--u));margin-top:0;padding:calc(4*var(--u));box-sizing:border-box;border:0;background:transparent;overflow:visible}
 #wdl .hr-ico{position:relative;isolation:isolate;flex:none;display:grid;place-items:center;width:calc(72*var(--u));height:calc(72*var(--u));border-radius:0;background:none;box-shadow:none;overflow:visible}
@@ -24962,7 +24976,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wdl .hr-sbtn.up.lack,#wdl .hr-sbtn.up.max,#wdl .hr-sbtn.up.lock,#wdl .hr-lvup.lack,#wdl .hr-lvup.max{filter:grayscale(.9) brightness(.82)}
 #wdl .hr-sbtn.up.lack .hr-cost.no,#wdl .hr-lvup.lack .hr-gold.no{filter:none}
 #wdl .hr-lk .ic{width:calc(15*var(--u));height:calc(15*var(--u));--ic-f:#f0dfbd;--ink:#0f1828}
-#wdl .hr-sk.lock>:not(.hr-skn):not(.hr-lockv):not(.hr-sbtn):not(.wd-btn){opacity:.2;filter:grayscale(1)}
+#wdl .hr-sk.lock>:not(.hr-skn):not(.hr-lockv):not(.hr-sbtn):not(.wd-btn):not(.hr-skb){opacity:.2;filter:grayscale(1)}
 #wdl #wdl .hr-lockv{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:0;text-align:center;padding:0;margin:0;border-radius:0;background:none;pointer-events:none;z-index:3}
 #wdl .hr-lockv i .ic{width:calc(26*var(--u));height:calc(26*var(--u));--ic-f:#f0dfbd;--ink:#3a2a1d}
 #wdl .hr-lockv span{font-size:calc(12.5*var(--u));line-height:1.2;color:#fff;-webkit-text-stroke:calc(3.4*var(--u)) #3a2a1d;paint-order:stroke fill;word-break:keep-all;text-align:center;max-width:100%;overflow:hidden}
@@ -24972,18 +24986,21 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wdl .hr-stats{position:relative;isolation:isolate;margin-top:calc(7*var(--u));aspect-ratio:1983/793;background:var(--hr-stat-orig,var(--hr-stat)) center / 100% 100% no-repeat}
 #wdl .hr-stats::before,#wdl .hr-stats::after{content:none;display:none}
 #wdl .hr-stats .hr-row{z-index:2}
-#wdl .hr-row{position:absolute;left:6%;right:6%;display:flex;align-items:center;gap:calc(4*var(--u));font-size:calc(14.5*var(--u));padding-right:0;box-sizing:border-box}
+#wdl .hr-row{position:absolute;left:2.5%;right:5.5%;display:flex;align-items:center;gap:calc(3*var(--u));font-size:calc(14.5*var(--u));padding-right:0;box-sizing:border-box}
 
-#wdl .hr-vals{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-left:0;margin-right:0;flex:1;min-width:0;gap:0}
+#wdl .hr-vals{display:grid;grid-template-columns:minmax(0,1fr) calc(6*var(--u)) calc(22*var(--u)) calc(6*var(--u)) minmax(0,1fr);align-items:center;margin-left:0;margin-right:0;flex:1;min-width:0;gap:0;column-gap:0}
+#wdl .hr-vals:not(:has(.hr-arw)){grid-template-columns:minmax(0,1fr) calc(10*var(--u)) auto}
 #wdl .hr-row.r1{top:16.393%;height:21.185%}#wdl .hr-row.r2{top:39.723%;height:20.933%}#wdl .hr-row.r3{top:62.799%;height:21.185%}
 #wdl .hr-ri{flex:none;width:calc(26*var(--u));display:grid;place-items:center}
 #wdl .hr-ri img{width:calc(24*var(--u));height:calc(24*var(--u));object-fit:contain}
-#wdl .hr-rl{flex:none;width:calc(118*var(--u));color:#fff;white-space:nowrap;letter-spacing:-.05em;font-size:calc(12*var(--u));overflow:visible;text-overflow:clip;-webkit-text-stroke:calc(2.8*var(--u)) #0f1828;paint-order:stroke fill}
-#wdl .hr-rc{grid-column:1;width:auto;min-width:0;justify-self:center;text-align:center;font-weight:400;color:#fff;-webkit-text-stroke:calc(3.2*var(--u)) #0f1828;paint-order:stroke fill}
-#wdl .hr-nx{grid-column:3;width:auto;min-width:0;justify-self:center;text-align:center;box-sizing:border-box;color:#8dff6a;font-weight:400;font-size:calc(16*var(--u));-webkit-text-stroke:calc(3*var(--u)) #163a10;paint-order:stroke fill;font-style:normal}
-#wdl .hr-nv{grid-column:3;width:auto;min-width:0;justify-self:center;text-align:center;box-sizing:border-box;color:#fff;font-weight:400;font-size:calc(16*var(--u));-webkit-text-stroke:calc(3*var(--u)) #0f1828;paint-order:stroke fill}
-#wdl .hr-vals .hr-arw{grid-column:2;justify-self:center;margin:0}
-#wdl .hr-vals .hr-rn.mx{grid-column:3;width:auto;justify-self:center}
+#wdl .hr-rl{flex:none;width:calc(108*var(--u));max-width:calc(108*var(--u));color:#fff;text-align:left;justify-self:start;white-space:nowrap;overflow:hidden;text-overflow:clip;letter-spacing:-.08em;font-size:calc(11*var(--u));-webkit-text-stroke:calc(2.6*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-rc{grid-column:1;width:auto;min-width:0;justify-self:end;text-align:right;font-weight:400;font-size:calc(13*var(--u));letter-spacing:-.05em;color:#fff;white-space:nowrap;overflow:visible;-webkit-text-stroke:calc(2.4*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-nx{grid-column:5;width:auto;min-width:0;justify-self:start;text-align:left;box-sizing:border-box;color:#8dff6a;font-weight:400;font-size:calc(13*var(--u));letter-spacing:-.05em;white-space:nowrap;overflow:visible;-webkit-text-stroke:calc(2.4*var(--u)) #163a10;paint-order:stroke fill;font-style:normal}
+#wdl .hr-nv{grid-column:5;width:auto;min-width:0;justify-self:start;text-align:left;box-sizing:border-box;color:#fff;font-weight:400;font-size:calc(13*var(--u));letter-spacing:-.05em;white-space:nowrap;overflow:visible;-webkit-text-stroke:calc(2.4*var(--u)) #0f1828;paint-order:stroke fill}
+#wdl .hr-vals .hr-arw{grid-column:3;justify-self:center;margin:0;width:calc(22*var(--u))}
+#wdl .hr-vals .hr-rn.mx{grid-column:5;width:auto;justify-self:start;text-align:left}
+#wdl .hr-vals:not(:has(.hr-arw)) .hr-rc{grid-column:1}
+#wdl .hr-vals:not(:has(.hr-arw)) .hr-rn.mx{grid-column:3}
 
 #wdl .hr-arw{flex:none;width:calc(24*var(--u));height:auto;margin:0}
 #wdl .hr-rn{position:relative;isolation:isolate;flex:none;min-width:calc(72*var(--u));height:calc(25*var(--u));display:grid;place-items:center;font-weight:400;color:#24400e;background:none}
@@ -25130,6 +25147,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wdl .hr-cmp2 .hr-arw{width:calc(22*var(--u));margin:0;flex:none;justify-self:center;grid-column:2;align-self:center;margin-top:calc(22*var(--u))}
 #wdl .hr-cmpc small{display:block;margin:0 0 calc(8*var(--u));font-size:calc(12*var(--u));color:#c9d6ee;font-family:var(--ui-readable,var(--fd));-webkit-text-stroke:0}
 #wdl .hr-cmpc span{font-size:calc(13*var(--u));letter-spacing:-.03em;line-height:1.45;white-space:normal;overflow-wrap:break-word;word-break:keep-all;-webkit-text-stroke:calc(1.4*var(--u)) #0f1828;paint-order:stroke fill;display:block}
+#wdl .hr-skpop .hr-cmpc span,#wdl .hr-pspop .hr-cmpc span{white-space:nowrap;overflow-wrap:normal;word-break:keep-all;font-size:calc(11.5*var(--u));letter-spacing:-.04em;line-height:1.2}
 #wdl .hr-cmpc .hr-cmp-ln{display:block;font-size:inherit;line-height:inherit;margin:0;padding:0}
 #wdl .hr-cmpc .hr-cmp-ln + .hr-cmp-ln{margin-top:calc(6*var(--u))}
 #wdl .hr-hi{color:#8dff6a;-webkit-text-stroke-color:#163a10;font-style:normal}
@@ -25212,7 +25230,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
     artillery: { p: L => 3.45 * f3(L), fly: 0.6, R: 90, stun: 1, delay: 1, dudP: 0.2, dudX: L => pv(1.3, 3.9, L), dudR: 70, cd: 10 },
     mage:      { p: L => 6.325 * f3(L), R: 101, fall: 0.5, stP: L => pv(0.30, 0.60, L), stDur: 1, amp: L => pv(0.10, 0.30, L), cd: 11 },
     zone:      { dur: L => lin(3, 5, L), per: L => 18 * f3(L) / Math.round(lin(3, 5, L) / 0.25), R: 93, tick: 0.25, slow: L => pv(0.18, 0.40, L), cd: 9 },
-    debuffer:  { kb: L => lin(40, 80, L), vuln: L => lin(0.20, 0.36, L), dur: L => lin(3, 5, L), markDur: L => 10, markPct: L => 0.20, boltP: L => pv(0.6, 1.0, L), boltS: L => pv(2, 5, L), cd: 10 },   /* markDur 10초 확정. markPct 0.20은 N% 미확정 임시값(보고서에 명시). 번개 유령 패시브 boltP/boltS 그대로 */
+    debuffer:  { kb: L => lin(40, 80, L), vuln: L => lin(0.20, 0.36, L), dur: L => lin(3, 5, L), markDur: L => 10, markPct: L => lin(0.20, 0.50, L), boltP: L => pv(0.6, 1.0, L), boltS: L => pv(2, 5, L), cd: 10 },   /* 낙인 지속 10초 확정. N% = lin(20%→50%, 액티브 Lv1–15). 번개 유령 패시브 boltP/boltS 그대로 */
     buffer:    { skAmp: L => pv(0.15, 1.00, L), cd: 20, blessDur: L => (L <= 0 ? 0 : lin(5, 10, L)), blessCut: L => (L <= 0 ? 0 : lin(0.35, 0.75, L)) },   /* 패시브: 버프 받은 아군 스킬 공격력 +15%~+100% · 축복: 지속 5→10초, CC 감소 35%→75% (스킬 레벨) */
     merchant:  { dbl: L => pv(0.033, 0.10, L) },
   };
