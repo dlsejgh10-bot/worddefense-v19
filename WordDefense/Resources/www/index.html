@@ -23419,7 +23419,7 @@ ${s.ul ? '' : `<div class="pp-bar"><i style="width:${pct.toFixed(1)}%"></i><b>${
 
   const INTRO = ['응쯔쯔, 젊은놈이 맞고만다니고 말야', '내가 너나이땐 세계를 재패했어!', '그냥 두 눈으로 잘 보도록!'];
   const TEASE = ['쯧, 그래도 끝까지 버틴 건 봐줄 만했다.', '흥, 내가 도와줬는데도 지다니. …뭐, 아깝긴 했다.', '지는 것도 공부여. 오늘 공부 많이 했구먼.', '다음엔 나 없이도 이겨봐라. …기다리고 있으마.', '울지 말고 밥이나 든든히 먹어라. 또 붙어야지.'];
-  const NEED = 10, AGAIN_P = 0.001, SPEAR = '롱기누스의창', FRAME_WB = 5;
+  const NEED = 10, AGAIN_P = 0.01, SPEAR = '롱기누스의창', FRAME_WB = 5;
   const L = () => window.WDLobby, S = () => L().state;
   const save = () => { try { L()._att.save(true); } catch (e) {} };
   const pick = a => a[Math.floor(Math.random() * a.length)];
