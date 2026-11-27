@@ -25019,7 +25019,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
     zone:      { dur: L => lin(3, 5, L), per: L => 18 * f3(L) / Math.round(lin(3, 5, L) / 0.25), R: 93, tick: 0.25, slow: L => pv(0.18, 0.40, L), cd: 9 },
     debuffer:  { kb: L => lin(40, 80, L), vuln: L => lin(0.20, 0.36, L), dur: L => lin(3, 5, L), boltP: L => pv(0.6, 1.0, L), boltX: L => pv(1.6, 2.4, L), cd: 10 },
     buffer:    { skAmp: L => pv(0.15, 0.45, L) },
-    merchant:  { dbl: L => pv(0.15, 0.45, L) },
+    merchant:  { dbl: L => pv(0.033, 0.10, L) },
   };
   function skCD(T) { try { const v = V[ROLES[T.role].key]; return (v && v.cd) || 10; } catch (e) { return 10; } }
   window.WD_SKILL_V = V;
