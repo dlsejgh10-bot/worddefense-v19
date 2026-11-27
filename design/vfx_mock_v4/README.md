@@ -58,3 +58,9 @@
 - `sfx.mjs`: 영상용 렌더러 (참고용).
 - `*.wav`: 영상별 최종 사운드 트랙. 이름이 영상 파일과 같음.
 - 버퍼·유령·늪 장판은 소리 없음.
+
+## 패시브 영상 (`video_passive/`)
+
+- 01_ranger 헤드샷, 02_archer 사수 패시브(옛 막타 연출, 별똥별 탄), 03_sniper 4번째 탄 검붉은 탄, 05_miner 분쇄(8% 확률 x3 + 1초 기절), 05_miner_passive_death 마이너 패시브 압축 충격파, 06_artillery 포병 포탄, 07_mage 마법사 구슬, 08_zone 늪(실제 게임은 이펙트 없이 둔화만), 10_buffer 버퍼, 11_merchant 상인 코인.
+- 소스는 sc4a/b/c.js 의 같은 이름 장면 (S.ranger, S.archer, S.sniper, S.miner, S.miner_passive_death, S.artillery, S.mage, S.zone, S.buffer, S.merchant).
+- 유령(09_ghost)은 옛 연출이라 제외.
