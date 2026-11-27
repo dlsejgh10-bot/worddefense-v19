@@ -1,0 +1,19 @@
+{
+  "method": "built-in image_gen",
+  "selectedArtilleryConcept": 4,
+  "correction": "미사일과 주황 바탕은 유지, 폭발만 푸른 에너지",
+  "assets": [
+    {
+      "file": "skill-active-buffer.png",
+      "sha256": "0cc70bf3863c84b811bd05c485c7a9af23eec785666177e2737af359a2867eea"
+    },
+    {
+      "file": "skill-active-artillery-blue.png",
+      "sha256": "937f8f613f6998beee0738fad7c5d1d7a7d142bf63bdf6ffb26fce49a081b1e2"
+    }
+  ],
+  "prompts": {
+    "blessing": "Use case: background-extraction. Edit target: previously generated skill icon atlas. Extract ONLY the FIRST icon in the SECOND row below 버퍼 · 축복: the royal blue rounded-square tile with cream-gold four-point star, gold wings and three small stars. Preserve the existing illustration, colors, outlines and opaque blue tile. Remove surrounding navy atlas, titles and neighboring icons. One centered tile on transparent alpha, no text.",
+    "artillery_selected_04": "Faithful background extraction: isolate ONLY icon NUMBER FOUR, the BOTTOM LEFT tile, from this six-icon sheet. It is the olive-green missile with yellow/gold band diagonally striking grey rocks, a tall spreading bright cyan-white energy explosion and a few cyan shards behind it, on an ORANGE rounded-square tile with golden-yellow upper inset rim and thick dark warm-brown outer contour. Preserve exactly that selected icon's design, colors, proportions, chunky black/brown line style and complete tile. No redesign, no recoloring other elements, no other icons. Remove every surrounding sheet background and neighboring tile. Output ONE centered square tile with small equal transparent margins, actual alpha transparency outside the complete rounded-square contour; keep interior orange backdrop fully opaque. No text, no number 4, no labels. Do NOT choose any other tile."
+  }
+}

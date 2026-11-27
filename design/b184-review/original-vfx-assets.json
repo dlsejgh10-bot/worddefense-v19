@@ -1,0 +1,90 @@
+[
+  {
+    "file": "bar1.png",
+    "sha256": "c04b8063c07b43f8e1e73d846e6604126c74eb40e40b25732f86adffd28c18d5"
+  },
+  {
+    "file": "bar2.png",
+    "sha256": "ac5ab9166822e2a2e605993daa6a4c4f16ca5146d46986afa047dd377d926b31"
+  },
+  {
+    "file": "bar3.png",
+    "sha256": "3ac654fcfe0ead2104d6b545b74a9dbe8f41c3b83ab50ccd65ba7dd07e06009b"
+  },
+  {
+    "file": "bar4.png",
+    "sha256": "7987a7415568c029cec1641edb83893b56e465a9ef6441cc24a8b2d887170efc"
+  },
+  {
+    "file": "bar5.png",
+    "sha256": "c1b938187f0f44d586c1f225a5ec154cf4c0d7ac6abd88b505c28f7d05bf1450"
+  },
+  {
+    "file": "bar6.png",
+    "sha256": "71d917b89b81a768670e0c925d0e0ddefc07c9b602a50cd6739dd1ca016965de"
+  },
+  {
+    "file": "hanja.png",
+    "sha256": "1649aee6d3ab149db3085dfaf9a074af5148e2d0fe310990daef7b03f01b6d4e"
+  },
+  {
+    "file": "meta.json",
+    "sha256": "6b9fab5e863efad8cf1dc8ee348cb364e662108d8ea5a799e73b0c44afea5043"
+  },
+  {
+    "file": "mis1.png",
+    "sha256": "a813c726e8614f089c2772cfaf9ff5f25d56a658b18cd794d6b89dc899a8aed1"
+  },
+  {
+    "file": "mis2.png",
+    "sha256": "39c4a5b421c560571e310a32137a4f9e06a35d7d39f29175aae0fc92cff1cc40"
+  },
+  {
+    "file": "missile_sheet.png",
+    "sha256": "7dfc5d52ee8494f74a185c1d7e60795c8c62c303d64b0e9eba10e4839d8f5e92"
+  },
+  {
+    "file": "r6i.png",
+    "sha256": "d0f88ae0e45bd20641e39027d4607a8851ee4624e7f04aa8672f2be8ddf0e9cd"
+  },
+  {
+    "file": "t5_1.png",
+    "sha256": "4b82108b3c1739c193cb099184501f433b38bc1c80a769f7c21b514adf3f5731"
+  },
+  {
+    "file": "t5_12.png",
+    "sha256": "80ac2f93d9fbc084a4e12405043efbbed2a45a8054a29e1cf45f17d1ecd60fcd"
+  },
+  {
+    "file": "t5_13.png",
+    "sha256": "3d84e2b28ee4c587930887b4c4b4dd3df89da4c9aaddf691e7de726f78b86592"
+  },
+  {
+    "file": "t5_14.png",
+    "sha256": "4696c94ad4fe0c7e164d36a8dcdc1bf35ff8aec6ceee8498a5ea9c5646995d02"
+  },
+  {
+    "file": "t5_15.png",
+    "sha256": "aaeaecf6aed4de7863cbd5b11cae5fdbf680c7c0e1994acd133aef8205fdf38c"
+  },
+  {
+    "file": "t5_16.png",
+    "sha256": "722f6f201d47603a00279b37d68bc9a3bc924b2ebae4f64a88fd8431c6797655"
+  },
+  {
+    "file": "t5_2.png",
+    "sha256": "b2ba3fe96076fa14bc596726b3260fe6eca6a40280f9fe35a3566c50a9736615"
+  },
+  {
+    "file": "t5_4.png",
+    "sha256": "edc3fc967e88031afe8f624e5f37b792c2dbfec73b5242109c96489e61f99e0d"
+  },
+  {
+    "file": "t5_5.png",
+    "sha256": "1cf778ff4cb3d4e6dded0b67bbc9108dead246e04e3a57e1c14356c08b923c30"
+  },
+  {
+    "file": "t5_6.png",
+    "sha256": "fc4fe34d0605eaecbb9806743c8dc648b2320ecd10cc836f6fafee02702c9a32"
+  }
+]

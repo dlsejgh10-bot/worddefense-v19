@@ -1,0 +1,107 @@
+{
+  "passed": true,
+  "result": {
+    "rows": [
+      {
+        "key": "fire",
+        "actual": 345.06,
+        "expected": 345.06
+      },
+      {
+        "key": "poison",
+        "actual": 172.53,
+        "expected": 172.53,
+        "stacks": 10
+      },
+      {
+        "key": "wind",
+        "actual": 2415.4199999570847,
+        "expected": 2415.4199999999996
+      },
+      {
+        "key": "light-shared",
+        "actual": [
+          5175.899999976158,
+          1725.2999999523163,
+          1725.2999999523163,
+          431.3250000476837
+        ],
+        "expected": [
+          5175.9,
+          1725.3,
+          1725.3,
+          431.325
+        ]
+      },
+      {
+        "key": "light-basic-first",
+        "actual": [
+          1293.9750000238419,
+          1725.2999999523163
+        ],
+        "expected": [
+          1293.975,
+          1725.3
+        ]
+      },
+      {
+        "key": "lightning",
+        "actual": [
+          431.325,
+          431.325
+        ],
+        "expected": [
+          431.325,
+          431.325
+        ],
+        "originalQueued": false
+      },
+      {
+        "key": "water-third-bullet",
+        "actual": 9489.149999856949,
+        "expected": 9489.15
+      },
+      {
+        "key": "dark-0",
+        "actual": 0,
+        "expected": 0
+      },
+      {
+        "key": "dark-1",
+        "actual": 1725.2999999523163,
+        "expected": 1725.2999999523163
+      },
+      {
+        "key": "dark-2",
+        "actual": 1725.2999999523163,
+        "expected": 1725.2999999523163
+      },
+      {
+        "key": "dark-3",
+        "actual": 1725.2999999523163,
+        "expected": 1725.2999999523163
+      },
+      {
+        "key": "dark-per-bullet",
+        "actual": 13802.39999961853,
+        "expected": 13802.4
+      },
+      {
+        "key": "support-exclusion",
+        "actual": [
+          false,
+          false,
+          false
+        ],
+        "expected": [
+          false,
+          false,
+          false
+        ]
+      }
+    ],
+    "errors": []
+  },
+  "errors": [],
+  "blocked": []
+}
