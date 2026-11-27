@@ -10,8 +10,15 @@
   var L = location, q = L.search || '', ls = null; try { ls = window.localStorage; } catch (e) {}
   var wk = window.webkit && window.webkit.messageHandlers;
   var app = L.protocol === 'wdgame:' || L.hostname === 'appassets.androidplatform.net' || !!window.WDNativeRaw || !!(wk && wk.WDNative);
-  try { if (/[?&]wdqa=0(?:&|$)/.test(q)) ls.removeItem('wd_qa'); if (/[?&]wdqa=7k2m(?:&|$)/.test(q)) ls.setItem('wd_qa', '1'); } catch (e) {}
+  var href = '', ref = '', hash = '';
+  try { href = String(L.href || ''); hash = String(L.hash || ''); ref = String(document.referrer || ''); } catch (e5) {}
+  var blob = (q || '') + ' ' + hash + ' ' + href + ' ' + ref;
+  try {
+    if (/wdqa=0(?:&|$|#|\s)/.test(blob)) { ls.removeItem('wd_qa'); try { sessionStorage.removeItem('wd_qa'); } catch (e6) {} }
+    if (/wdqa=7k2m/.test(blob)) { ls.setItem('wd_qa', '1'); try { sessionStorage.setItem('wd_qa', '1'); } catch (e7) {} }
+  } catch (e) {}
   var flag = false; try { flag = ls.getItem('wd_qa') === '1'; } catch (e) {}
+  try { if (!flag) flag = sessionStorage.getItem('wd_qa') === '1'; } catch (e8) {}
   var local = L.protocol === 'file:' || /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/.test(L.hostname);
   var avd = /sdk_gphone|Android SDK built for|generic_x86/i.test(navigator.userAgent || '');
   var qa = !!window.__wdQA || flag || local || avd;
@@ -26,12 +33,22 @@
   try {
     var kday = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
     try { ls.setItem('wd_linkask', kday); } catch (e1) {}
+    try { ls.removeItem('wd_need_login'); } catch (e9) {}
     var raw = null; try { raw = ls.getItem('wd_main_v1'); } catch (e2) {}
-    if (!raw) {
-      var relics = {}, ri;
-      for (ri = 0; ri < 21; ri++) relics[ri] = { lv: 3, n: 1, p: 0 };
-      ls.setItem('wd_main_v1', JSON.stringify({ nick: '게스트', tut: { intro: 3, lobby: 3, relic: 3, draw: 3, sword: 3, inbox: 3, wb: 3 }, gold: 60000, gems: 100, skStone: 25, relics: relics, rv: 3 }));
-    }
+    var j = null; try { j = raw ? JSON.parse(raw) : null; } catch (e10) { j = null; }
+    if (!j || typeof j !== 'object') j = {};
+    var dirty = !raw, ti, tkeys = ['intro','lobby','relic','draw','sword','inbox','wb'];
+    if (!j.nick) { j.nick = '게스트'; dirty = true; }
+    if (!j.tut || typeof j.tut !== 'object') { j.tut = {}; dirty = true; }
+    for (ti = 0; ti < tkeys.length; ti++) if (!(j.tut[tkeys[ti]] >= 3)) { j.tut[tkeys[ti]] = 3; dirty = true; }
+    if (j.gold == null) { j.gold = 60000; dirty = true; }
+    if (j.gems == null) { j.gems = 100; dirty = true; }
+    if (j.skStone == null) { j.skStone = 25; dirty = true; }
+    if (!j.relics || typeof j.relics !== 'object') { j.relics = {}; dirty = true; }
+    var ri;
+    for (ri = 0; ri < 21; ri++) if (!j.relics[ri]) { j.relics[ri] = { lv: 3, n: 1, p: 0 }; dirty = true; }
+    if (j.rv == null) { j.rv = 3; dirty = true; }
+    if (dirty) ls.setItem('wd_main_v1', JSON.stringify(j));
     document.addEventListener('DOMContentLoaded', function () {
       try { document.querySelectorAll('.mback, #wd-tut').forEach(function (el) { el.remove(); }); document.body.classList.remove('tut-on'); } catch (e3) {}
     });
@@ -4387,6 +4404,7 @@ async function nickTaken(v) {   /* 랜덤 닉 미리 확인 (실패 = 안 막음
   try { const a = await N._.token(), o = await nickOwner(N, nickKey(v)); if (!o || o === a.uid) return false; const t = N._.anonTok ? await N._.anonTok() : null; return !(t && t.uid === o); } catch (e) { return false; }
 }
 async function nickClaim(v, prev) {   /* 'ok' | 'taken' | 'net' | 'err' */
+  if (window.__wdQA) return 'ok';
   const N = wbNet(); if (!N) return 'ok';
   if (navigator.onLine === false) return 'net';
   let a; try { a = await N._.token(); } catch (e) { return 'net'; }
@@ -5724,7 +5742,7 @@ function heroCmpKeep(cu, nx) {   // 현재=다음인 항목은 비교 패널에�
   const n = Math.max(a.length, b.length);
   for (let i = 0; i < n; i++) {
     const x = a[i] || '', y = b[i] || '';
-    if (x === y) continue;
+    if (x === y && !/관통/.test(x)) continue;
     cur.push(x); nxt.push(y);
   }
   return { cur: cur.join(' · '), nxt: nxt.join(' · ') };
@@ -5745,7 +5763,7 @@ function heroFxOf(k, kind, lv) {
   const V = window.WD_SKILL_V || {}, v = V[k], L = Math.max(1, lv | 0);
   const empty = { story: '', cmp: '' }; if (!v) return empty;
   if (kind === 'a') {
-    if (k === 'rapid') { const n = v.n(L), per = v.total(L) / n; return { story: `두 자루로 주변 모든 적에게, ${skPct(per)} 피해를 ${n}회 난사한다.`, cmp: `${skPct(per)} 피해 × ${n}회` }; }
+    if (k === 'rapid') { const n = v.n(L), per = v.total(L) / n; return { story: `권총 두 자루로 주변 모든 적에게, ${skPct(per)} 피해를 ${n}회 난사한다.`, cmp: `${skPct(per)} 피해 × ${n}회` }; }
     if (k === 'archer') { const n = v.n(L), per = v.total(L) / n; return { story: `하나의 적에게 ${skPct(per)} 피해를 ${n}회 쏘고, 대상이 쓰러지면 남은 화살은 다른 적에게 향한다.`, cmp: `${skPct(per)} 피해 × ${n}회` }; }
     if (k === 'sniper') return { story: `1초 조준한 뒤 일직선상의 모든 적에게, ${skPct(v.p(L))} 피해를 관통시킨다.`, cmp: `${skPct(v.p(L))} 피해 · 관통` };
     if (k === 'warrior') return { story: `전방 일직선의 적에게, ${skPct(v.p(L))} 피해로 베어 낸다.`, cmp: `${skPct(v.p(L))} 피해 · 일직선` };
@@ -5830,7 +5848,7 @@ function heroPopSync() {
     ov = document.createElement('div'); ov.id = 'wdl-hov'; ov.className = 'hr-ov';
     ov.setAttribute('aria-hidden', 'false');
     ov.addEventListener('pointerdown', e => { if (e.target === ov) ACT.heroDim(); });
-    views.appendChild(ov);
+    (app || views).appendChild(ov);
   }
   const changed = opening || ov.dataset.kind !== kind || ov.dataset.k !== heroSel;
   ov.classList.remove('out'); ov._closing = false;
@@ -5959,7 +5977,8 @@ function init() {
   addEventListener('resize', () => { if (exitBtn.classList.contains('show')) pollGame(); });
   qEnsure(); setInterval(() => { if (qEnsure()) qDots(); }, 30000); enBoot();
   /* 11/12: 토벌 실패 창은 홈/주기 팝업 없음. 기간 종료 후 월보 탭 첫 입장 때 1회 */
-  if (localStorage.getItem('wd_need_login')) { let n = 0; const iv = setInterval(() => { n++; try { if (window.WDAcct && WDAcct.showLogin) { WDAcct.showLogin(); clearInterval(iv); } } catch (e) {} if (n > 40) clearInterval(iv); }, 200); }   /* b151: 로그아웃 뒤 로그인 창이 반드시 뜨게 */
+  if (window.__wdQA) { try { localStorage.removeItem('wd_need_login'); } catch (e) {} if (!S.nick) { S.nick = '게스트'; try { save(true); } catch (e) {} } }
+  else if (localStorage.getItem('wd_need_login')) { let n = 0; const iv = setInterval(() => { n++; try { if (window.WDAcct && WDAcct.showLogin) { WDAcct.showLogin(); clearInterval(iv); } } catch (e) {} if (n > 40) clearInterval(iv); }, 200); }   /* b151: 로그아웃 뒤 로그인 창이 반드시 뜨게 */
   else if (!S.nick) setTimeout(() => nickModal(true), 350);
 }
 document.addEventListener('DOMContentLoaded', () => { try { init(); } catch (e) { console.error('lobby init failed', e); gateOpened = true; gateOpen(); const r = document.getElementById('wdl'); if (r) r.hidden = true; } });
@@ -24108,6 +24127,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
   /* 11/18 로그인 화면 (로그아웃 뒤 / 로그인 세션이 사라진 연동 기기): 구글 · Apple(앱) · 게스트 중 선택. 닫기 없음, 게스트 자동 생성 없음 */
   let loginLost = false;
   function showLogin(mode) {
+    if (window.__wdQA) return;
     if (mode === 'lost') loginLost = true;
     if (document.querySelector('#wdl-ov .aclog')) return;
     try { document.querySelectorAll('#wdl-ov .mback').forEach(b => { try { P().closeModal(b); } catch (e) { b.remove(); } }); } catch (e) {}
@@ -24297,7 +24317,7 @@ ${bizH()}<h4>10. 변경</h4>${ul(['이 방침이 바뀌면 적용 7일 전부터
     const b = e.target.closest && e.target.closest('[data-acct]'); if (!b) return; e.stopPropagation(); e.preventDefault();
     const k = b.dataset.acct; try { (k === 'login' ? login : k === 'apple' ? loginApple : k === 'guest' ? guest : k === 'logout' ? logout : k === 'reset' ? resetAcct : k === 'del' ? delAcct : () => {})(); } catch (x) {}
   }, true);
-  let tries = 0; const iv = setInterval(() => { tries++; if (window.WDLobby && window.WDNet) { clearInterval(iv); resume(); } else if (tries > 60) clearInterval(iv); }, 500);
+  let tries = 0; const iv = setInterval(() => { tries++; if (window.__wdQA) { clearInterval(iv); return; } if (window.WDLobby && window.WDNet) { clearInterval(iv); resume(); } else if (tries > 60) clearInterval(iv); }, 500);
   /* 11/17 미연동 유저: 로비에서 하루 1번 연동 권유 (기본 남색 종이 창, [연동하기] 왼쪽 · [다음에] 오른쪽) */
   const LK = 'wd_linkask', kday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
   function linkAsk() {
@@ -24464,8 +24484,7 @@ window.WDFly = function (list) {
 })();
 </script>
 
-<style id="wd-hero-tab-css">
-/* ===== b184 영웅 탭 (wd-hero-tab) : 성 배경 + 흐르는 구름 / 남색 카드·창 / 베이지 스킬 카드 ===== */
+<style id="wd-hero-tab-css">/* ===== b184 영웅 탭 (wd-hero-tab) : 성 배경 + 흐르는 구름 / 남색 카드·창 / 베이지 스킬 카드 ===== */
 html body #wdl .wdl-app[data-route="hero"]{background-color:#f6c192!important;background-image:var(--hr-bg),var(--hr-floor)!important;background-repeat:no-repeat,repeat-y!important;background-size:100% auto,100% auto!important;background-position:center calc(36*var(--u)),center bottom!important}
 html body #wdl .wdl-app[data-route="hero"] .wdl-scene,html body #wdl .wdl-app[data-route="hero"] .wdl-scrim{display:none !important}
 html body #wdl .wdl-app[data-route="hero"] .views{background:transparent}
@@ -24531,7 +24550,7 @@ html body #wdl .shead.collection-head.hr-head .hr-skslot b{color:#fff;font-size:
 #wdl .hr-card .hr-art img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transform:translateY(var(--hr-foot,0%));filter:drop-shadow(0 calc(2*var(--u)) 0 rgba(0,0,0,.35))}
 #wdl .hr-card .hr-nm{position:absolute;left:8%;right:8%;bottom:6%;height:17%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:calc(15*var(--u));white-space:nowrap;letter-spacing:-.02em;-webkit-text-stroke:calc(3.6*var(--u)) #0f1828;paint-order:stroke fill}
 /* 상세·서브팝업 = 게임 기존 .modal.panel.ppm 남색 9-slice(--wd-pp-navy, 14u, slice 24) + 안쪽은 코드로 그린 베이지 종이 */
-#wdl .hr-pan.modal.ppm,#wdl-views > .hr-ov .modal.ppm.hr-pan{
+#wdl .hr-pan.modal.ppm,#wdl-hov .modal.ppm.hr-pan,#wdl-app > .hr-ov .modal.ppm.hr-pan{
   position:relative;margin:calc(2*var(--u)) calc(6*var(--u)) calc(22*var(--u));
   background:none!important;box-shadow:none!important;outline:0!important;border-radius:0!important;
   border-style:solid!important;border-color:transparent!important;
@@ -24539,8 +24558,9 @@ html body #wdl .shead.collection-head.hr-head .hr-skslot b{color:#fff;font-size:
   border-image:var(--wd-pp-navy) 24 fill / calc(14*var(--u)) stretch!important;
   padding:calc(5*var(--u))!important;color:#3b2a1d;font-family:var(--fd)}
 #wdl .hr-pan.modal.ppm::before,#wdl .hr-pan.modal.ppm::after,
-#wdl-views > .hr-ov .modal.ppm.hr-pan::before,#wdl-views > .hr-ov .modal.ppm.hr-pan::after{content:none!important;display:none!important}
-#wdl .hr-pan.modal.ppm > .mbody,#wdl-views > .hr-ov .modal.ppm.hr-pan > .mbody{
+#wdl-hov .modal.ppm.hr-pan::before,
+#wdl-app > .hr-ov .modal.ppm.hr-pan::before,#wdl-hov .modal.ppm.hr-pan::after,#wdl-app > .hr-ov .modal.ppm.hr-pan::after{content:none!important;display:none!important}
+#wdl .hr-pan.modal.ppm > .mbody,#wdl-hov .modal.ppm.hr-pan > .mbody,#wdl-app > .hr-ov .modal.ppm.hr-pan > .mbody{
   margin:0!important;max-height:none!important;overflow:visible!important;
   border:0!important;border-radius:0;background:transparent;box-shadow:none;
   padding:calc(6*var(--u)) calc(6*var(--u)) calc(8*var(--u));color:#e8eef6}
@@ -24569,7 +24589,7 @@ html body #wdl .shead.collection-head.hr-head .hr-skslot b{color:#fff;font-size:
   border:calc(2.5*var(--u)) solid #1a2c4c;border-radius:calc(12*var(--u));
   background:linear-gradient(180deg,#2c4466,#223655);
   box-shadow:inset 0 calc(1.5*var(--u)) 0 rgba(255,255,255,.16),0 calc(2*var(--u)) 0 rgba(15,24,40,.22);
-  padding:calc(4*var(--u)) calc(5*var(--u));color:#fff;box-sizing:border-box}
+  padding:calc(2*var(--u)) calc(5*var(--u));color:#fff;box-sizing:border-box}
 #wdl .hr-sk + .hr-sk{box-shadow:inset 0 calc(1.5*var(--u)) 0 rgba(255,255,255,.4),0 calc(2*var(--u)) 0 rgba(15,24,40,.22)}
 /* 03 헤드샷 = wb-trigger 입체 남색. 03 쇼타임 = 같은 입체 모양, 채움만 #e04458.
    07 패시브 칩·08 액티브 칩 = 납작 알약(테두리·그라데이션·립 없음). 08만 #e04458, 07은 남색. */
@@ -24678,15 +24698,22 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty)::after{animation:none!important;trans
 #wdl-ov .hr-pr.got{opacity:.6}
 #wdl-ov .hr-pr.on{background:#ffe08a;box-shadow:inset 0 0 0 calc(2*var(--u)) #c98a1c}
 
-/* 영웅 팝업: 목록·헤더는 뒤에 그대로 두고, 상단 재화·하단 탭 사이만 어둡게 */
-#wdl-views > .hr-ov{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:calc(6*var(--u)) calc(8*var(--u)) calc(8*var(--u));overflow-y:auto;overflow-x:hidden;background:rgba(10,16,32,.58);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fade-in .25s both;pointer-events:auto;-webkit-overflow-scrolling:touch}
-#wdl-views > .hr-ov.out{animation:fade-out .22s both}
-#wdl-views > .hr-ov .hr-pan{margin:auto 0;width:100%;box-sizing:border-box}
-#wdl-views > .hr-ov .hr-pan.hr-in{animation:modal-in .65s var(--spring-hard) both}
-#wdl-views > .hr-ov.out .hr-pan{animation:modal-out .2s var(--ease-out) both}
-#wdl-views > .hr-ov .hr-range{aspect-ratio:780/250}
-#wdl-views > .hr-ov .hr-lvup{margin-top:calc(4*var(--u))}
-#wdl-views > .hr-ov .hr-stats{margin-top:calc(6*var(--u))}
+/* 영웅 팝업: 목록·탭은 뒤에 그대로 두고, 화면 맨 위부터 전체 덮어 어둡게 */
+#wdl-hov, #wdl-app > .hr-ov{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:calc(6*var(--u)) calc(8*var(--u)) calc(8*var(--u));overflow-y:auto;overflow-x:hidden;background:rgba(10,16,32,.58);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fade-in .25s both;pointer-events:auto;-webkit-overflow-scrolling:touch}
+#wdl-hov.out,
+#wdl-app > .hr-ov.out{animation:fade-out .22s both}
+#wdl-hov .hr-pan,
+#wdl-app > .hr-ov .hr-pan{margin:auto 0;width:100%;box-sizing:border-box}
+#wdl-hov .hr-pan.hr-in,
+#wdl-app > .hr-ov .hr-pan.hr-in{animation:modal-in .65s var(--spring-hard) both}
+#wdl-hov.out .hr-pan,
+#wdl-app > .hr-ov.out .hr-pan{animation:modal-out .2s var(--ease-out) both}
+#wdl-hov .hr-range,
+#wdl-app > .hr-ov .hr-range{aspect-ratio:780/250}
+#wdl-hov .hr-lvup,
+#wdl-app > .hr-ov .hr-lvup{margin-top:calc(4*var(--u))}
+#wdl-hov .hr-stats,
+#wdl-app > .hr-ov .hr-stats{margin-top:calc(6*var(--u))}
 #wdl .hr-ico.lg,#wdl-views .hr-ico.lg{width:calc(76*var(--u));height:calc(76*var(--u));border-radius:calc(16*var(--u));margin:0}
 #wdl .hr-ico.lg i{font-size:calc(40*var(--u))}
 #wdl .hr-big{display:flex;justify-content:center}
@@ -24704,7 +24731,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty)::after{animation:none!important;trans
 #wdl .hr-skpop .hr-cost{font-size:calc(18*var(--u))}
 #wdl .hr-skpop .hr-cost img{width:calc(22*var(--u));height:calc(22*var(--u))}
 #wdl .hr-foot{margin:calc(6*var(--u)) calc(2*var(--u)) 0;width:auto;min-height:calc(32*var(--u));display:grid;place-items:center;color:#fff;font-size:calc(15*var(--u));text-align:center;-webkit-text-stroke:calc(3.2*var(--u)) #0f1828;paint-order:stroke fill}
-@media (prefers-reduced-motion:reduce){#wdl-views > .hr-ov,#wdl-views > .hr-ov .hr-pan.hr-in,#wdl-views > .hr-ov.out,#wdl-views > .hr-ov.out .hr-pan{animation:none}}
+@media (prefers-reduced-motion:reduce){#wdl-hov,#wdl-app > .hr-ov,#wdl-hov .hr-pan.hr-in,#wdl-app > .hr-ov .hr-pan.hr-in,#wdl-hov.out,#wdl-app > .hr-ov.out,#wdl-hov.out .hr-pan,#wdl-app > .hr-ov.out .hr-pan{animation:none}}
 
 /* 이미지 배지·버튼: 원본 비율로만 캡을 두고, 가운데만 가로로 늘림 (9-slice / 가로 3-slice). 절대 가로세로를 다르게 스케일하지 않음. */
 #wdl .hr-sklv::before,#wdl .hr-back::before,
@@ -24747,8 +24774,8 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty)::after{animation:none!important;trans
 #wdl .hr-lvup b,#wdl .hr-tlv b,#wdl .hr-card .hr-lv b{color:#3a2a1d;font-weight:400;-webkit-text-stroke:0;text-shadow:none;position:relative;z-index:1}
 #wdl .hr-lvup b{font-size:calc(23*var(--u))}
 #wdl .hr-skbtn b,#wdl-ov .hr-skbtn b{color:#fff;font-size:calc(15.5*var(--u));font-weight:400;-webkit-text-stroke:calc(3.6*var(--u)) #0f1828;paint-order:stroke fill;text-shadow:none}
-#wdl .hr-sk .hr-sbtn{margin-top:calc(2*var(--u));margin-bottom:0}
-#wdl .hr-skbtn{width:86%;max-width:calc(150*var(--u));height:calc(40*var(--u));min-height:0;margin-left:auto;margin-right:auto;margin-top:calc(2*var(--u));margin-bottom:0;padding:0;border:0;background:none;display:flex;align-items:center;justify-content:center;gap:calc(8*var(--u));line-height:1;color:#fff}
+#wdl .hr-sk .hr-sbtn{margin-top:0;margin-bottom:0}
+#wdl .hr-skbtn{width:86%;max-width:calc(150*var(--u));height:calc(40*var(--u));min-height:0;margin-left:auto;margin-right:auto;margin-top:0;margin-bottom:0;padding:0;border:0;background:none;display:flex;align-items:center;justify-content:center;gap:calc(8*var(--u));line-height:1;color:#fff}
 #wdl .hr-skbtn::before,#wdl-ov .hr-skbtn::before{
   --hh:calc(40*var(--u));
   border-width:calc(var(--hh)*22/154) calc(var(--hh)*80/154);
@@ -24797,15 +24824,20 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty)::after{animation:none!important;trans
 #wdl .hr-pspop .hr-cmp2,#wdl .hr-skpop .hr-cmp2{width:max-content;max-width:100%;margin-left:auto;margin-right:auto;grid-template-columns:max-content auto max-content}
 
 /* 07/08: 긴 비교문(헤드샷 등)이 18u 두 줄에 들어가도록 가로 여백만 줄임. 글씨 크기는 유지 */
-#wdl-views > .hr-ov:has(.hr-skpop),#wdl-views > .hr-ov:has(.hr-pspop){padding-left:calc(4*var(--u));padding-right:calc(4*var(--u))}
-#wdl .hr-pan.hr-skpop,#wdl .hr-pan.hr-pspop,#wdl-views > .hr-ov .hr-pan.hr-skpop,#wdl-views > .hr-ov .hr-pan.hr-pspop{margin-left:0;margin-right:0}
+#wdl-hov:has(.hr-skpop),
+
+/* 07/08: 긴 비교문(헤드샷 등)이 18u 두 줄에 들어가도록 가로 여백만 줄임. 글씨 크기는 유지 */
+#wdl-app > .hr-ov:has(.hr-skpop),#wdl-hov:has(.hr-pspop),#wdl-app > .hr-ov:has(.hr-pspop){padding-left:calc(4*var(--u));padding-right:calc(4*var(--u))}
+#wdl .hr-pan.hr-skpop,#wdl .hr-pan.hr-pspop,#wdl-hov .hr-pan.hr-skpop,#wdl-app > .hr-ov .hr-pan.hr-skpop,#wdl-hov .hr-pan.hr-pspop,#wdl-app > .hr-ov .hr-pan.hr-pspop{margin-left:0;margin-right:0}
 #wdl .hr-skpop.modal.ppm > .mbody,#wdl .hr-pspop.modal.ppm > .mbody{padding-left:calc(2*var(--u));padding-right:calc(2*var(--u))}
 #wdl .hr-skpop .hr-sheet,#wdl .hr-pspop .hr-sheet{padding-left:calc(4*var(--u));padding-right:calc(4*var(--u))}
 #wdl .hr-skpop .hr-cmp2,#wdl .hr-pspop .hr-cmp2{padding:calc(4*var(--u)) calc(10*var(--u));column-gap:calc(8*var(--u))}
 #wdl .hr-skpop .hr-cmp2 .hr-arw,#wdl .hr-pspop .hr-cmp2 .hr-arw{width:calc(18*var(--u))}
 
 /* 영웅 레벨업·스킬 강화 = 기존 #wd-acq 획득 띠/금줄 갈라짐. 내용만 영웅 누끼·스킬 아이콘(잘림 없음) */
-#wd-acq.hr-acq{--cu:calc(min(100vw,46vh)/390)}
+#wd-acq.hr-acq{--cu:calc(min(100vw,46vh)/390);--bh:calc((var(--cw)*1.285 + 220)*var(--cu))}
+#wd-acq.hr-acq .acq-band{height:var(--bh);margin-top:calc(var(--bh)*-0.5 + 6*var(--cu))}
+#wd-acq.hr-acq .acq-body{padding:calc(22*var(--cu)) 0 calc(20*var(--cu));box-sizing:border-box}
 #wd-acq.hr-acq .acq-body{gap:calc(8*var(--cu))}
 #wd-acq.hr-acq .hr-acq-fig{position:relative;display:flex;align-items:center;justify-content:center;overflow:visible;animation:acqPop .38s cubic-bezier(.3,1.8,.5,1) .3s both;filter:drop-shadow(0 calc(4*var(--cu)) 0 rgba(0,0,0,.4))}
 #wd-acq.hr-acq .hr-acq-fig.lv{width:calc(168*var(--cu));height:calc(176*var(--cu))}
