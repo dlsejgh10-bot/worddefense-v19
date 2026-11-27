@@ -163,7 +163,7 @@ b,strong,h1,h2,h3,h4,h5,h6,th{font-weight:400}
 .view.enter{animation:view-in .62s var(--spring) both;animation-delay:.02s}
 .view.leave{animation:view-out .22s var(--ease-out) both;pointer-events:none}
 /* keep cached tabs in the tree (no display:none / no detach) so decoded images stay warm */
-#wdl .view.wd-parked{animation:none!important;will-change:auto!important;pointer-events:none!important;content-visibility:hidden;z-index:0}
+#wdl .view.wd-parked{animation:none!important;will-change:auto!important;pointer-events:none!important;content-visibility:hidden;visibility:hidden!important;z-index:0}
 #wdl .view:not(.wd-parked):not(.leave){z-index:1}
 #wdl .weekend-open #wdl-views{content-visibility:hidden}
 #wdl .shopv .sgrid.g3.sh-defer{content-visibility:auto;contain-intrinsic-size:auto calc(165*var(--u))}
@@ -2089,7 +2089,7 @@ img.eic{background:none!important;object-fit:contain;width:calc(32*var(--u));hei
 #wdl .home .wtop .wt{min-width:0;white-space:normal;line-height:1.3}
 #wdl .wdl-app[data-route="worldBoss"]{background:#20172b}
 #wdl .wdl-app[data-route="worldBoss"] :is(.wdl-scene,.wdl-scrim){display:none}
-#wdl .view:has(>.wb-page){padding:0 0 calc(15*var(--u))!important;background:linear-gradient(#23182f,#382747)}
+#wdl .wdl-app[data-route="worldBoss"] .view:has(>.wb-page){padding:0 0 calc(15*var(--u))!important;background:linear-gradient(#23182f,#382747)}
 .wb-page{min-height:100%;display:flex;flex-direction:column}
 .wb-page-nav{
   min-height:calc(52*var(--u));display:flex;align-items:center;gap:calc(11*var(--u));
@@ -2115,7 +2115,7 @@ img.eic{background:none!important;object-fit:contain;width:calc(32*var(--u));hei
    색: 어두운 나무·청동·숯 + 금테 (보스 색 아님 → 다른 보스에도 그대로 재사용). 남은 시간 · 내 순위 고정 + 상위 N% · 100위 · 태블릿 재배치 유지 ===== */
 #wdl .wdl-app[data-route="worldBoss"]{background:#15110e}   /* 11/10c: 세로 전용 — 월보도 다른 탭과 같은 세로 칸(390u) 안에서만. 화면 전체 폭으로 넓어지지 않음 */
 #wdl .wdl-app[data-route="worldBoss"] .topbar{background:linear-gradient(#2a211b,#17120f);box-shadow:inset 0 -2px 0 #4a3520}
-#wdl .view:has(>.wbx){padding:0!important;overflow-y:auto;background:radial-gradient(140% 55% at 50% 35%,#2a211b,#15110e 72%),#15110e}
+#wdl .wdl-app[data-route="worldBoss"] .view:has(>.wbx){padding:0!important;overflow-y:auto;background:radial-gradient(140% 55% at 50% 35%,#2a211b,#15110e 72%),#15110e}
 .wbx{--gold:linear-gradient(#f8e09a,#d9a84a 40%,#9a6a26 78%,#6e4a1a);--cream:#fff1d6;--mute:#bfa984;--pf:#211915;height:100%;min-height:0;display:flex;flex-direction:column;color:var(--cream);font-family:var(--fd);font-weight:400;-webkit-font-smoothing:antialiased}
 .wbx b{font-weight:400}
 .wbx .wb-page-nav{flex:none;position:relative;z-index:5;min-height:calc(54*var(--u));gap:calc(12*var(--u));padding:calc(6*var(--u)) calc(14*var(--u));background:linear-gradient(#35291f,#1e1712);border:0;box-shadow:none}
@@ -14588,7 +14588,7 @@ window.__wdWB = { WBC, LY, TER, WBPATH, wbEnd, radio, get state() { return G && 
 </style>
 <style id="v1110g-wbtab-css">
 /* 11/10g B8 월드 보스 탭: 시안 D(푸른 돌) 색으로 통일. 금색 줄이고, 글자 그림자 없음, 모든 판에 검은 외곽선. '전투 시작' = 게임 시작 버튼 공식(파랑) */
-#wdl .view:has(>.wbx){background:linear-gradient(#1b2233,#121722)!important}
+#wdl .wdl-app[data-route=worldBoss] .view:has(>.wbx){background:linear-gradient(#1b2233,#121722)!important}
 #wdl .wbx{--cream:#eef3ff;--mute:#9fb0d4;--pf:#1f2738}
 #wdl .wbx .wb-page-nav{background:linear-gradient(#2a3348,#1b2233)!important}
 #wdl .wbx .wb-page-nav::after{background:#0b0e17!important;box-shadow:none!important;height:calc(3*var(--u))!important}
@@ -14792,7 +14792,7 @@ window.__wdWB = { WBC, LY, TER, WBPATH, wbEnd, radio, get state() { return G && 
 </style>
 <style id="v1110p-wbpurple-css">
 /* 11/10p 월보 탭 = 로비 '월드 보스' 버튼 색(보라 #69538c → #45325f, 어두운 #302240)으로 통일. 파란색·갈색 줄 없앰. 버튼은 같은 코드 버튼(검은 테두리)에서 색만 바꿈 */
-#wdl .wdl-app[data-route=worldBoss],#wdl .wdl-app[data-route=worldBoss] .views,#wdl .view:has(>.wbx){background:linear-gradient(#1f162d,#140e1e)!important}
+#wdl .wdl-app[data-route=worldBoss],#wdl .wdl-app[data-route=worldBoss] .views,#wdl .wdl-app[data-route=worldBoss] .view:has(>.wbx){background:linear-gradient(#1f162d,#140e1e)!important}
 #wdl .wbx{--pf:#1c1429}
 #wdl .wbx .wb-page-nav{background:linear-gradient(#3b2b55,#251a38)!important}
 #wdl .wbx .wb-page-nav::after,.wbx .wb-page-nav::after{background:#0d0915!important;box-shadow:none!important}
@@ -14872,7 +14872,7 @@ window.__wdWB = { WBC, LY, TER, WBPATH, wbEnd, radio, get state() { return G && 
 /* 11/10q 월보 탭 보스 체력 숫자: 검은 외곽선 (선이 글자 아래) */
 #wdl .wbx .wbx-hpn{-webkit-text-stroke:calc(5.85*var(--u)) #0b0910!important;paint-order:stroke fill!important;stroke-linejoin:round}
 /* 11/10q 월보 탭: 남색 + 보라 섞기 (판/그라데이션 = 깊은 남색 → 보라, 강조 = 보라) */
-#wdl .wdl-app[data-route=worldBoss],#wdl .wdl-app[data-route=worldBoss] .views,#wdl .view:has(>.wbx){background:linear-gradient(#141a38,#1a1230)!important}
+#wdl .wdl-app[data-route=worldBoss],#wdl .wdl-app[data-route=worldBoss] .views,#wdl .wdl-app[data-route=worldBoss] .view:has(>.wbx){background:linear-gradient(#141a38,#1a1230)!important}
 #wdl .wbx{--pf:#161a36}
 #wdl .wbx .wb-page-nav{background:linear-gradient(100deg,#1c2557,#352657)!important}
 #wdl .wbx .wb-back::before{background:linear-gradient(#3d3f8a,#3a2a66)!important}
