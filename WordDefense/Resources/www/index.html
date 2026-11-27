@@ -46,8 +46,11 @@
     if (j.skStone == null) { j.skStone = 1000000; dirty = true; }
     if (j.keys == null) { j.keys = 1000000; dirty = true; }
     if (!j.relics || typeof j.relics !== 'object') { j.relics = {}; dirty = true; }
-    var ri;
-    for (ri = 0; ri < 21; ri++) if (!j.relics[ri]) { j.relics[ri] = { lv: 3, n: 1, p: 0 }; dirty = true; }
+    var ri, rkeys = Object.keys(j.relics);
+    if (!rkeys.length) {   /* QA 기본 풀세트는 저장이 비어 있을 때만. 테스트가 준 유물 목록(빈 칸 포함)은 덮지 않음 */
+      for (ri = 0; ri < 21; ri++) j.relics[ri] = { lv: 3, n: 1, p: 0 };
+      dirty = true;
+    }
     if (j.rv == null) { j.rv = 3; dirty = true; }
     if (dirty) ls.setItem('wd_main_v1', JSON.stringify(j));
     document.addEventListener('DOMContentLoaded', function () {
@@ -25207,10 +25210,10 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
       return true;
     },
     warrior(T, L) {   /* 발도: 확정 VFX 270° 초승달 (passive_mock/v4 sc4a.js S.warrior / 04_warrior.mp4). 반경 v.R*rangeMul, 타격도 같은 초승달 */
-      const v = V.warrior, tg = front(T, trange(T) * 1.6); if (!tg) return false;
-      T.face = tg.x < T.x ? -1 : 1;
-      const mul = skRangeMul(L), R = (v.R || 150) * mul, ky = 0.62, ts = 1.08, sw = 0.084, tsp = ts + sw + 0.04;
-      const O = { x: T.x, y: T.y - 12 }, ms = crescentMobs(O, T.face, R, 14, ky);
+      const v = V.warrior, aim = baldoAim(T, L); if (!aim) return false;
+      T.face = aim.face;
+      const R = aim.R, ky = aim.ky, ts = 1.08, sw = 0.084, tsp = ts + sw + 0.04;
+      const O = aim.O, ms = aim.ms;
       T.skPause = tsp + 0.42;
       (G.skfx || (G.skfx = [])).push({ k: 'baldo', T, O, R, face: T.face, ky, ts, sw, tsp, col: ecol(T), dk: !!T._skDk, tg: ms.slice(), t: 0, life: 2.2 });
       const fs = T.face < 0 ? -1 : 1, VA0 = -Math.PI * 0.75, VSP = Math.PI * 1.5;
@@ -25264,6 +25267,28 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
       return true;
     },
   };
+  function baldoAim(T, L) {   /* 발도 실제 판정: 270° 초승달, R*rangeMul, ky=0.62, slack 14 */
+    const v = V.warrior, R = (v.R || 150) * skRangeMul(L), ky = 0.62, slack = 14, O = { x: T.x, y: T.y - 12 };
+    let best = null, bd = 1e9;
+    for (const m of G.mobs) {
+      if (m.dead) continue;
+      const ed = Math.hypot(m.x - O.x, (m.y - O.y) / ky);
+      if (ed <= R + slack && ed < bd) { bd = ed; best = m; }
+    }
+    if (!best) return null;
+    const face = best.x < T.x ? -1 : 1, ms = crescentMobs(O, face, R, slack, ky);
+    return ms.length ? { O, R, face, ky, slack, ms, tg: best } : null;
+  }
+  function skCanCast(T, L) {   /* 실제 타격 범위 안에 적이 있을 때만 시전. 범위 밖이면 스킬만 대기(평타는 그대로) */
+    if (!T || !G) return false;
+    const key = ROLES[T.role] && ROLES[T.role].key, v = key && V[key];
+    if (!v) return false;
+    if (key === 'buffer') return G.towers.some(U => U.side === T.side && !U.walk);   /* 축복: 적 판정 없음, 아군만 */
+    if (key === 'rapid') return mobsIn(T.x, T.y, v.R).length > 0;   /* 쇼타임 원: v.R (단계 배율 없음) */
+    if (key === 'warrior') return !!baldoAim(T, L);
+    if (key === 'debuffer') return mobsIn(T.x, T.y, trange(T)).length > 0;   /* 낙인: 공격 범위 원 */
+    return !!front(T, trange(T));   /* 심판·필살·진심 펀치·탄도미사일·메테오·에너지 구: 사거리 안 대상. 펀치·미사일 폭발만 rangeMul */
+  }
   function skTick(T, dt) {
     if (!G || G.over || T.len < 5 || T.wbStun > 0) return;
     const key = ROLES[T.role].key, fn = CAST[key]; if (!fn) return;
@@ -25271,6 +25296,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
     if (T.skCd === undefined) T.skCd = FIRST;
     T.skCd -= dt; if (T.skCd > 0) return;
     const L = skLv(T);
+    if (!skCanCast(T, L)) { T.skCd = 0; return; }   /* 스킬만 유지, 평타 중단/스킬 일시정지 없음 */
     let ok = false; try { ok = fn(T, L); } catch (e) { ok = false; }
     if (ok && T.el === 9 && !T._dk2 && rand() < 0.3) {   /* 어둠: 스킬 전체 30% 그림자 복제, 피해 1:1, 중첩은 hit()에서 보통대로 */
       const replay = () => { T._dk2 = 1; T._skDk = 1; try { fn(T, L); } finally { T._dk2 = 0; T._skDk = 0; } };
@@ -25545,7 +25571,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
       return d;
     };
   }
-  Object.assign(window.__wd || (window.__wd = {}), { towerAct, hit, fireAttack, updateSupport, payInterest, update, drawFx, WD_SKILL: { V, skLv, psLv, CAST, skCD, heroSkLines, heroDesc, SKN } });
+  Object.assign(window.__wd || (window.__wd = {}), { towerAct, hit, fireAttack, updateSupport, payInterest, update, drawFx, WD_SKILL: { V, skLv, psLv, CAST, skCD, heroSkLines, heroDesc, SKN, skCanCast, baldoAim } });
 
 })();
 </script>
