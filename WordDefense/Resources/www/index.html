@@ -5636,6 +5636,117 @@ const heroKeys = () => heroRoles().map(r => r.key);
 const heroName = k => { const r = heroRoles().find(x => x.key === k); return r ? r.name : k; };
 const heroPort = k => { try { const b = ASSETS.u2.img['5_0_' + k + '_i']; return b ? 'data:image/webp;base64,' + b : ''; } catch (e) { return ''; } };
 const HERO_FOOT = {archer:1.932,rapid:2.415,sniper:1.932,artillery:1.932,warrior:1.932,miner:2.415,zone:1.932,mage:1.932,buffer:1.932,debuffer:1.932,merchant:1.932};   // 5_0_*_i alpha≥16 하단 여백 / 높이 %, 발=이름표 선에 맞춤
+
+function heroSwordEl() {   // 장착 주무기 속성. 기존 equippedEl() 재사용, 미장착은 오오라 없음
+  try {
+    if (!(S.equip >= 0 && S.swords && S.swords[S.equip])) return -1;
+    return (typeof equippedEl === 'function' ? equippedEl() : (SWORDS[S.equip].el | 0)) || -1;
+  } catch (err) { return -1; }
+}
+function heroElRgb() {
+  const el = heroSwordEl(); if (el < 0) return '';
+  const hex = (typeof EL_COL !== 'undefined' && EL_COL[el]) || '';
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return '';
+  const n = parseInt(m[1], 16); return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+}
+function heroElRgbStyle() { const rgb = heroElRgb(); return rgb ? '--hr-el-rgb:' + rgb : ''; }
+function heroElAuraHtml() { return heroElRgb() ? '<i class="hr-aura" aria-hidden="true"></i>' : ''; }
+function heroStatPaper() {   // 사용자 3칸 프레임의 남색 칸만 지워 종이 배경이 비치게 (테두리·구분선은 그대로)
+  try {
+    const src = HERO_ART && HERO_ART.statPanel; if (!src) return;
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        const im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const a = d[i + 3], r = d[i], g = d[i + 1], b = d[i + 2]; if (a < 8) continue;
+          const mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+          if (b > r + 15 && b > g && r < 55 && g < 80 && b < 120 && mx < 110) d[i + 3] = 0;
+        }
+        x.putImageData(im, 0, 0);
+        document.documentElement.style.setProperty('--hr-stat-frame', 'url("' + c.toDataURL('image/png') + '")');
+      } catch (e) {}
+    };
+    img.src = src;
+  } catch (e) {}
+}
+let _hrRangeRAF = 0, _hrRangeGen = 0;
+function heroRangeStop() { if (_hrRangeRAF) cancelAnimationFrame(_hrRangeRAF); _hrRangeRAF = 0; _hrRangeGen++; }
+function heroRoleIndex(k) {
+  if (typeof ROLES === 'undefined' || !ROLES || !ROLES.length) return -1;
+  for (let i = 0; i < ROLES.length; i++) if (ROLES[i] && ROLES[i].key === k) return i;
+  return -1;
+}
+function heroRangePlay(root, k) {   // 사격장: 발=과녁 받침대와 같은 땅, 숨쉬기, 3초마다 기존 U2 공격 모션(u2Motion)
+  heroRangeStop();
+  const range = root && root.querySelector('.hr-range'); if (!range) return;
+  const img = range.querySelector('img.hr-unit'); if (!img) return;
+  const footPct = (typeof HERO_FOOT !== 'undefined' && HERO_FOOT[k]) || 0;
+  const foot = footPct / 100;
+  img.style.setProperty('--hr-foot', footPct + '%');
+  let srcI = '', srcA = '', srcW = '';
+  try {
+    const U = (typeof ASSETS !== 'undefined' && ASSETS.u2 && ASSETS.u2.img) || {};
+    const b64 = p => U['5_0_' + k + '_' + p] ? ('data:image/webp;base64,' + U['5_0_' + k + '_' + p]) : '';
+    srcI = b64('i') || img.src; srcA = b64('a'); srcW = b64('w');
+  } catch (e) { srcI = img.src; }
+  const hasW = !!srcW;
+  const gen = _hrRangeGen;
+  const period = 3000;
+  const idleT = (typeof U2T !== 'undefined' && U2T.IDLE) || 1.6;
+  const tot = (typeof U2T !== 'undefined' && U2T.TOT) || 0.8;
+  let atkT0 = 0, lastAtk = 0, attacking = false, bolt = null, posed = 'i';
+  const setPose = p => { if (p === posed) return; const s = p === 'a' ? srcA : p === 'w' ? srcW : srcI; if (s) img.src = s; posed = p; };
+  const plantNudge = () => { const h = img.getBoundingClientRect().height || 0; return foot * h; };
+  const startBolt = (now) => {
+    if (bolt && bolt.remove) try { bolt.remove(); } catch (e) {}
+    bolt = document.createElement('i'); bolt.className = 'hr-bolt'; range.appendChild(bolt);
+    bolt._t0 = now; bolt._dur = 280; bolt._from = 0.34; bolt._to = 0.78;
+  };
+  const tickBolt = (now) => {
+    if (!bolt) return;
+    const u = Math.min(1, (now - bolt._t0) / bolt._dur);
+    bolt.style.left = ((bolt._from + (bolt._to - bolt._from) * u) * 100) + '%';
+    bolt.style.bottom = (18 - u * 2) + '%';
+    bolt.style.opacity = String(1 - u * u);
+    if (u >= 1) { try { bolt.remove(); } catch (e) {} bolt = null; }
+  };
+  const applyXform = (sx, sy, rot, fwd, nudge) => {
+    img.style.transformOrigin = '50% ' + ((1 - foot) * 100).toFixed(3) + '%';
+    const disp = img.getBoundingClientRect().height || 80;
+    const fw = (fwd || 0) * (disp / 90);
+    img.style.transform = 'translateX(calc(-50% + ' + fw.toFixed(2) + 'px)) translateY(' + nudge.toFixed(2) + 'px) rotate(' + (rot || 0).toFixed(2) + 'deg) scale(' + sx.toFixed(4) + ',' + sy.toFixed(4) + ')';
+  };
+  let shot = false;
+  const loop = (now) => {
+    if (gen !== _hrRangeGen) return;
+    _hrRangeRAF = requestAnimationFrame(loop);
+    const nudge = plantNudge();
+    if (!lastAtk) lastAtk = now;
+    if (range.dataset.atk === 'now') { range.dataset.atk = ''; attacking = true; atkT0 = now; lastAtk = now; shot = false; }
+    if (!attacking && now - lastAtk >= period) { attacking = true; atkT0 = now; lastAtk = now; shot = false; }
+    if (attacking && typeof u2Motion === 'function') {
+      const ta = (now - atkT0) / 1000;
+      if (ta >= tot) { attacking = false; setPose('i'); applyXform(1, 1, 0, 0, nudge); }
+      else {
+        const mot = u2Motion(ta, hasW);
+        setPose(mot[0] || 'i');
+        applyXform(mot[1], mot[2], mot[3] || 0, mot[4] || 0, nudge);
+        const rel = hasW ? 0.28 : ((typeof U2T !== 'undefined' ? U2T.ANT : 0.11) + (typeof U2T !== 'undefined' ? U2T.STR : 0.14) * 0.3);
+        if (!shot && ta >= rel) { shot = true; startBolt(now); }
+      }
+    } else {
+      const b = Math.sin((now / 1000) * 6.2832 / idleT);
+      applyXform(1 - 0.022 * b, 1 + 0.032 * b, 0, 0, nudge);
+    }
+    tickBolt(now);
+  };
+  const start = () => { if (gen !== _hrRangeGen) return; lastAtk = performance.now(); _hrRangeRAF = requestAnimationFrame(loop); };
+  if (img.complete && img.naturalWidth) start(); else img.addEventListener('load', start, { once: true });
+}
+
 const heroRec = k => { const h = S.heroLv && S.heroLv[k]; return h && typeof h === 'object' ? h : null; };
 const heroLvOf = k => Math.max(1, Math.min(HERO_MAX, ((heroRec(k) || {}).lv | 0) || 1));
 const heroSkOf = k => Math.max(1, Math.min(HERO_SK_MAX, ((heroRec(k) || {}).s | 0) || 1));
@@ -5661,6 +5772,7 @@ function heroArtVars() {
   const r = document.documentElement.style, m = { bg: 'bgCastle', range: 'bgRange', fgray: 'frameGray', fgold: 'frameGold', banner: 'banner', floor: 'bgFloor', btny: 'btnBevel', btnr: 'btnBevelRed', btnskb: 'btnSkBlue', btnlv: 'btnLv', btnsk: 'btnSk', plblue: 'plBlue', plgreen: 'plGreen', plsteel: 'plSteel', plgray: 'plGray', detail: 'btnDetail', cw: 'cloudW', cs: 'cloudS', stat: 'statPanel', statrow: 'statRow', btn2: 'btn2', nmbadge: 'nmBadge' };
   for (const k in m) r.setProperty('--hr-' + k, 'url("' + HERO_ART[m[k]] + '")');
   try { IMG.skst = HERO_ART.skst; } catch (e) {}
+  try { r.setProperty('--hr-stat-orig', 'url("' + HERO_ART.statPanel + '")'); heroStatPaper(); } catch (e) {}
 }
 function heroClouds() {   // 성 배경 하늘 구름 (영웅 탭에서만 보임, 오른쪽으로 천천히 흘러 화면 밖 → 왼쪽에서 다시)
   if (!app || $('#wdl-hcl', app)) return;
@@ -5678,7 +5790,7 @@ function heroTabSync() {   // 탭 잠금 표시 (유물 레벨이 바뀌면 바�
 }
 const heroHead = () => `<div class="shead collection-head hr-head"><div class="hr-hin"><h2><img src="${(typeof NAV_ART !== 'undefined' && NAV_ART.hero) || ''}" alt="">영웅</h2><div class="hr-skslot" aria-label="${SKST_NAME}"><img src="${HERO_ART.skst}" alt="${SKST_NAME}"><b id="wdl-hskn">${num(S.skStone | 0)}</b></div></div></div>`;
 const heroJob = k => HERO_ART['job_' + k] || '';
-const heroIco = (k, t, nm, sz) => { const u = HERO_SK_ICON[k + '_' + t]; return `<span class="hr-ico${sz ? ' ' + sz : ''}${u ? '' : ' empty'}" data-ico="${k}_${t}">${u ? `<img src="${u}" alt=""><span class="hr-shine-clip" aria-hidden="true"></span>` : `<i>${(nm || '?').slice(0, 1)}</i>`}</span>`; };
+const heroIco = (k, t, nm, sz) => { const u = HERO_SK_ICON[k + '_' + t]; const sh = (u && sz !== 'sm') ? `<span class="hr-shine-clip" aria-hidden="true"></span>` : ''; return `<span class="hr-ico${sz ? ' ' + sz : ''}${u ? '' : ' empty'}" data-ico="${k}_${t}">${u ? `<img src="${u}" alt="">${sh}` : `<i>${(nm || '?').slice(0, 1)}</i>`}</span>`; };
 const heroArw = () => `<img class="hr-arw" src="${HERO_ART.icArrow}" alt="→">`;
 const heroX = () => `<button class="wd-x" data-act="heroBack" data-press aria-label="닫기"></button>`;
 const heroBackBtn = () => `<button class="hr-back" data-act="heroBack" data-press aria-label="뒤로"><b>‹</b></button>`;
@@ -5686,7 +5798,7 @@ function heroGrid() {
   const cards = heroKeys().map((k, n) => {
     const job = heroJob(k);
     const jobEl = job ? `<span class="elb hr-job"><img src="${job}" alt=""></span>` : '';
-    return `<button class="hr-card${heroLvOf(k) >= HERO_MAX ? ' max' : ''}${heroSel ? '' : ' st'}${heroLast === k ? ' on' : ''}" style="--i:${n + 1}" data-act="heroOpen" data-k="${k}" data-press aria-label="${heroName(k)} Lv.${heroLvOf(k)}">${jobEl}<span class="hr-lv"><b>Lv.${heroLvOf(k)}</b></span><span class="hr-art" style="--hr-foot:${HERO_FOOT[k]||0}%"><img src="${heroPort(k)}" alt=""></span><span class="hr-nm">${heroName(k)}</span></button>`;
+    return `<button class="hr-card${heroLvOf(k) >= HERO_MAX ? ' max' : ''}${heroSel ? '' : ' st'}${heroLast === k ? ' on' : ''}" style="--i:${n + 1}" data-act="heroOpen" data-k="${k}" data-press aria-label="${heroName(k)} Lv.${heroLvOf(k)}">${jobEl}<span class="hr-lv"><b>Lv.${heroLvOf(k)}</b></span><span class="hr-art" style="--hr-foot:${HERO_FOOT[k]||0}%;${heroElRgbStyle()}">${heroElAuraHtml()}<img src="${heroPort(k)}" alt=""></span><span class="hr-nm">${heroName(k)}</span></button>`;
   }).join('');
   return `${heroHead()}<div class="hr-grid">${cards}</div>`;
 }
@@ -5833,6 +5945,7 @@ function heroPopHtml() {
   return heroSub === 'sk' ? heroSkPop(heroSel) : heroSub === 'ps' ? heroPsPop(heroSel) : heroDetail(heroSel);
 }
 function heroPopHide() {
+  heroRangeStop();
   const ov = app && $('#wdl-hov', app); heroSel = null; heroSub = null;
   if (!ov || ov._closing) { if (ov && !ov._closing) ov.remove(); return; }
   ov._closing = true; ov.classList.add('out');
@@ -5856,6 +5969,8 @@ function heroPopSync() {
   ov.dataset.kind = kind; ov.dataset.k = heroSel;
   const pan = ov.querySelector('.hr-pan');
   if (pan && changed) pan.classList.add('hr-in');
+  if (kind === 'detail' && heroSel) heroRangePlay(ov, heroSel);
+  else heroRangeStop();
 }
 V.hero = () => { heroArtVars(); heroClouds(); queueMicrotask(heroPopSync); if (!heroOpen()) { heroSel = null; heroSub = null; return heroLocked(); } return heroGrid(); };
 const heroBad = () => { sfx('fail'); vib([20, 30, 20]); };
@@ -5873,14 +5988,14 @@ function heroAcqShow(opt) {   // 기존 #wd-acq 획득 연출(가운데 금줄�
   const name = opt.name || '', sub = opt.sub || '', lines = opt.lines || [];
   const el = document.createElement('div'); el.id = 'wd-acq'; el.className = 'acq pre hr-acq'; el.style.setProperty('--cw', kind === 'sk' ? '120' : '160');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const spark = Array.from({ length: 10 }, (_, i) => `<i class="hr-acq-sp" style="--i:${i}"></i>`).join('');
+  const acqLine = t => { t = String(t || ''); const i = t.indexOf(' → '); if (i < 0) return '<span>' + esc(t) + '</span>'; const a = t.slice(0, i), b = t.slice(i + 3); return '<span>' + esc(a) + ' → ' + heroHilite(esc(a), esc(b)) + '</span>'; };
   el.innerHTML =
     '<div class="acq-dim"></div><div class="acq-band"><i class="acq-ln t"></i><i class="acq-ln b"></i></div>' +
     '<div class="acq-body"><div class="acq-t">' + esc(title) + '</div>' +
-    '<div class="hr-acq-fig ' + (kind === 'sk' ? 'sk' : 'lv') + '"><img src="' + esc(img) + '" alt=""><i class="hr-acq-shine"></i>' + spark + '</div>' +
+    '<div class="hr-acq-fig ' + (kind === 'sk' ? 'sk' : 'lv') + '"><i class="hr-acq-aura" aria-hidden="true"></i><img src="' + esc(img) + '" alt=""></div>' +
     (name ? '<div class="hr-acq-nm"><b>' + esc(name) + '</b></div>' : '') +
     (sub ? '<div class="hr-acq-sub"><b>' + esc(sub) + '</b></div>' : '') +
-    (lines.length ? '<div class="hr-acq-lines">' + lines.map(t => '<span>' + esc(t) + '</span>').join('') + '</div>' : '') +
+    (lines.length ? '<div class="hr-acq-lines">' + lines.map(acqLine).join('') + '</div>' : '') +
     '<div class="acq-tap">화면을 눌러 닫기</div></div>';
   const go = () => {
     if (!el.isConnected && !document.body.contains(el)) document.body.appendChild(el);
@@ -19758,6 +19873,10 @@ html body #wdl .sc-pr.cash{--bc-img:var(--wd-btnc-s-royal)!important;--bc-bg:var
 /* ===== 11/16g ===== */
 /* 유물/속성검 탭 나무 간판 머리: 내용만 스크롤, 간판은 고정 */
 #wdl section.view>.shead.collection-head{position:sticky!important;top:0!important;z-index:6!important}
+/* 간판 위(재화바~배너)로는 카드가 올라오지 않게: 스크롤은 간판 아래만, 위 여백은 탭 배경 */
+#wdl .wdl-app[data-route="hero"] .view,#wdl .wdl-app[data-route="relic"] .view,#wdl .wdl-app[data-route="sword"] .view{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#wdl .wdl-app[data-route="hero"] .view>.shead.collection-head,#wdl .wdl-app[data-route="relic"] .view>.shead.collection-head,#wdl .wdl-app[data-route="sword"] .view>.shead.collection-head{flex:none!important}
+#wdl .wdl-app[data-route="hero"] .view>.hr-grid,#wdl .wdl-app[data-route="relic"] .view>.rl-col,#wdl .wdl-app[data-route="sword"] .view>.grid{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch}
 /* 메인 로고 A: 위쪽 HUD 바로 아래 */
 /* 11/16h: 로고 위치를 JS(t1Logo: 상단바 아래 8px 로 translate, 최대 -80px)가 첫 그림 때 한 번만 맞춰서, 상단바가 아직 안 그려진 폰에서는 안 올라가거나 늦게 맞춰졌음
    → CSS 로만 고정: 로비 화면(상단바 바로 아래) 맨 위에서 6u. JS translate 무시 */
@@ -24485,7 +24604,7 @@ window.WDFly = function (list) {
 </script>
 
 <style id="wd-hero-tab-css">/* ===== b184 영웅 탭 (wd-hero-tab) : 성 배경 + 흐르는 구름 / 남색 카드·창 / 베이지 스킬 카드 ===== */
-html body #wdl .wdl-app[data-route="hero"]{background-color:#f6c192!important;background-image:var(--hr-bg),var(--hr-floor)!important;background-repeat:no-repeat,repeat-y!important;background-size:100% auto,100% auto!important;background-position:center calc(36*var(--u)),center bottom!important}
+html body #wdl .wdl-app[data-route="hero"]{background-color:#f6c192!important;background-image:var(--hr-bg),var(--hr-floor)!important;background-repeat:no-repeat,repeat-y!important;background-size:100% auto,100% auto!important;background-position:center top,center bottom!important}
 html body #wdl .wdl-app[data-route="hero"] .wdl-scene,html body #wdl .wdl-app[data-route="hero"] .wdl-scrim{display:none !important}
 html body #wdl .wdl-app[data-route="hero"] .views{background:transparent}
 html body #wdl .wdl-app[data-route="hero"] .tabbar{background:linear-gradient(180deg,rgba(40,28,18,0),rgba(40,28,18,.88) 28%,#2a1c12)}
@@ -24499,9 +24618,9 @@ html body #wdl .wdl-app[data-route="hero"] .tabbar{background:linear-gradient(18
 html body #wdl .wdl-app[data-route="hero"] .views{position:relative;z-index:1}
 /* 헤더 = 파란 천 배너(리본 엠블럼+슬롯 포함, 원본 비율, 늘리지 않음). 제목은 파란 천 가운데, 스킬석은 오른쪽 슬롯 안 */
 html body #wdl .shead.collection-head.hr-head{
-  position:relative!important;isolation:isolate;display:block!important;box-sizing:border-box;
-  margin:calc(6*var(--u)) calc(10*var(--u)) calc(6*var(--u));
-  width:auto;aspect-ratio:2104/705;
+  position:sticky!important;top:0!important;z-index:6!important;isolation:isolate;display:block!important;box-sizing:border-box;
+  margin:calc(6*var(--u)) auto calc(6*var(--u));
+  width:90%;aspect-ratio:2104/705;
   padding:0!important;border:0!important;border-radius:0!important;
   background-color:transparent!important;
   background-image:var(--hr-banner)!important;
@@ -24537,7 +24656,7 @@ html body #wdl .shead.collection-head.hr-head .hr-skslot b{color:#fff;font-size:
 #wdl .hr-card:active{transform:translateY(calc(2*var(--u)))}
 /* 직업 아이콘 = 속성검 카드 .elb 원형 프레임(남색 채움·어두운 테두리·그림자) 재사용, 지름 30u */
 #wdl .hr-card .elb,#wdl .hr-card .hr-job.elb{
-  position:absolute;left:calc(5*var(--u));top:calc(5*var(--u));z-index:2;
+  position:absolute;left:calc(2*var(--u));top:calc(2*var(--u));z-index:2;
   width:calc(30*var(--u));height:calc(30*var(--u));box-sizing:border-box;
   border-radius:50%;background:#1d2733;border:calc(2*var(--u)) solid #15110d;
   box-shadow:0 calc(2*var(--u)) 0 rgba(0,0,0,.35);
@@ -24545,9 +24664,12 @@ html body #wdl .shead.collection-head.hr-head .hr-skslot b{color:#fff;font-size:
 #wdl .hr-card .elb img,#wdl .hr-card .hr-job img{
   display:block;width:auto;height:auto;max-width:calc(20*var(--u));max-height:calc(20*var(--u));
   object-fit:contain;filter:none}
-#wdl .hr-card .hr-lv{position:absolute;isolation:isolate;right:calc(9*var(--u));top:calc(8*var(--u));z-index:2;box-sizing:border-box;display:grid;place-items:center;min-width:calc(44*var(--u));height:calc(22*var(--u));padding:0 calc(6*var(--u)) calc(1*var(--u));border:0;border-radius:0;background:none;box-shadow:none;color:#3a2a1d;font-size:calc(12.5*var(--u));line-height:1;font-weight:400;-webkit-text-stroke:0;text-shadow:none;paint-order:normal}
+#wdl .hr-card .hr-lv{position:absolute;isolation:isolate;right:calc(2*var(--u));top:calc(2*var(--u));z-index:2;box-sizing:border-box;display:grid;place-items:center;min-width:calc(44*var(--u));height:calc(22*var(--u));padding:0 calc(6*var(--u)) calc(1*var(--u));border:0;border-radius:0;background:none;box-shadow:none;color:#3a2a1d;font-size:calc(12.5*var(--u));line-height:1;font-weight:400;-webkit-text-stroke:0;text-shadow:none;paint-order:normal}
 #wdl .hr-card .hr-art{position:absolute;left:8%;right:8%;top:calc(481 / 662 * 100% - 57%);height:57%;display:flex;align-items:flex-end;justify-content:center;overflow:visible}
-#wdl .hr-card .hr-art img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transform:translateY(var(--hr-foot,0%));filter:drop-shadow(0 calc(2*var(--u)) 0 rgba(0,0,0,.35))}
+#wdl .hr-card .hr-aura{position:absolute;left:50%;bottom:6%;z-index:0;pointer-events:none;width:92%;height:80%;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 62%,rgba(var(--hr-el-rgb),0.8) 0%,rgba(var(--hr-el-rgb),0.4) 38%,rgba(var(--hr-el-rgb),0) 72%);filter:blur(calc(3.5*var(--u)));opacity:.58;animation:hrElAura 2.8s ease-in-out infinite}
+@keyframes hrElAura{0%,100%{opacity:.48;transform:translateX(-50%) scale(.97)}50%{opacity:.78;transform:translateX(-50%) scale(1.06)}}
+@media (prefers-reduced-motion:reduce){#wdl .hr-card .hr-aura{animation:none;opacity:.4}}
+#wdl .hr-card .hr-art img{position:relative;z-index:1;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transform:translateY(var(--hr-foot,0%));filter:drop-shadow(0 calc(2*var(--u)) 0 rgba(0,0,0,.35))}
 #wdl .hr-card .hr-nm{position:absolute;left:8%;right:8%;bottom:6%;height:17%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:calc(15*var(--u));white-space:nowrap;letter-spacing:-.02em;-webkit-text-stroke:calc(3.6*var(--u)) #0f1828;paint-order:stroke fill}
 /* 상세·서브팝업 = 게임 기존 .modal.panel.ppm 남색 9-slice(--wd-pp-navy, 14u, slice 24) + 안쪽은 코드로 그린 베이지 종이 */
 #wdl .hr-pan.modal.ppm,#wdl-hov .modal.ppm.hr-pan,#wdl-app > .hr-ov .modal.ppm.hr-pan{
@@ -24580,9 +24702,13 @@ html body #wdl .shead.collection-head.hr-head .hr-skslot b{color:#fff;font-size:
 #wdl .hr-back .ic{width:calc(20*var(--u));height:calc(20*var(--u));--ic-f:#fff;--ink:#0f1828}
 #wdl .hr-title{position:absolute;left:0;right:0;text-align:center;pointer-events:none;font-size:calc(24*var(--u));font-weight:400;color:#fff;-webkit-text-stroke:calc(5*var(--u)) #0f1828;paint-order:stroke fill;white-space:nowrap}
 #wdl .hr-tlv{position:relative;isolation:isolate;flex:none;box-sizing:border-box;display:grid;place-items:center;min-width:calc(56*var(--u));height:calc(30*var(--u));padding:0 calc(8*var(--u)) calc(1.5*var(--u));border:0;border-radius:0;background:none;box-shadow:none;font-size:calc(15*var(--u));font-weight:400;color:#3a2a1d;-webkit-text-stroke:0;text-shadow:none;paint-order:normal}
-#wdl .hr-range{position:relative;aspect-ratio:780/290;border-radius:calc(10*var(--u));overflow:hidden;background:var(--hr-range) center 62% / cover no-repeat;box-shadow:inset 0 0 0 calc(2*var(--u)) #0f1828,0 calc(2*var(--u)) 0 rgba(0,0,0,.3)}
-#wdl .hr-range .hr-unit{position:absolute;left:30%;bottom:9%;height:70%;transform:translateX(-50%);filter:drop-shadow(0 calc(2*var(--u)) 0 rgba(0,0,0,.25))}
-#wdl .hr-range .hr-shadow{position:absolute;left:30%;bottom:6%;width:30%;height:9%;transform:translateX(-50%);border-radius:50%;background:rgba(60,35,10,.28)}
+#wdl .hr-range{--hr-ground:4.5%;position:relative;aspect-ratio:780/290;border-radius:calc(10*var(--u));overflow:hidden;background:var(--hr-range) center 62% / cover no-repeat;box-shadow:inset 0 0 0 calc(2*var(--u)) #0f1828,0 calc(2*var(--u)) 0 rgba(0,0,0,.3)}
+#wdl .hr-range .hr-unit,#wdl .hr-range .hr-unit-cv{position:absolute;left:30%;bottom:var(--hr-ground);height:auto;max-height:78%;width:auto;transform:translateX(-50%);transform-origin:50% calc(100% - var(--hr-foot,2%));filter:drop-shadow(0 calc(2*var(--u)) 0 rgba(0,0,0,.25));object-fit:contain;object-position:bottom center}
+#wdl .hr-range .hr-unit-cv{display:none;pointer-events:none}
+#wdl .hr-range.hr-atk .hr-unit{opacity:0}
+#wdl .hr-range.hr-atk .hr-unit-cv{display:block}
+#wdl .hr-range .hr-shadow{position:absolute;left:30%;bottom:calc(var(--hr-ground) - 3%);width:30%;height:9%;transform:translateX(-50%);border-radius:50%;background:rgba(60,35,10,.28)}
+#wdl .hr-range .hr-bolt{position:absolute;z-index:3;width:calc(10*var(--u));height:calc(6*var(--u));margin:calc(-3*var(--u)) 0 0 calc(-5*var(--u));border-radius:50%;background:#ffe08a;box-shadow:0 0 calc(8*var(--u)) #ffd36a;pointer-events:none}
 /* 스킬 구역 = 별도 종이 상자 없이 본문 종이 위에 바로 */
 #wdl .hr-sks{display:grid;grid-template-columns:1fr 1fr;gap:calc(8*var(--u));margin-top:calc(8*var(--u));margin-bottom:calc(4*var(--u));align-items:start}
 #wdl .hr-sk{position:relative;display:flex;flex-direction:column;align-items:center;gap:calc(2*var(--u));min-height:0;height:auto;overflow:visible;
@@ -24628,6 +24754,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wdl .hr-ico.empty{background:linear-gradient(#e9dcc0,#d6c39d);box-shadow:inset 0 0 0 calc(2.4*var(--u)) #8a7150;overflow:hidden}
 #wdl .hr-ico.empty i{font-style:normal;font-size:calc(22*var(--u));color:#8a7150}
 #wdl .hr-ico.sm{width:calc(26*var(--u));height:calc(26*var(--u));border-radius:calc(6*var(--u))}
+#wdl .hr-ico.sm .hr-shine-clip,#wdl .hr-stats .hr-shine-clip,#wdl .hr-ri .hr-shine-clip{display:none!important}
 #wdl .hr-ico.sm i{font-size:calc(13*var(--u))}
 #wdl .hr-sklv{position:relative;isolation:isolate;min-width:calc(54*var(--u));height:calc(28*var(--u));display:grid;place-items:center;padding:0 calc(6*var(--u));background:none;font-size:calc(15*var(--u));color:#fff;-webkit-text-stroke:calc(3.4*var(--u)) #0f1828;paint-order:stroke fill}
 #wdl .hr-skd{margin:0;min-height:calc(32*var(--u));display:flex;align-items:center;text-align:center;font-family:var(--ui-readable,var(--fd));font-size:calc(12.5*var(--u));line-height:1.3;color:#3b2a1d;word-break:keep-all}
@@ -24651,7 +24778,10 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wdl .hr-lockv small{font-size:calc(12*var(--u));color:#5b4532;font-family:var(--ui-readable,var(--fd))}
 #wdl .hr-sk.none .hr-none{margin:auto 0;font-size:calc(14*var(--u));color:#e8eef6}
 /* 비교 표 = 3줄 남색 판 (19_stat_panel_3row) */
-#wdl .hr-stats{position:relative;margin-top:calc(7*var(--u));aspect-ratio:1983/793;background:var(--hr-stat) center / 100% 100% no-repeat}
+#wdl .hr-stats{position:relative;isolation:isolate;margin-top:calc(7*var(--u));aspect-ratio:1983/793;background:none}
+#wdl .hr-stats::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,#fff8e6,#f3e0b8 55%,#ead4a4);-webkit-mask:var(--hr-stat-orig,var(--hr-stat)) center / 100% 100% no-repeat;mask:var(--hr-stat-orig,var(--hr-stat)) center / 100% 100% no-repeat}
+#wdl .hr-stats::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:var(--hr-stat-frame,var(--hr-stat)) center / 100% 100% no-repeat}
+#wdl .hr-stats .hr-row{z-index:2}
 #wdl .hr-row{position:absolute;left:6%;right:6%;display:flex;align-items:center;gap:calc(4*var(--u));font-size:calc(14.5*var(--u));padding-right:0;box-sizing:border-box}
 
 #wdl .hr-vals{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;margin-left:0;margin-right:0;flex:1;min-width:0;gap:0}
@@ -24792,7 +24922,7 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wdl .hr-x b{font-weight:400;font-size:calc(22*var(--u));line-height:1;color:#3a2a1d;-webkit-text-stroke:0}
 #wdl .hr-x:active{transform:translateY(calc(2*var(--u)))}
 #wdl .hr-hero{display:flex;align-items:center;gap:calc(12*var(--u));margin:calc(6*var(--u)) calc(6*var(--u)) calc(10*var(--u));text-align:left}
-#wdl .hr-skpop .hr-hero,#wdl .hr-pspop .hr-hero{justify-content:flex-start;margin-left:calc(12*var(--u));margin-right:calc(12*var(--u));width:auto;max-width:100%;box-sizing:border-box;text-align:left}
+#wdl .hr-skpop .hr-hero,#wdl .hr-pspop .hr-hero{justify-content:flex-start;margin-left:0;margin-right:calc(12*var(--u));width:auto;max-width:100%;box-sizing:border-box;text-align:left}
 #wdl .hr-skpop .hr-meta,#wdl .hr-pspop .hr-meta{flex:none}
 #wdl .hr-icoframe{flex:none;filter:drop-shadow(0 0 calc(10*var(--u)) rgba(120,190,255,.5)) drop-shadow(0 calc(3*var(--u)) 0 rgba(0,0,0,.35))}
 #wdl .hr-meta{flex:1;min-width:0}
@@ -24851,6 +24981,11 @@ html.hr-shine-mid #wdl .hr-ico:not(.empty) .hr-shine-clip::after{animation:none!
 #wd-acq.hr-acq .hr-acq-sub b{font-size:calc(22*var(--cu));-webkit-text-stroke:calc(5.2*var(--cu)) var(--k);animation:acqTitle .32s cubic-bezier(.3,1.7,.5,1) .4s both;color:#ffe08a}
 #wd-acq.hr-acq .hr-acq-lines{display:flex;flex-direction:column;align-items:center;gap:calc(3*var(--cu));margin-top:calc(2*var(--cu))}
 #wd-acq.hr-acq .hr-acq-lines span{font-family:var(--fd);font-weight:400;font-size:calc(16*var(--cu));line-height:1.15;color:#fff;-webkit-text-stroke:calc(3.8*var(--cu)) var(--k);paint-order:stroke fill;animation:acqTitle .28s cubic-bezier(.3,1.7,.5,1) .48s both}
+#wd-acq.hr-acq .hr-acq-lines .hr-hi{color:#8dff6a;-webkit-text-stroke-color:#163a10;font-style:normal}
+#wd-acq.hr-acq .hr-acq-aura{position:absolute;z-index:0;pointer-events:none;left:50%;top:50%;width:calc(160*var(--cu));height:calc(160*var(--cu));margin:calc(-80*var(--cu)) 0 0 calc(-80*var(--cu));border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,200,40,1) 0deg 9deg,rgba(255,246,200,.95) 9deg 13deg,rgba(255,220,90,0) 13deg 30deg);-webkit-mask:radial-gradient(circle,#000 22%,rgba(0,0,0,.8) 45%,transparent 70%);mask:radial-gradient(circle,#000 22%,rgba(0,0,0,.8) 45%,transparent 70%);animation:attFanfare2 5s linear infinite}
+#wd-acq.hr-acq .hr-acq-fig.sk .hr-acq-aura{width:calc(120*var(--cu));height:calc(120*var(--cu));margin:calc(-60*var(--cu)) 0 0 calc(-60*var(--cu))}
+#wd-acq.hr-acq .hr-acq-fig img{position:relative;z-index:1}
+#wd-acq.hr-acq .hr-acq-sp,#wd-acq.hr-acq .hr-acq-shine{display:none}
 @keyframes hrAcqShine{0%{transform:translateX(-130%) rotate(18deg);opacity:0}25%{opacity:1}100%{transform:translateX(130%) rotate(18deg);opacity:0}}
 @keyframes hrAcqSp{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}30%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + (var(--i) - 4.5)*18*var(--cu)), calc(-50% + ((var(--i)*37)%11 - 5)*14*var(--cu))) scale(.4)}}
 </style>
