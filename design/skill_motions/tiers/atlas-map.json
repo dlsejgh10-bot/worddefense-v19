@@ -1,0 +1,193 @@
+{
+  "version": 3,
+  "canvas": {
+    "width": 1536,
+    "height": 1536
+  },
+  "grid": {
+    "columns": 4,
+    "rows": 4,
+    "cell_width": 384,
+    "cell_height": 384
+  },
+  "original_frames_preserved": 13,
+  "added_frames": 3,
+  "tiers": [
+    5,
+    6
+  ],
+  "elements": [
+    "01-physical",
+    "02-fire",
+    "03-water",
+    "04-lightning",
+    "05-poison",
+    "06-ice",
+    "07-light",
+    "08-wind",
+    "09-earth",
+    "10-dark"
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "number": 1,
+      "id": "original_archer_attack",
+      "added": false,
+      "x": 0,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 1,
+      "number": 2,
+      "id": "original_gunner_attack",
+      "added": false,
+      "x": 384,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 2,
+      "number": 3,
+      "id": "original_sniper_attack",
+      "added": false,
+      "x": 768,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 3,
+      "number": 4,
+      "id": "original_cannon_attack",
+      "added": false,
+      "x": 1152,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 4,
+      "number": 5,
+      "id": "original_knight_raised_slash",
+      "added": false,
+      "x": 0,
+      "y": 384,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 5,
+      "number": 6,
+      "id": "original_golem_windup",
+      "added": false,
+      "x": 384,
+      "y": 384,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 6,
+      "number": 7,
+      "id": "original_shaman_attack",
+      "added": false,
+      "x": 768,
+      "y": 384,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 7,
+      "number": 8,
+      "id": "original_wizard_attack",
+      "added": false,
+      "x": 1152,
+      "y": 384,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 8,
+      "number": 9,
+      "id": "original_bell_attack",
+      "added": false,
+      "x": 0,
+      "y": 768,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 9,
+      "number": 10,
+      "id": "original_spirit_attack",
+      "added": false,
+      "x": 384,
+      "y": 768,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 10,
+      "number": 11,
+      "id": "original_merchant",
+      "added": false,
+      "x": 768,
+      "y": 768,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 11,
+      "number": 12,
+      "id": "added_archer_release_kneeling",
+      "added": true,
+      "x": 1152,
+      "y": 768,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 12,
+      "number": 13,
+      "id": "original_knight_slash_effect",
+      "added": false,
+      "x": 0,
+      "y": 1152,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 13,
+      "number": 14,
+      "id": "original_golem_slam_effect",
+      "added": false,
+      "x": 384,
+      "y": 1152,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 14,
+      "number": 15,
+      "id": "added_knight_draw_preparation_pose_2",
+      "added": true,
+      "x": 768,
+      "y": 1152,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "index": 15,
+      "number": 16,
+      "id": "added_knight_finished_draw_pose_5",
+      "added": true,
+      "x": 1152,
+      "y": 1152,
+      "width": 384,
+      "height": 384
+    }
+  ]
+}

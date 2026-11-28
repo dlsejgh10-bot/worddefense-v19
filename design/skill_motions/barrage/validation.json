@@ -1,0 +1,82 @@
+[
+  {
+    "file": "barrage-01-physical.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-02-fire.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-03-water.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-04-lightning.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-05-poison.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-06-ice.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-07-light.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-08-wind.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-09-earth.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  },
+  {
+    "file": "barrage-10-dark.png",
+    "identical_to_completed_source": true,
+    "width": 1536,
+    "height": 1024,
+    "corner_alpha": 0,
+    "gutter_alpha": 0
+  }
+]

@@ -1,0 +1,162 @@
+[
+  {
+    "file": "tier-5-01-physical.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-02-fire.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-03-water.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-04-lightning.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-05-poison.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-06-ice.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-07-light.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-08-wind.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-09-earth.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-5-10-dark.png",
+    "tier": 5,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-01-physical.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-02-fire.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-03-water.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-04-lightning.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-05-poison.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-06-ice.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-07-light.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-08-wind.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-09-earth.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  },
+  {
+    "file": "tier-6-10-dark.png",
+    "tier": 6,
+    "visible_frames": 16,
+    "changed_pixels_outside_additions": 0,
+    "changed_original_visible_pixels": 0,
+    "corner_alpha": 0
+  }
+]
