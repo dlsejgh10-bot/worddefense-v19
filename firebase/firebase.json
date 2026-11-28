@@ -1,0 +1,49 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-northeast3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "단어 디펜스",
+        "supportEmail": "kkb5768@gmail.com"
+      }
+    },
+    "authorizedDomains": [
+      "localhost",
+      "word-defense-adbf8.firebaseapp.com",
+      "word-defense-adbf8.web.app",
+      "dlsejgh10-bot.github.io"
+    ]
+  },
+  "hosting": {
+    "public": "admin_public",
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          },
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex, nofollow"
+          }
+        ]
+      }
+    ]
+  }
+}

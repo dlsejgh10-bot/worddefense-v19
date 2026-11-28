@@ -1,0 +1,152 @@
+[
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-01-physical.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-01-physical.png",
+    "sha256": "b2cab76aa0838508c717269e72c9609aae91c2c76ecbd3504cd33f7167204108"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-02-fire.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-02-fire.png",
+    "sha256": "6f51fc6b444625bd408579520ff2b63ef7b4d6d26f577dbd92f66f16bcb61275"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-03-water.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-03-water.png",
+    "sha256": "b87b6cd7e71fea70d3c9a83aa87d1e6aa89fd2e233601666b38a96181ffc515e"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-04-lightning.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-04-lightning.png",
+    "sha256": "a5be767e15300c6b7a856378da9dd36e1c1ea333009027cd5d008589b63d0940"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-05-poison.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-05-poison.png",
+    "sha256": "cdc03f110bea50f2d6ac49368002853c0cc29550c73b50755aac7fc9f9f22581"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-06-ice.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-06-ice.png",
+    "sha256": "e306df72a5af8333cfd7df5c17261a1fcb0efab94d9ef778ea6cea2a0500d75e"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-07-light.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-07-light.png",
+    "sha256": "ea5b2992c45f80d5f2631adfc81d798760427a695946017ce62a1fb2652aa79b"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-08-wind.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-08-wind.png",
+    "sha256": "38bdab9805f7f30015397958fb0c710384c37d851fd0e261ca479ed58dfea86b"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-09-earth.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-09-earth.png",
+    "sha256": "703d169e145a6580a4fa7354dca0574fedf5daaab05751d57704534dbad7d071"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\barrage\\barrage-10-dark.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\barrage\\barrage-10-dark.png",
+    "sha256": "bda8486527168d4b53b8f0e0a8bb575d5509ca96cafd52ce262bb4816197abc4"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-01-physical.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-01-physical.png",
+    "sha256": "58bfe07eabef34796133e4ba570d42377f917b258b96a6b4db551e24f1782afd"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-02-fire.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-02-fire.png",
+    "sha256": "7136821fedfac8a3e50306d0c03bbe6ba3974ef62457e4da38f58aa9c5f7fd6d"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-03-water.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-03-water.png",
+    "sha256": "d83974d58e95ab101029ff28bc97162872b4c5fcef7a44f4650703e6015d6c36"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-04-lightning.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-04-lightning.png",
+    "sha256": "8160a396fd541cac9705f8c121ac7b141ddbe6874674695e259227efb42abe41"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-05-poison.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-05-poison.png",
+    "sha256": "918cb937cb6cbfd8a2fdea543b4aa8b4e7aa3381c13eca3ad9cc6c3815ef230c"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-06-ice.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-06-ice.png",
+    "sha256": "a4426ddd6cf20617213a7ed112f673d84306a031f72acb01001b600ded6e69ac"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-07-light.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-07-light.png",
+    "sha256": "863c99dcc036bc1a810ae92965da2edc15e60d4d5f31d3d95453c23a28772889"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-08-wind.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-08-wind.png",
+    "sha256": "a788e91a1d43347cab408d4069baab88a3d92174bf6b34b0f32a3939a01403ea"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-09-earth.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-09-earth.png",
+    "sha256": "15470a125798b39fc09180b5dc2d0c3f5ab1a9713be9e65eac869a1f9b5413d0"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-5\\tier-5-10-dark.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-5\\tier-5-10-dark.png",
+    "sha256": "d6dfd95efab3d95703fde2fa80b1c52b63faddfb6fde20684d6ac60caffd363e"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-01-physical.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-01-physical.png",
+    "sha256": "eb5e6c2e1890e32804af942d2488a28b09353d46ee33c466cb26d9113c14599b"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-02-fire.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-02-fire.png",
+    "sha256": "46c1e3ebd0f1633dda4f7bb1b0605a912e789d61e9d0e932d4b1676f423e4f32"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-03-water.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-03-water.png",
+    "sha256": "76e8cd6038c0ccbd9dc088328cd42983670988e4b9525ea4cf02a4c0febbfcce"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-04-lightning.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-04-lightning.png",
+    "sha256": "35237dfdc60344faa23c50e710f986560d25e9733a53e8f5da88707563e79f85"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-05-poison.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-05-poison.png",
+    "sha256": "13401b557cc9ae596d6f3ba9495974d5814f9b661ba540ebea4b832f93f6bc1f"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-06-ice.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-06-ice.png",
+    "sha256": "37bbc2d8632af30c143bc18f84c7acdd98306d10b64d8087a0c63ebf426bccab"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-07-light.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-07-light.png",
+    "sha256": "ef6c0fe083ba66f591254aaa0b3bca189e0eda3e716ac1435d8f5ddab98cfa74"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-08-wind.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-08-wind.png",
+    "sha256": "d4fbd33cc63e0a2b78711d4cfe3f7fae023573c2d0b4b18eb0e42cae980d5987"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-09-earth.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-09-earth.png",
+    "sha256": "0ef3a518f3481f61e76cf173404f6fbf50f80091685a09e71bd2c9f5584a4076"
+  },
+  {
+    "source": "work\\vfx-next-b184-20261128\\design\\skill_motions\\tiers\\tier-6\\tier-6-10-dark.png",
+    "destination": "work\\vfx-next-b184-20261128\\WordDefense\\Resources\\www\\skill-vfx-v4\\motions\\tiers\\tier-6\\tier-6-10-dark.png",
+    "sha256": "07840acc880069c8f25b37bcbd34deafc6ba6877fccf0778627567cb5ba082af"
+  }
+]

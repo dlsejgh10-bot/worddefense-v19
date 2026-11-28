@@ -1,0 +1,25 @@
+/* Portrait animation moves inside a stationary clipping window, under the frame. */
+html body .pfav > .pfav-window{position:absolute;display:block;overflow:hidden;border-radius:6%;contain:paint;isolation:isolate;z-index:0;background:#28313a}
+html body .pfav .pfav-window > img.pfav-pt:not(#avatar-boundary){position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;filter:none!important;display:block!important;object-fit:cover!important;transform-origin:50% 100%!important;clip-path:inset(2.92% 1% 0 1% round 6%)}
+html body .pfav > .pfav-fr{z-index:2!important}
+html body .pfav > .pfav-sh{z-index:1!important}
+
+/* User-selected dimmer stone strip; native navigation icons and selected banner stay on top. */
+html body #wdl#wdl#wdl .wdl-app[data-route] #wdl-tabs.tabbar{background:transparent url('assets/bottom-stone-dimmer.png') center / 100% 185% no-repeat!important;border:0!important;box-shadow:none!important}
+
+/* Large key counts stay on one line in the original banner currency inset. */
+html body #wdl#wdl #wdl-views#wdl-views .collection-head .shr .kchip{padding:0!important;gap:calc(3*var(--u))!important;min-width:0!important;flex-wrap:nowrap!important;width:100%!important;overflow:hidden!important}
+html body #wdl#wdl #wdl-views#wdl-views .collection-head .shr .kchip img{flex:none!important;width:calc(22*var(--u))!important;height:calc(22*var(--u))!important;margin:0!important}
+html body #wdl#wdl #wdl-views#wdl-views .collection-head .shr .kchip b{position:static!important;display:block!important;flex:0 1 auto!important;min-width:0!important;width:auto!important;max-width:100%!important;height:auto!important;margin:0!important;white-space:nowrap!important;overflow-wrap:normal!important;word-break:normal!important;font-size:calc(min(20,100/var(--key-digits,9))*var(--u))!important;line-height:1!important;-webkit-text-stroke-width:calc(2.6*var(--u))!important}
+
+/* New transparent dance portrait: existing cream background and safe bust framing. */
+html body .pfav.pfav-dance > .pfav-window{background:var(--cream,#fff1d2)!important}
+html body .pfav.pfav-dance .pfav-window > img.pfav-pt:not(#avatar-boundary){box-sizing:border-box!important;padding:2% 4% 9%!important;object-fit:contain!important;object-position:center center!important}
+
+/* Equal gaps between the current value, arrow, and next value. */
+html body #wdl .hr-stats .hr-vals{display:grid!important;grid-template-columns:minmax(0,1fr) calc(8*var(--u)) calc(22*var(--u)) calc(8*var(--u)) minmax(0,1fr)!important;gap:0!important}
+html body #wdl .hr-stats .hr-vals .hr-rc{grid-column:1!important;justify-self:end!important}
+html body #wdl .hr-stats .hr-vals .hr-arw{grid-column:3!important;justify-self:center!important}
+html body #wdl .hr-stats .hr-vals .hr-nx,html body #wdl .hr-stats .hr-vals .hr-nv{grid-column:5!important;justify-self:start!important}
+html body #wdl .hr-stats .hr-vals:not(:has(.hr-arw)){grid-template-columns:minmax(0,1fr) calc(10*var(--u)) auto!important}
+html body #wdl .hr-stats .hr-vals:not(:has(.hr-arw)) .hr-rn.mx{grid-column:3!important;justify-self:start!important}

@@ -181,6 +181,74 @@ service cloud.firestore {
         && request.resource.data.claimedAt == request.time;
     }
 
+
+// Add inside the existing /databases/{database}/documents match. Preserve existing rules.
+function knightCohort() {
+  let firstEnd = 1797174000000;
+  return request.time.toMillis() < firstEnd ? 1 : 2 + int((request.time.toMillis() - firstEnd) / 1209600000);
+}
+match /knight_members/{uid} {
+  allow get: if request.auth != null && uid == request.auth.uid;
+  allow create: if request.auth != null && uid == request.auth.uid
+    && request.resource.data.keys().hasOnly(['uid', 'nick', 'cohort', 'endAt', 'joinedAt', 'mailed'])
+    && request.resource.data.uid == uid
+    && request.resource.data.nick is string
+    && request.resource.data.nick.size() >= 2 && request.resource.data.nick.size() <= 10
+    && request.resource.data.cohort == knightCohort()
+    && request.resource.data.endAt == timestamp.date(2026, 12, 13) + duration.value(15, 'h') + duration.value((knightCohort() - 1) * 14, 'd')
+    && request.resource.data.joinedAt == request.time
+    && request.resource.data.mailed == false;
+  allow list, update, delete: if false;
+}
+
+// Spark-compatible delivery on the member's next connection after the deadline.
+// Time, identity and exact rewards are enforced by Firestore, not the device clock.
+function validKnightSupply(gid) {
+  let uid = request.auth.uid;
+  let memberPath = /databases/$(database)/documents/knight_members/$(uid);
+  let member = get(memberPath).data;
+  let d = request.resource.data;
+  return gid == 'knight_' + uid && exists(memberPath)
+    && member.uid == uid && request.time >= member.endAt
+    && d.keys().hasAll(['uid','claimed','title','body','rw','createdAt'])
+    && d.keys().hasOnly(['uid','claimed','title','body','rw','createdAt'])
+    && d.uid == uid && d.claimed == false && d.createdAt == request.time
+    && d.title == string(member.cohort) + '기 결성 축하 보급'
+    && d.body == '마감된 ' + string(member.cohort) + '기 기사단의 결성 축하 보급입니다.'
+    && d.rw == {'gem':1000,'key':5,'stone':3,'sk':30,'gold':50000};
+}
+match /mail_grants_v2/{gid} {
+  allow create: if request.auth != null && validKnightSupply(gid);
+}
+
+    // New app mail with custom sender and energy. Legacy b183 never consumes this collection.
+    match /mail_grants_v2/{gid} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasAll(['uid', 'pid', 'rw', 'title', 'from', 'claimed', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'pid', 'rw', 'title', 'from', 'body', 'reportId', 'claimed', 'createdAt', 'by'])
+        && str(request.resource.data.uid, 1, 128) && str(request.resource.data.pid, 1, 64)
+        && str(request.resource.data.from, 1, 40)
+        && str(request.resource.data.title, 1, 40) && optStr(request.resource.data, 'body', 200)
+        && request.resource.data.claimed == false
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.rw is map
+        && request.resource.data.rw.keys().hasOnly(['gem', 'gold', 'key', 'stone', 'en'])
+        && request.resource.data.rw.size() >= 0
+        && (!('gem' in request.resource.data.rw) || (request.resource.data.rw.gem is int && request.resource.data.rw.gem > 0 && request.resource.data.rw.gem <= 100000))
+        && (!('gold' in request.resource.data.rw) || (request.resource.data.rw.gold is int && request.resource.data.rw.gold > 0 && request.resource.data.rw.gold <= 10000000))
+        && (!('key' in request.resource.data.rw) || (request.resource.data.rw.key is int && request.resource.data.rw.key > 0 && request.resource.data.rw.key <= 1000))
+        && (!('en' in request.resource.data.rw) || (request.resource.data.rw.en is int && request.resource.data.rw.en > 0 && request.resource.data.rw.en <= 1000))
+        && (!('stone' in request.resource.data.rw) || (request.resource.data.rw.stone is int && request.resource.data.rw.stone > 0 && request.resource.data.rw.stone <= 1000));
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && resource.data.claimed == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimed', 'claimedAt'])
+        && request.resource.data.claimed == true
+        && request.resource.data.claimedAt == request.time;
+    }
+
     // ---------- 11/18 월드 보스 순위: wb_scores/s{기수}/entries/{uid} (본인 문서만, 피해량은 정수·올라가기만·1번에 1억 이하 (= 월보 1판 최대 1억)) ----------
     match /wb_scores/{season}/entries/{uid} {
       allow read: if signedIn();
@@ -346,7 +414,7 @@ service cloud.firestore {
     function nat(v) { return v is int && v >= 0 && v <= 9000000000000000; }
     function validSnap(d, uid) {
       return d.keys().hasAll(['uid', 'pid', 'nick', 'gem', 'gold', 'key', 'stone', 'vip', 'build', 'plat', 'first', 'updatedAt'])
-        && d.keys().hasOnly(['uid', 'pid', 'nick', 'gem', 'gold', 'key', 'stone', 'vip', 'vipUntil', 'vipTrialUntil', 'bpPrem', 'bpExp', 'bpM', 'build', 'plat', 'ua', 'first', 'updatedAt'])
+        && d.keys().hasOnly(['uid', 'pid', 'nick', 'gem', 'gold', 'key', 'stone', 'vip', 'vipUntil', 'vipTrialUntil', 'bpPrem', 'bpExp', 'bpM', 'rl', 'acq', 'acqT', 'build', 'plat', 'ua', 'first', 'updatedAt'])
         && d.uid == uid
         && str(d.pid, 1, 64) && str(d.nick, 0, 40) && str(d.build, 0, 60)
         && d.plat in ['ios', 'android', 'web']
@@ -355,6 +423,9 @@ service cloud.firestore {
         && (!('vipUntil' in d) || nat(d.vipUntil)) && (!('vipTrialUntil' in d) || nat(d.vipTrialUntil))
         && (!('bpPrem' in d) || d.bpPrem is bool) && (!('bpExp' in d) || nat(d.bpExp)) && (!('bpM' in d) || nat(d.bpM))
         && optStr(d, 'ua', 400)
+        && (!('rl' in d) || (d.rl is map && d.rl.size() <= 40))                 // 11/27 유물 레벨 { 유물키: 레벨 }
+        && (!('acq' in d) || (d.acq is map && d.acq.size() <= 8))               // 11/27 재화×경로 누적 { 재화: { 경로: 양 } }
+        && (!('acqT' in d) || nat(d.acqT))                                       // 집계 시작 시각 (ms)
         && d.updatedAt == request.time;
     }
     match /user_snap/{uid} {

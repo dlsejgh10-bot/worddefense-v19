@@ -1,0 +1,104 @@
+/* The selected stone tablet belongs only to the relic collection. */
+@layer relicStone {
+  #wdl .rl-col > .rg-panel, #wdl .rl-col > .grid.rl-grid { flex: 0 0 auto !important; }
+  #wdl .grid.rl-grid {
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    grid-auto-rows: auto !important;
+    align-items: start !important;
+    gap: calc(12*var(--u)) calc(9*var(--u)) !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell {
+    position: relative !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: 3/4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-image: none !important;
+    border-radius: 0 !important;
+    background: transparent url('assets/relic-wood-soft-bevel.png') center / 114% 108% no-repeat !important;
+    box-shadow: none !important;
+    filter: none !important;
+    overflow: visible !important;
+    isolation: isolate !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell::before,
+  #wdl .grid.rl-grid .cell.rcell::after,
+  #wdl .grid.rl-grid .cell.rcell > .rsw {
+    display: none !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell > .art {
+    position: absolute !important;
+    inset: 12% 17% auto !important;
+    width: 66% !important;
+    height: 45% !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: visible !important;
+    z-index: 1 !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell .art img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    margin: 0 !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell > .bar,
+  #wdl .grid.rl-grid .cell.rcell > .rl-unowned {
+    position: absolute !important;
+    inset: auto 16% 23% !important;
+    box-sizing: border-box !important;
+    width: 68% !important;
+    height: 10% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    z-index: 2 !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell .bar b {
+    font-size: calc(11*var(--u)) !important;
+    line-height: 1 !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell > .nm {
+    position: absolute !important;
+    inset: auto auto 7% 50% !important;
+    transform: translateX(-50%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    width: max-content !important;
+    max-width: 90% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    z-index: 2 !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell > .lvb {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    font-size: calc(11*var(--u)) !important;
+    z-index: 3 !important;
+  }
+  #wdl .grid.rl-grid .cell.rcell > .rl-unowned {
+    color: #7a6650 !important;
+    font-size: calc(10*var(--u)) !important;
+    text-align: center !important;
+    -webkit-text-stroke: 0 !important;
+  }
+}
