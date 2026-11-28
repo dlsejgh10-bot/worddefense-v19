@@ -60,10 +60,10 @@
     }
     if(key==='archer')Object.assign(s,{B:{x:T.x-22,y:T.y-10},tgs:[cp(tg)],ts:Array.from({length:V.archer.n(L)},(_,i)=>i*V.archer.gap),tw:0,fl:tg.x<T.x});
     if(key==='sniper'){
-      const dx=tg.x-T.x,dy=tg.y-T.y,d=Math.hypot(dx,dy)||1,u={x:dx/d,y:dy/d};
-      Object.assign(s,{aimTarget:tg,M:{x:T.x+(dx<0?-40:40),y:T.y-6},u,L:V.sniper.len,tc:.15,tf:V.sniper.aim+.3,tg:vs.filter(m=>{const x=m.x-T.x,y=m.y-T.y,al=x*u.x+y*u.y;return al>=0&&al<=V.sniper.len&&Math.abs(x*u.y-y*u.x)<=V.sniper.w/2+(m.r||12);}).map(cp)});
+      const M=api.sniperMuzzle(T,tg),dx=tg.x-M.x,dy=tg.y-10-M.y,d=Math.hypot(dx,dy)||1,u={x:dx/d,y:dy/d};
+      Object.assign(s,{aimTarget:tg,M,u,L:V.sniper.len,tc:.15,tf:V.sniper.aim+.3,tg:vs.filter(m=>{const x=m.x-T.x,y=m.y-T.y,al=x*u.x+y*u.y;return al>=0&&al<=V.sniper.len&&Math.abs(x*u.y-y*u.x)<=V.sniper.w/2+(m.r||12);}).map(cp)});
     }
-    if(key==='sniper'&&reference&&T._skillRay&&T._skillRay.time>=reference.start){const ray=T._skillRay;Object.assign(s,{u:{x:ray.ux,y:ray.uy},M:{x:ray.x+ray.ux*30,y:ray.y+ray.uy*30},aimLocked:true});}
+    if(key==='sniper'&&reference&&T._skillRay&&T._skillRay.time>=reference.start){const ray=T._skillRay;Object.assign(s,{u:{x:ray.ux,y:ray.uy},M:{x:ray.x,y:ray.y},aimLocked:true});}
     if(key==='warrior'){
       const a=SK.baldoAim(T,L);if(!a)return null;CT.face=a.face;
       Object.assign(s,{O:{...a.O},R:a.R,ky:a.ky,ts:1.08,sw:.084,HS:0,tsp:1.204,A0:(a.face<0?Math.PI:0)-Math.PI,SP:Math.PI*2,tg:a.ms.map(cp),VR:a.R,VA0:-Math.PI,VSP:Math.PI*2});
@@ -142,11 +142,25 @@
     if(motion?.key==='miner'&&name==='t5_14'&&motion.t<motion.impact){T._skillFrame='w';if(T._skillPose)T._skillPose.nm='t5_6';}
     T.__spr=null;
   };
-  function pose(s){const t=G.t-s.start;Object.assign(s.T,s.source);for(const [original,c]of s.copies||[])Object.assign(c,original);if(s.key==='sniper'&&!s.aimLocked){const dx=s.aimTarget.x-s.source.x,dy=s.aimTarget.y-s.source.y,d=Math.hypot(dx,dy)||1;s.u={x:dx/d,y:dy/d};s.M={x:s.source.x+s.u.x*30,y:s.source.y+s.u.y*30};const ray=s.source._skillRay;if(ray&&ray.time>=s.start){s.u={x:ray.ux,y:ray.uy};s.M={x:ray.x+ray.ux*30,y:ray.y+ray.uy*30};s.aimLocked=true;}else if(t>=s.tf)s.aimLocked=true;}P.t=t;s.update?.(t);
+  function pose(s){const t=G.t-s.start;Object.assign(s.T,s.source);for(const [original,c]of s.copies||[])Object.assign(c,original);if(s.key==='sniper'&&!s.aimLocked){s.M=api.sniperMuzzle(s.source,s.aimTarget);const dx=s.aimTarget.x-s.M.x,dy=s.aimTarget.y-10-s.M.y,d=Math.hypot(dx,dy)||1;s.u={x:dx/d,y:dy/d};const ray=s.source._skillRay;if(ray&&ray.time>=s.start){s.u={x:ray.ux,y:ray.uy};s.M={x:ray.x,y:ray.y};s.aimLocked=true;}else if(t>=s.tf)s.aimLocked=true;}P.t=t;s.update?.(t);
     if(s.key==='sniper')s.T.face=s.u.x<0?-1:1;
     api.applyOwnPose(s.T,{key:s.key,t,impact:s.ti});
 
     soundFrame(s,t);if(s.quakeAt!=null&&!s.quaked&&t>=s.quakeAt){s.quaked=true;G.shake7={t0:nowMs(),a:1.6};}return s.T;}
+  const muzzlePoints=new WeakMap();
+  api.sniperMuzzle=function(T,target){
+    const source=unitSrc({...T,_skillPose:null,_skillFrame:'a'}),im=source?.img;
+    const face=target&&target.x<T.x?-1:1;
+    if(!im?.width||!source?.v2)return{x:T.x+face*30,y:T.y-40};
+    let point=muzzlePoints.get(im);
+    if(!point){
+      try{const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const g=c.getContext('2d');g.drawImage(im,0,0);const a=g.getImageData(0,0,c.width,c.height).data;let right=0,ys=[];
+        for(let x=c.width-1;x>c.width*.55;x--){const rows=[];for(let y=Math.floor(c.height*.18);y<c.height*.66;y++)if(a[(y*c.width+x)*4+3]>180)rows.push(y);if(rows.length>=2){right=x;ys=rows;break;}}
+        point={x:right||c.width*.97,y:ys.length?ys.reduce((a,b)=>a+b,0)/ys.length:c.height*.42};muzzlePoints.set(im,point);
+      }catch(_){point={x:im.width*.97,y:im.height*.42};}
+    }
+    return{x:T.x+face*(point.x-source.fb.cx)*source.v2.k,y:T.y+FOOT_DY+(point.y-source.fb.foot)*source.v2.k};
+  };
   const originalTower=drawTower;
   drawTower=function(T,x,y,sc,ghost,noTag){
     if((T.len===5||T.len===6)&&!motionImages.has(motionPath(T)))loadMotion(T).catch(()=>{});

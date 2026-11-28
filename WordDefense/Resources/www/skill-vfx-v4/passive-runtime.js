@@ -5,7 +5,8 @@
   const mageScenes=new WeakMap();
   const list=()=>G?(G.passiveVfxV4||(G.passiveVfxV4=[])):[];
   const cp=m=>({...m}),near=(x,y,r)=>G.mobs.filter(m=>!m.dead&&Math.hypot(m.x-x,m.y-y)<=r);
-  const models={rapid:'ranger',archer:'archer',sniper:'sniper',miner:'miner_passive_death',artillery:'artillery',mage:'mage',merchant:'merchant'};
+  const models={warrior:'native_passive_pose',zone:'native_passive_pose',buffer:'native_passive_pose',debuffer:'native_passive_pose',rapid:'ranger',archer:'archer',sniper:'sniper',miner:'miner_passive_death',artillery:'artillery',mage:'mage',merchant:'merchant'};
+  P.S.native_passive_pose={dur:.30,update(){},ground(){},top(){}};
   function passive(T,key,m,options={}) {
     if(!api.ready||!G||!T||!models[key]||(!m&&!['miner','merchant'].includes(key)))return false;
     const model=P.S[models[key]],s=Object.assign(Object.create(model),{key,source:T,T:cp(T),start:G.t,dur:model.dur,targets:[]});
@@ -74,6 +75,9 @@
     }
     if(key==='sniper'){s.top=()=>{};s.ground=()=>{};}
     if(key==='merchant')Object.assign(s,{O:{x:T.x,y:T.y-30},gy:T.y+16,tn:-10,tp:.12,soundAt:.12,sound:'coinChime'});
+    if(key==='miner'){s.ground=()=>{};s.top=()=>{};}
+    if(['sniper','artillery','mage'].includes(key))s.actorDur=.30;
+    if(['warrior','zone','buffer','debuffer'].includes(key))s.actorDur=.30;
     CT.face=point.x<T.x?-1:1;
     list().push(s);return true;
   }
@@ -84,13 +88,14 @@
   const oldFire=fireAttack;
   fireAttack=function(T,m){
     if(!T||T._sk||!G)return oldFire(T,m);
-    const key=ROLES[T.role]?.key,n=G.projs.length,nf=G.fx.length,ready=key==='rapid'&&T.hsReady,counts=[T.shotN||0,T.crN||0,T.dudN||0,T.mstN||0];
+    const key=ROLES[T.role]?.key,n=G.projs.length,nf=G.fx.length,nz=G.zones.length,ready=key==='rapid'&&T.hsReady,counts=[T.shotN||0,T.crN||0,T.dudN||0,T.mstN||0];
     const result=oldFire(T,m);
     let shown=ready?passive(T,'rapid',m):false;
     if(key==='sniper'&&(T.shotN||0)>counts[0]&&T.shotN%4===0)shown=passive(T,key,m);
     if(key==='miner'&&(T.crN||0)>counts[1])shown=passive(T,key,m);
     if(key==='artillery'&&(T.dudN||0)>counts[2])shown=passive(T,key,m);
     if(key==='mage'&&(T.mstN||0)>counts[3])shown=passive(T,key,m);
+    if(key==='zone'&&SK.psLv(T)>0&&G.zones.length>nz)passive(T,key,m);
     if(key==='archer'&&list().some(s=>s.source===T&&s.key==='archer'&&G.t-s.start<.01))shown=true;
     if(shown){for(const p of G.projs.slice(n))if(p.T===T||p.T?._skillOwner===T){
         if(key==='mage'){
@@ -112,6 +117,9 @@
     if(key==='mage'&&T._mageShot){const owner=T._skillOwner||T,s=mageScenes.get(T)||list().filter(s=>s.source===owner&&s.key==='mage'&&!s.impacted).at(-1);if(s){s.impacted=true;s.tb=G.t-s.start;s.C={x:m.x,y:m.y-10};s.impactR=s.projectile?.splash;s.dur=s.tb+.32;if(!s.sounded){s.sounded=true;SFX.approved('mageCrack',.38);}}}
     return result;
   };
+  const oldDusk=api.dusk;api.dusk=function(a,b,col,el,T){const result=oldDusk.apply(this,arguments);if(result&&T&&SK.psLv(T)>0)passive(T,'warrior',findTarget(T,trange(T))||T);return result;};
+  const oldFear=window.WDShock;if(oldFear)window.WDShock=function(T,targets){const result=oldFear.apply(this,arguments);if(result)passive(T,'debuffer',targets?.[0]||T);return result;};
+  const oldBuff=supBuffFx;supBuffFx=function(T,allies){const result=oldBuff.apply(this,arguments);if(allies.length&&SK.psLv(T)>0)passive(T,'buffer',T);return result;};
   const oldPay=payInterest;
   payInterest=function(){const before=new Map((G?.towers||[]).map(T=>[T,T.dblN||0]));const r=oldPay();for(const [T,n]of before)if((T.dblN||0)>n)passive(T,'merchant');return r;};
   const oldTower=drawTower;
@@ -124,6 +132,7 @@
     if(s.key==='rapid'&&t>=s.tf-.05&&t<s.tf+.25)s.T.__spr={nm:'bar2',flip:s.u.x<0,H:340};
     if(s.key==='archer'&&t>=0&&t<s.th+.2)s.T.__spr={nm:'t5_12',flip:s.N.x<T.x,H:340};
     api.applyOwnPose(s.T,{key:s.key,t,impact:s.ti});
+    api.applyPassivePose?.(s.T,s.key,t,s.ti||0);
     return oldTower(s.T,x+s.T.x-T.x,y+s.T.y-T.y,sc,ghost,noTag);
   };
   function render(layer){

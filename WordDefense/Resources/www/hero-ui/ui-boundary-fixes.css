@@ -16,10 +16,23 @@ html body #wdl#wdl #wdl-views#wdl-views .collection-head .shr .kchip b{position:
 html body .pfav.pfav-dance > .pfav-window{background:var(--cream,#fff1d2)!important}
 html body .pfav.pfav-dance .pfav-window > img.pfav-pt:not(#avatar-boundary){box-sizing:border-box!important;padding:2% 4% 9%!important;object-fit:contain!important;object-position:center center!important}
 
-/* Equal gaps between the current value, arrow, and next value. */
-html body #wdl .hr-stats .hr-vals{display:grid!important;grid-template-columns:minmax(0,1fr) calc(8*var(--u)) calc(22*var(--u)) calc(8*var(--u)) minmax(0,1fr)!important;gap:0!important}
+/* Preserve the original right-aligned numeric anchors; measure only the arrow. */
+html body #wdl .hr-stats .hr-vals{position:relative;display:grid!important;grid-template-columns:minmax(0,1fr) calc(32*var(--u)) minmax(0,1fr)!important;gap:0!important}
 html body #wdl .hr-stats .hr-vals .hr-rc{grid-column:1!important;justify-self:end!important}
-html body #wdl .hr-stats .hr-vals .hr-arw{grid-column:3!important;justify-self:center!important}
-html body #wdl .hr-stats .hr-vals .hr-nx,html body #wdl .hr-stats .hr-vals .hr-nv{grid-column:5!important;justify-self:start!important}
+html body #wdl .hr-stats .hr-vals .hr-arw{position:absolute!important;grid-column:auto!important;left:50%;top:50%;transform:translate(-50%,-50%);margin:0!important}
+html body #wdl .hr-stats .hr-vals .hr-nx,html body #wdl .hr-stats .hr-vals .hr-nv{grid-column:3!important;justify-self:end!important}
 html body #wdl .hr-stats .hr-vals:not(:has(.hr-arw)){grid-template-columns:minmax(0,1fr) calc(10*var(--u)) auto!important}
-html body #wdl .hr-stats .hr-vals:not(:has(.hr-arw)) .hr-rn.mx{grid-column:3!important;justify-self:start!important}
+html body #wdl .hr-stats .hr-vals:not(:has(.hr-arw)) .hr-rn.mx{grid-column:3!important;justify-self:end!important}
+
+/* Compact shared columns: label, current number, arrow, next number. */
+html body #wd-acq.hr-acq .hr-acq-lines{display:grid;grid-template-columns:max-content max-content calc(20*var(--cu)) max-content;align-items:center;justify-content:center;width:max-content;max-width:92%;column-gap:calc(9*var(--cu));row-gap:calc(7*var(--cu));margin-top:calc(3*var(--cu))}
+html body #wd-acq.hr-acq .hr-acq-row{display:contents}
+html body #wd-acq.hr-acq .hr-acq-row.single{display:block;grid-column:1/-1;text-align:center;margin-top:calc(2*var(--cu))}
+html body #wd-acq.hr-acq .hr-acq-lines .hr-acq-cell{display:flex;align-items:center;min-width:0;font-size:calc(15*var(--cu));line-height:1.3;white-space:nowrap}
+html body #wd-acq.hr-acq .hr-acq-label{justify-content:flex-start;text-align:left}
+html body #wd-acq.hr-acq .hr-acq-before{justify-content:flex-end;text-align:right}
+html body #wd-acq.hr-acq .hr-acq-after{justify-content:flex-start;text-align:left}
+html body #wd-acq.hr-acq .hr-acq-lines .hr-acq-arr{justify-content:center;text-align:center;font-size:calc(18*var(--cu))}
+html body #wd-acq.hr-acq .acq-body{gap:calc(8*var(--cu));padding:calc(22*var(--cu)) 0;max-width:100%}
+html body #wd-acq.hr-acq .acq-tap{margin-top:calc(9*var(--cu))}
+html body #wd-acq.hr-acq .acq-band{margin-top:calc(var(--bh)*-.5)}
