@@ -55,6 +55,8 @@
   panel.insertAdjacentHTML('beforeend','<label><input type="checkbox" data-mob-move checked> 몹 이동</label>');
   panel.querySelector('[data-mob-move]').onchange=e=>{moveMobs=e.target.checked;for(const m of G?.mobs||[])if(m._qaDummy)m.speed=moveMobs?m._qaSpeed:0;};
   panel.querySelector('[data-element-max]').onchange=e=>{elementMax=e.target.checked;G.qaElementMax=elementMax;calcElLv10();updateSupport(0);};
+  panel.insertAdjacentHTML('beforeend','<button data-dusk-single>어스름 단일 5연격 시안</button>');
+  panel.querySelector('[data-dusk-single]').onclick=()=>{const T=G?.towers.find(t=>ROLES[t.role].key==='warrior'),m=T&&findTarget(T,trange(T));if(T&&m)window.WDSkillVFX?.previewDuskSingle(T,m);};
   panel.querySelector('[data-passive]').onclick=()=>{
     if(!G?.skillSandbox)return;
     for(const T of G.towers){if(selected!=='all'&&ROLES[T.role].key!==selected)continue;T.skCd=9999;const key=ROLES[T.role].key,m=findTarget(T,trange(T));

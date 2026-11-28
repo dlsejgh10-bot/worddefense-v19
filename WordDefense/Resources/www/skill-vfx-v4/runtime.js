@@ -158,7 +158,7 @@
     if(shadow){wdSilOn(.45);try{const visual=pose(shadow);originalTower(visual,x+visual.x-T.x+18,y+visual.y-T.y-7,sc,true,true);}finally{wdSilOff();}}
 
     if(active){const visual=pose(active);return originalTower(visual,x+visual.x-T.x,y+visual.y-T.y,sc,ghost,noTag);}
-    const slash=bursts().filter(b=>['dusk','rhythm'].includes(b.key)&&b.T===T&&G.t-b.start>=0&&G.t-b.start<.3).at(-1);
+    const slash=bursts().filter(b=>['dusk','duskSingle','rhythm'].includes(b.key)&&b.T===T&&G.t-b.start>=0&&G.t-b.start<.3).at(-1);
     if(slash){const visual={...T,__spr:null,_skillFrame:'a'};P.atk(visual,G.t-slash.start,0,.42);return originalTower(visual,x,y,sc,ghost,noTag);}
     return originalTower(T,x,y,sc,ghost,noTag);
   };
@@ -168,7 +168,7 @@
       const t=G.t-s.start;if(t<0||t>=s.dur||!G.towers.includes(s.source))continue;
       ctx.save();try{if(s.shadow){ctx.translate(18,-7);ctx.globalAlpha=.45;}const el=['buffer','debuffer','merchant'].includes(s.key)?0:s.source.el;palette(el,()=>{if(s.key==='debuffer'){if(layer==='top')markCast(s,t);}else{pose(s);if(s.key==='buffer')magicShield(s,t,layer);else if(s.key==='mage'&&s.source.el===3&&t>=s.tb&&window.WDElementFX)WDElementFX.drawIceImpact(s.C.x,s.C.y,s.R,t-s.tb,layer);else if(s.key==='artillery'&&t>=s.tb)energyExplosion(s,t,layer);else { if(s.key==='zone')s.vic=nearby(s.o.x,s.o.y,s.R).map(m=>({...m,_source:m})); s[layer]?.(t); }}},!!s.shadow);}catch(e){if(errors.length<20)errors.push(s.key+': '+e.message);console.error(e);}finally{ctx.restore();}
     }
-    if(layer==='top'){for(const b of bursts()){ctx.save();try{palette(b.key==='dusk'?b.el:0,()=>burst(b));}finally{ctx.restore();}}for(const m of G.mobs)if(m.nakinT>0&&!m.dead)brand(m);}
+    if(layer==='top'){for(const b of bursts()){ctx.save();try{palette(['dusk','duskSingle'].includes(b.key)?b.el:0,()=>burst(b));}finally{ctx.restore();}}for(const m of G.mobs){if(m.nakinT>0&&!m.dead)brand(m);if(m.fearT>0&&!m.dead)fearMark(m);}}
     ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
   }
   const originalGround=drawGround10;drawGround10=function(){originalGround();draw('ground');};
@@ -176,7 +176,7 @@
   const originalProj=drawProj6;drawProj6=function(p){if(api.ready&&p.T?._sk&&ROLES[p.T.role].key==='archer')return;return originalProj(p);};
   const originalAddFx=addFx;addFx=function(f){if(f?.k==='shadow'&&f.T&&G)G.fx=G.fx.filter(q=>q.k!=='shadow'||q.T!==f.T);return originalAddFx(f);};
   const originalUpdate=update;update=function(dt){originalUpdate(dt);if(!G)return;G.skillVfxV4=list().filter(s=>!G.over&&G.t-s.start<s.dur&&G.towers.includes(s.source));G.skillBurstsV4=bursts().filter(b=>!G.over&&G.t-b.start<b.dur);};
-  function ghostAttack(D,el,R){if(!api.ready)return false;bursts().push({key:'ghost',el,x:D.x,y:D.y,R,start:G.t,dur:.62,col:el===4?'#8ad9ff':'#a93143'});for(const m of nearby(D.x,D.y,R))m._ghostVisualAt=G.t;return true;}
+  function ghostAttack(D,el,R){if(!api.ready)return false;bursts().push({key:'ghost',el,x:D.x,y:D.y,R,start:G.t,dur:1,col:el===4?'#8ad9ff':'#a93143'});for(const m of nearby(D.x,D.y,R))m._ghostVisualAt=G.t;return true;}
   const originalGhost=dbBurst10;dbBurst10=function(D,el,R){if(ghostAttack(D,el,R)){SFX.approved('ghostWave',.7);return;}return originalGhost(D,el,R);};
   const originalDbHit=dbHitFx;dbHitFx=function(m,el){if(api.ready&&m._ghostVisualAt===G.t)return;return originalDbHit(m,el);};
   const originalHit=hit;hit=function(T,m,base){const stored=m?.nakinPool||0,result=originalHit(T,m,base);if(api.ready&&m?.nakinT>0&&(m.nakinPool||0)>stored)bursts().push({key:'markhit',el:m._markElement||0,x:m.x,y:m.y-12,start:G.t,dur:.18});return result;};
@@ -194,6 +194,7 @@
     addFx({k:'shadow',T,ox:18,oy:-7,aD:.3,life:.46});
   }
   function dusk(a,b,col,el=0,T=null){if(!api.ready)return false;SFX.approved('duskSlash',.55);bursts().push({key:'dusk',a,b,col,el,T,start:G.t,dur:.36});return true;}
+  api.previewDuskSingle=(T,target)=>{if(!api.ready||!target)return false;SFX.approved('duskSlash',.55);bursts().push({key:'duskSingle',T,target,x:target.x,y:target.y,el:T.el,start:G.t,dur:.34,cutAnchors:[]});return true;};
   function rhythm(T){if(api.ready)bursts().push({key:'rhythm',T,start:G.t,dur:.35});}
   api.buffAura=(B,targets)=>{
     for(const a of targets)bursts().push({key:'buffAura',x:a.x,y:a.y,start:G.t,dur:.42});
@@ -252,32 +253,31 @@
     if(b.key==='ghost'){spectralWave(b,t);return;}
     if(b.key==='mark'){markFinish(b,t);return;}
     if(b.key==='dusk'){
-      const q=P.cl(t/.28),fade=(1-q)**1.4,dx=b.b.x-b.a.x,dy=b.b.y-b.a.y,L=Math.hypot(dx,dy)||1;
-      const reach=P.E.out5(P.cl(t/.055));
-      ctx.save();ctx.translate(b.a.x,b.a.y-8);ctx.rotate(Math.atan2(dy,dx));ctx.scale(reach,1);
-      ctx.globalCompositeOperation='screen';
-      const glow=ctx.createLinearGradient(0,0,L,0);glow.addColorStop(0,'rgba(55,106,159,0)');glow.addColorStop(.35,`rgba(97,181,255,${.18*fade})`);glow.addColorStop(.9,`rgba(207,240,255,${.7*fade})`);glow.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=glow;ctx.beginPath();ctx.moveTo(0,16);ctx.quadraticCurveTo(L*.5,-35,L,-3);ctx.quadraticCurveTo(L*.55,-12,0,16);ctx.fill();
-      ctx.strokeStyle=`rgba(239,251,255,${fade})`;ctx.lineWidth=3.1*fade+.5;ctx.beginPath();ctx.moveTo(L*.08,11);ctx.quadraticCurveTo(L*.53,-32,L,-3);ctx.stroke();ctx.restore();
-      P.sparks(b.b.x,b.b.y-8,5,142,P.cl(t/.18),{a0:Math.atan2(dy,dx),spread:.8,v:75,len:10,w:1,col:'#e9f5ff',g:0});
+      const dx=b.b.x-b.a.x,dy=b.b.y-b.a.y,L=Math.hypot(dx,dy)||1,angle=Math.atan2(dy,dx)+(Math.abs(dy)>Math.abs(dx)?.12:0);
+      const reach=P.E.out3(P.cl(t/.085)),fade=1-P.cl((t-.10)/.22);
+      ctx.save();ctx.translate((b.a.x+b.b.x)/2,(b.a.y+b.b.y)/2-12);ctx.rotate(angle);ctx.globalAlpha=fade;
+      zipBlade(-L*.5*reach,0,L*.5*reach,0,10,'#85efff','#fcffff');zipBlade(-L*.43*reach,5,L*.43*reach,5,2,'#85efff','#fcffff');ctx.restore();
+    }
+    if(b.key==='duskSingle'){
+      for(let i=0;i<5;i++){const u=t-i*.045;if(u<0||u>.12)continue;const anchor=b.cutAnchors[i]||(b.cutAnchors[i]={x:b.target.x,y:b.target.y});const q=P.E.out3(P.cl(u/.035));ctx.save();ctx.translate(anchor.x,anchor.y-16);ctx.rotate([-.7,.65,-.2,1.1,-.85][i]);ctx.globalAlpha=1-P.cl(u/.12);zipBlade(-23*q,0,23*q,0,4.2,'#85efff','#fcffff');ctx.restore();}
     }
   }
 
-  // Ghost debuff: a transient expanding procession of misty spirits, within real range.
+  // Adapted from user ZIP skill-fx.js: fear variant 2, with all crow shapes removed.
+  const ghostPalettes=[['#c8c1b6','#fff8ec'],['#f48b4b','#fff0d2'],['#54b4e7','#d9f7ff'],['#94ddf0','#f0fdff'],['#f1ce55','#fff6ba'],['#7bcba5','#e1ffef'],['#c69a62','#fff0cd'],['#ab77d8','#f5dfff'],['#efd691','#fff9df'],['#8f6ac0','#e5d3ff']];
+  function zipShape(points,color){ctx.beginPath();ctx.moveTo(...points[0]);for(const p of points.slice(1))ctx.lineTo(...p);ctx.closePath();ctx.fillStyle=color;ctx.fill();}
+  // User ZIP slash-01/백섬 silhouette, scaled to native geometry.
+  function zipBlade(x0,y0,x1,y1,width,accent,tip){const angle=Math.atan2(y1-y0,x1-x0),len=Math.hypot(x1-x0,y1-y0);if(len<.01)return;ctx.save();ctx.translate(x0,y0);ctx.rotate(angle);zipShape([[0,0],[len*.24,-width*.53],[len*.77,-width*.25],[len,0],[len*.38,width*.68]],accent);zipShape([[len*.06,0],[len*.42,-width*.21],[len*.98,0],[len*.34,width*.23]],tip);ctx.restore();}
   function spectralWave(b,t){
-    const q=P.cl(t/.62);if(t<0||q>=1)return;const spread=P.E.out3(P.cl(t/.36)),fade=Math.sin(Math.PI*q)**.7;
-    ctx.save();ctx.translate(b.x,b.y-8);
-    for(let i=0;i<12;i++){
-      const a=i*Math.PI*2/12+.12*Math.sin(i*2.7),r=b.R*(.76+.24*P.H(i+81))*spread;
-      const x=Math.cos(a)*r,y=Math.sin(a)*r*.62-q*9,w=6+4*P.H(i+82),h=w*1.6;
-      ctx.save();ctx.translate(x,y);ctx.rotate(Math.cos(a)*.2);ctx.globalAlpha=fade*(.42+.26*P.H(i+80));
-      const g=ctx.createLinearGradient(0,-h,0,h);g.addColorStop(0,'#d0f9ed');g.addColorStop(.4,'#7bc5c0');g.addColorStop(1,'rgba(29,62,77,0)');
-      ctx.fillStyle=g;ctx.strokeStyle='rgba(25,51,62,.6)';ctx.lineWidth=.9;
-      ctx.beginPath();ctx.moveTo(-w,0);ctx.bezierCurveTo(-w,-h,w,-h,w,0);ctx.quadraticCurveTo(w*.7,h*.7,w*.45,h);ctx.quadraticCurveTo(0,h*.4,-w*.4,h*.7);ctx.quadraticCurveTo(-w*.2,h*.2,-w,0);ctx.fill();ctx.stroke();
-      ctx.fillStyle='#193543';ctx.beginPath();ctx.ellipse(-w*.3,-h*.28,1.1,1.7,0,0,Math.PI*2);ctx.ellipse(w*.3,-h*.28,1.1,1.7,0,0,Math.PI*2);ctx.fill();ctx.restore();
-      P.smoke(x,y+5,7+7*q,fade*.12,'#81b9bd');
-    }
-    ctx.restore();
+    if(t<0||t>=1)return;const u=t,r=b.R*P.E.out3(P.cl(u/.64)),p=ghostPalettes[b.el]||ghostPalettes[0];
+    ctx.save();ctx.translate(b.x,b.y-8);ctx.globalAlpha=1-P.cl((u-.34)/.66);ctx.strokeStyle=p[0];ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(0,0,Math.max(.01,r),Math.max(.01,r*.58),0,u,u+4.3);ctx.stroke();ctx.restore();
+  }
+  // The ZIP's overhead fear mark follows only enemies with active native Fear.
+  function fearMark(m){
+    const p=ghostPalettes[m.fearEl]||ghostPalettes[0],age=Math.max(0,G.t-(m.fearBorn||0)),sp=SPR.mobs[m.vis||m.type];
+    const scale=.72*P.E.out3(P.cl(age/.1)),fade=Math.min(1,m.fearT/.18);
+    ctx.save();ctx.translate(m.x,m.y-(sp?.h||42)-15-Math.sin(age*5)*1.8);ctx.scale(scale,scale);ctx.globalAlpha=fade;
+    for(const v of [-1,1])zipShape([[v*3,-5],[v*12,-10],[v*10,-2],[v*4,1]],p[1]);zipShape([[-3,3],[0,7],[3,3]],p[0]);ctx.restore();
   }
   // Mark uses narrow red seals and a local finishing slash, never the ghost wave.
   function markCast(s,t){

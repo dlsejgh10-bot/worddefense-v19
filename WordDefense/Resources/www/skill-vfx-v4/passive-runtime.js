@@ -49,9 +49,16 @@
       s.ground=function(t){if(t>=this.tb)approvedGround.call(this,t);};
     }
     if(key==='mage'){
-      const originalTop=model.top;s.ground=()=>{};
+      s.ground=()=>{};
       s.top=function(t){
-        if(!this.impacted)return; // Native orb remains visible throughout its flight.
+        if(!this.impacted){
+          // Restore the approved travelling magic orb on the native projectile position.
+          const p=this.projectile;if(!p||p.done)return;
+          const trail=(p.trail||[]).map(v=>Array.isArray(v)?{x:v[0],y:v[1]}:v);
+          if(trail.length>1)P.beamPath(trail,5.5,'#8a5cff','#e0d0ff',.85);
+          P.bloom(p.x,p.y,35,'#8a5cff',.8);P.bloom(p.x,p.y,12,'#ffffff',.9);
+          return;
+        }
         const age=t-this.tb,q=P.cl(age/.30);if(age<0||q>=1)return;
         const R=Math.max(16,this.impactR||this.projectile?.splash||ROLES[this.source.role].splash||30);
         const open=P.E.out5(P.cl(age/.10)),fade=(1-q)**1.35,x=this.C.x,y=this.C.y;
